@@ -1,6 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "test": "node tests/tasklyzen-modules.test.js"
+    "test": "node tests/tasklyzen-modules.test.js",
+    "build": "node build.js"
   }
 }
