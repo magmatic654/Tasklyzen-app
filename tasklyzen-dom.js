@@ -46,6 +46,7 @@
     const tasks = {
         taskCreatePanel: byId('task-create-panel'),
         taskCreateToggle: byId('task-create-toggle'),
+        taskCreateClose: byId('task-create-close'),
         todoForm: byId('todo-form'),
         todoInput: byId('todo-input'),
         taskTypeInput: byId('task-type-input'),
@@ -179,6 +180,10 @@
         analyticsHabitDetail: byId('analytics-habit-detail'),
         analyticsHabitRate: byId('analytics-habit-rate'),
         analyticsHabitCount: byId('analytics-habit-count'),
+        raceAnalyticsSummary: byId('race-analytics-summary'),
+        raceAnalyticsMinutes: byId('race-analytics-minutes'),
+        raceAnalyticsSessions: byId('race-analytics-sessions'),
+        raceAnalyticsTargets: byId('race-analytics-targets'),
         analyticsInsights: byId('analytics-insights'),
         analyticsRings: byId('analytics-rings'),
         analyticsClarityBoard: byId('analytics-clarity-board'),

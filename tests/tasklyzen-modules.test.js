@@ -55,7 +55,6 @@ loadBrowserModule(context, 'components/tasklyzen-task-creation-ui.js');
 loadBrowserModule(context, 'tasklyzen-settings.js');
 loadBrowserModule(context, 'tasklyzen-notifications.js');
 loadBrowserModule(context, 'tasklyzen-task-ui.js');
-loadBrowserModule(context, 'tasklyzen-quick-create.js');
 loadBrowserModule(context, 'tasklyzen-analytics-progress.js');
 loadBrowserModule(context, 'tasklyzen-achievements.js');
 loadBrowserModule(context, 'tasklyzen-gamification.js');
@@ -74,7 +73,6 @@ const storage = context.TasklyzenStorage;
 const settings = context.TasklyzenSettings;
 const notifications = context.TasklyzenNotifications;
 const taskUi = context.TasklyzenTaskUi;
-const quickCreate = context.TasklyzenQuickCreate;
 const analyticsProgress = context.TasklyzenAnalyticsProgress;
 const achievements = context.TasklyzenAchievements;
 const gamification = context.TasklyzenGamification;
@@ -82,10 +80,7 @@ const gamificationUi = context.TasklyzenGamificationUi;
 const features = context.TasklyzenFeatures;
 const developer = context.TasklyzenDeveloper;
 const oop = context.TasklyzenOOP;
-const { TaskState } = await import('../tasks/TaskState.js');
-const { TaskManager } = await import('../tasks/TaskManager.js');
-const { AnalyticsEngine } = await import('../analytics/AnalyticsEngine.js');
-const { UIController } = await import('../ui/UIController.js');
+const { TaskState, TaskManager, AnalyticsEngine, UIController } = oop;
 
 assert.strictEqual(utils.isDateKey('2026-07-02'), true);
 assert.strictEqual(utils.isDateKey('02-07-2026'), false);
@@ -313,6 +308,53 @@ assert.strictEqual(focusDraftControllers.focus.completeAndContinue().active, fal
 assert.strictEqual(focusHito.subtasks[0].completed, true);
 assert.strictEqual(focusHito.completed, true);
 
+let raceNow = '2026-07-12T10:00:00.000Z';
+const raceTodo = {
+    id: 'race-timer',
+    text: 'Preparar exposición',
+    completed: false,
+    habit: false
+};
+let completedRaceSession = null;
+const raceSessionRegistry = features.createFeatureRegistry({
+    storage,
+    storageKey: 'race-session-test',
+    definitions: features.plannedLocalFeatures
+});
+const raceSessionController = features.createBetaFeatureControllers({
+    registry: raceSessionRegistry,
+    getTodos: () => [raceTodo],
+    getTopPriorityTodo: () => raceTodo,
+    getNowTimestamp: () => raceNow,
+    onCompleteTodo: todoId => {
+        if (todoId === raceTodo.id) {
+            raceTodo.completed = true;
+            return true;
+        }
+
+        return false;
+    },
+    onSessionComplete: session => {
+        completedRaceSession = session;
+    }
+});
+raceSessionController.focus.start('race-timer', { mode: 'countdown', targetMs: 10 * 60 * 1000 });
+assert.strictEqual(raceSessionController.focus.getState().mode, 'countdown');
+assert.strictEqual(raceSessionController.focus.getState().targetMs, 10 * 60 * 1000);
+raceNow = '2026-07-12T10:05:00.000Z';
+raceSessionController.focus.pause();
+assert.strictEqual(raceSessionController.focus.getState().sessionAccumulatedMs, 5 * 60 * 1000);
+assert.strictEqual(raceSessionController.focus.getState().taskElapsedMsById['race-timer'], 5 * 60 * 1000);
+raceSessionController.focus.resume();
+raceNow = '2026-07-12T10:06:00.000Z';
+const finishedRaceState = raceSessionController.focus.completeAndContinue();
+assert.strictEqual(finishedRaceState.active, false);
+assert.strictEqual(completedRaceSession.completedCount, 1);
+assert.strictEqual(completedRaceSession.mode, 'countdown');
+assert.strictEqual(completedRaceSession.targetReached, false);
+assert.strictEqual(raceSessionController.focus.getWeeklySummary().sessions, 1);
+assert.strictEqual(raceSessionController.focus.getWeeklySummary().successfulTargets, 1);
+
 const normalizedSettings = settings.normalizeAppSettings({
     theme: 'custom',
     sound: true,
@@ -445,47 +487,6 @@ const emptyStateComponent = components.createEmptyState({
 });
 assert.strictEqual(emptyStateComponent.className, 'empty-state');
 assert.strictEqual(emptyStateComponent.textContent, 'Sin datos');
-assert.strictEqual(typeof quickCreate.createQuickCreateController, 'function');
-
-let quickCreateKeydown = null;
-let quickCreatedTitle = null;
-const quickCreateLayer = createFakeElement('aside');
-const quickCreateTitle = createFakeElement('strong');
-const quickCreateStatus = createFakeElement('span');
-const quickCreateDocument = {
-    activeElement: null,
-    addEventListener(type, handler) {
-        if (type === 'keydown') {
-            quickCreateKeydown = handler;
-        }
-    },
-    removeEventListener() {},
-    querySelector: () => null
-};
-const freeKeyTarget = { closest: () => null };
-const inputKeyTarget = { closest: selector => selector.includes('input') ? {} : null };
-const quickCreateController = quickCreate.createQuickCreateController({
-    dom: { quickCreateLayer, quickCreateTitle, quickCreateStatus },
-    documentRef: quickCreateDocument,
-    onCreate: title => {
-        quickCreatedTitle = title;
-        return true;
-    }
-});
-quickCreateController.init();
-quickCreateKeydown({ key: 'R', target: freeKeyTarget, preventDefault() {} });
-quickCreateKeydown({ key: 'e', target: freeKeyTarget, preventDefault() {} });
-assert.strictEqual(quickCreateController.isActive(), true);
-assert.strictEqual(quickCreateController.getDraft(), 'Re');
-assert.strictEqual(quickCreateLayer.hidden, false);
-quickCreateKeydown({ key: 'Enter', target: freeKeyTarget, preventDefault() {} });
-assert.strictEqual(quickCreatedTitle, 'Re');
-assert.strictEqual(quickCreateController.isActive(), false);
-quickCreateKeydown({ key: 'X', target: inputKeyTarget, preventDefault() {} });
-assert.strictEqual(quickCreateController.isActive(), false);
-quickCreateKeydown({ key: 'N', target: freeKeyTarget, preventDefault() {} });
-quickCreateKeydown({ key: 'Escape', target: freeKeyTarget, preventDefault() {} });
-assert.strictEqual(quickCreateController.isActive(), false);
 
 const taskDisplayComponent = components.createTaskDisplayContent({
     documentRef: context.document,

@@ -83,6 +83,7 @@ const TASKLYZEN_DOM = window.TasklyzenDom;
 const {
     taskCreatePanel,
     taskCreateToggle,
+    taskCreateClose,
     todoForm,
     settingsButton,
     settingsPanel,
@@ -614,6 +615,12 @@ const betaFeatureControllers = TASKLYZEN_FEATURES.createBetaFeatureControllers({
     onCompleteTodo: completeTodoFromFeature,
     onToggleSubtask: toggleSubtaskFromFeature,
     onSessionComplete: handleFocusSessionComplete,
+    analyticsDom: {
+        card: TASKLYZEN_DOM.analytics.raceAnalyticsSummary,
+        minutes: TASKLYZEN_DOM.analytics.raceAnalyticsMinutes,
+        sessions: TASKLYZEN_DOM.analytics.raceAnalyticsSessions,
+        targets: TASKLYZEN_DOM.analytics.raceAnalyticsTargets
+    },
     alwaysEnabled: true
 });
 window.TasklyzenRuntime.beta = betaFeatureControllers;
@@ -2613,7 +2620,7 @@ function renderRaceModeButton() {
 }
 
 function startFocusModeFromApp() {
-    const result = betaFeatureControllers.focus.start();
+    const result = betaFeatureControllers.focus.openSetup();
 
     if (result && result.status === 'empty') {
         showToast(result.message || 'No hay tareas disponibles para iniciar Modo Carrera.', 'info', { key: 'focus-mode-empty' });
@@ -2622,7 +2629,6 @@ function startFocusModeFromApp() {
 
 function handleFocusSessionComplete() {
     renderCurrentPage();
-    showToast('Carrera terminada. Tu lista queda al dia.', 'success', { key: 'focus-mode-complete' });
 }
 
 function getRarityMeta(rarity) {
@@ -3527,14 +3533,18 @@ function handleTaskCreationKeydown(event) {
         return;
     }
 
-    const hasDraftText = Boolean(todoInput && todoInput.value.trim());
-    const hasCompositeDraft = Array.isArray(compositeDraftSubtasks) && compositeDraftSubtasks.length > 0;
+    const isModalOpen = Boolean(
+        (deleteDataDialog && deleteDataDialog.open)
+        || (overdueReviewDialog && overdueReviewDialog.open)
+        || (settingsPanel && settingsPanel.hidden === false)
+    );
 
-    if (hasDraftText || hasCompositeDraft) {
+    if (isModalOpen) {
         return;
     }
 
     event.preventDefault();
+    event.stopImmediatePropagation();
     closeTaskCreationAfterCreate();
 }
 
@@ -3942,12 +3952,15 @@ function handleNotificationTestClick() {
 if (todoForm) {
     todoForm.addEventListener('submit', handleFormSubmit);
     todoForm.addEventListener('click', handleDueDatePresetClick);
-    todoForm.addEventListener('keydown', handleTaskCreationKeydown);
     setTaskCreationOpen(false, { focus: false });
 }
 
 if (taskCreateToggle) {
     taskCreateToggle.addEventListener('click', toggleTaskCreationPanel);
+}
+
+if (taskCreateClose) {
+    taskCreateClose.addEventListener('click', closeTaskCreationAfterCreate);
 }
 
 if (timeLimitInput) {
@@ -4125,6 +4138,7 @@ function handleGlobalKeydownForTaskInput(event) {
     }
 }
 document.addEventListener('keydown', handleGlobalKeydownForTaskInput);
+document.addEventListener('keydown', handleTaskCreationKeydown, true);
 
 document.addEventListener('pointerdown', handleAppLayerPointerDown, true);
 

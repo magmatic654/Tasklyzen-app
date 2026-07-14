@@ -300,7 +300,7 @@ Reglas para nuevas funciones:
 
 `tasklyzen-features.js` mantiene una capa local minima para estado interno, pero la app ya no muestra Ajustes > Funciones experimentales.
 
-- `focus-mode`: Modo Carrera integrado por defecto en la seccion Tareas. Cronometra una tarea activa y permite avanzar de forma continua.
+- `focus-mode`: Modo Carrera integrado por defecto en la seccion Tareas. Inicia con una eleccion local entre Ritmo libre y Contra reloj, y permite avanzar de forma continua.
 
 El estado se guarda en `tasklyzen-local-features`.
 `main.js` crea `featureRegistry`, inicializa `betaFeatureControllers` y expone `window.TasklyzenRuntime.beta` para pruebas internas.
@@ -311,6 +311,9 @@ Reglas:
 - Modo Carrera solo trabaja con tareas pendientes. Una tarea simple se completa con `toggleTodoItem`; un Hito se completa al cerrar sus subtareas obligatorias mediante `toggleTodoSubtask`.
 - En Modo Carrera, las subtareas de un Hito se marcan primero en un borrador local; no se guardan ni completan el Hito hasta pulsar `Guardar` o `Terminar hito`.
 - La superficie visible de Carrera se controla desde el boton `Modo Carrera` en Tareas.
+- El estado de Carrera separa `accumulatedMs` de la tarea activa y `sessionAccumulatedMs` de toda la sesion. `taskElapsedMsById` conserva el tiempo de una tarea si se salta y luego se retoma.
+- Contra reloj usa `targetMs` para mostrar avisos locales al 50%, 80% y al finalizar el tiempo. No usa toasts globales ni trata el final del reloj como fracaso.
+- Cada cierre guarda una entrada compacta en `history` dentro de `tasklyzen-local-features`; se limita a 80 sesiones. El resumen semanal se muestra de forma progresiva dentro de los detalles de Rendimiento.
 - Las funciones locales nuevas deben ser discretas, apagadas internamente si no tienen UI aprobada y no deben inflar `main.js`.
 
 La interfaz minima de una feature es:

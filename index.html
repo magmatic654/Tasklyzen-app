@@ -288,6 +288,13 @@
         </section>
 
         <section id="task-create-panel" class="input-panel" aria-label="Crear nueva tarea">
+            <div class="task-create-panel-access">
+                <p class="task-create-escape-hint">Presiona <kbd>Esc</kbd> para cerrar</p>
+                <button type="button" id="task-create-close" class="task-create-close" aria-label="Cerrar creación de tareas">
+                    <span class="task-create-close-icon" aria-hidden="true"></span>
+                    <span>Cerrar</span>
+                </button>
+            </div>
             <form id="todo-form" class="todo-form task-creation-bar">
                 <div class="task-title-field">
                     <label class="sr-only" for="todo-input">Nueva tarea</label>
@@ -351,9 +358,11 @@
                 </section>
             </form>
         </section>
-        <button type="button" id="task-create-toggle" class="task-create-toggle" aria-expanded="false" aria-controls="task-create-panel" aria-label="Crear nueva tarea">
-            <span aria-hidden="true"></span>
-        </button>
+        <div class="task-create-trigger-slot">
+            <button type="button" id="task-create-toggle" class="task-create-toggle" aria-expanded="false" aria-controls="task-create-panel" aria-label="Crear nueva tarea">
+                <span aria-hidden="true"></span>
+            </button>
+        </div>
 
         <section class="tasks-panel" aria-label="Tareas por completar">
             <div class="tasks-heading">
@@ -532,6 +541,11 @@
                             <strong id="analytics-habit-rate">0%</strong>
                             <span>Hábitos completados</span>
                             <small id="analytics-habit-count">0 de 0 hábitos</small>
+                        </article>
+                        <article id="race-analytics-summary" class="performance-focus-summary" hidden>
+                            <strong id="race-analytics-minutes">0 min</strong>
+                            <span id="race-analytics-sessions">0 sesiones</span>
+                            <small id="race-analytics-targets">Sin metas de tiempo</small>
                         </article>
                     </div>
                 </details>
