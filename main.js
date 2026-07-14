@@ -4182,6 +4182,25 @@ if (achievementPageList) {
     }, { once: true });
 }
 
+// Onboarding Logic
+const loginStrategy = localStorage.getItem('tasklyzen-login-strategy');
+const onboardingOverlay = document.getElementById('onboarding-overlay');
+const onboardingSkipBtn = document.getElementById('onboarding-skip-btn');
+
+if (!loginStrategy && onboardingOverlay) {
+    onboardingOverlay.hidden = false;
+} else if (onboardingOverlay) {
+    onboardingOverlay.hidden = true;
+}
+
+if (onboardingSkipBtn) {
+    onboardingSkipBtn.addEventListener('click', () => {
+        localStorage.setItem('tasklyzen-login-strategy', 'local');
+        onboardingOverlay.style.opacity = '0';
+        setTimeout(() => onboardingOverlay.hidden = true, 300);
+    });
+}
+
 installDeveloperModeCommand();
 featureRegistry.init();
 renderCurrentPage();

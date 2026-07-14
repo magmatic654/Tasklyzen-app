@@ -7,17 +7,14 @@
     <link rel="icon" type="image/svg+xml" href="assets/tasklyzen-icon.svg">
     <link rel="apple-touch-icon" href="assets/tasklyzen-icon.svg">
     <meta name="theme-color" content="#16B7C8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-</head>
 <body data-page="achievements">
-    <div class="top-nav-buttons" style="position: fixed; top: 1rem; right: 1rem; z-index: 100; display: flex; gap: 0.5rem; align-items: center;">
-        <button type="button" id="auth-button" class="settings-button" style="background-color: var(--surface-panel); border: 1px solid var(--border-soft); color: var(--text-primary); border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer;">
-            Iniciar Sesión
-        </button>
-        <button type="button" id="settings-button" class="settings-button" aria-expanded="false" aria-controls="settings-panel">
-            Ajustes
-        </button>
-    </div>
+    <button type="button" id="settings-button" class="settings-button" aria-expanded="false" aria-controls="settings-panel">
+        Ajustes
+    </button>
 
     <aside id="settings-panel" class="settings-panel" aria-label="Panel de configuración" hidden>
         <header class="settings-header">
@@ -27,6 +24,17 @@
             </div>
             <button type="button" id="settings-close" class="settings-close-button" aria-label="Cerrar configuración">Cerrar</button>
         </header>
+
+        <section class="settings-section" aria-labelledby="settings-account-title">
+            <h3 id="settings-account-title">Cuenta y Sincronización</h3>
+            <div class="settings-inline-actions" style="margin-top: 1rem;">
+                <button type="button" id="settings-auth-button" class="google-btn-chunky google-btn-small">
+                    <svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+                    Iniciar Sesión
+                </button>
+            </div>
+            <p class="settings-help-text">Al iniciar sesión, tus tareas, logros y progreso se guardarán en la nube y podrás acceder desde cualquier dispositivo.</p>
+        </section>
 
         <section class="settings-section" aria-labelledby="settings-personalization-title">
             <h3 id="settings-personalization-title">Personalización</h3>
@@ -106,6 +114,24 @@
             <div class="delete-data-actions">
                 <button type="button" id="cancel-delete-data" class="settings-secondary-button">Cancelar</button>
                 <button type="button" id="confirm-delete-data" class="settings-danger-button" disabled>Eliminar definitivamente</button>
+            </div>
+        </div>
+    </dialog>
+
+    <dialog id="data-conflict-dialog" class="delete-data-dialog conflict-dialog" aria-labelledby="data-conflict-title">
+        <div class="delete-data-card">
+            <p class="section-kicker" style="color: var(--accent-red);">¡Atención! Colisión de datos detectada</p>
+            <h2 id="data-conflict-title">¿Qué datos deseas conservar?</h2>
+            <p>Hemos detectado que tienes tareas guardadas localmente en este dispositivo y también tienes datos guardados en tu cuenta de Google (Nube).</p>
+            <p><strong>Para evitar reescribir información valiosa, elige qué versión de tus tareas y progreso quieres conservar. La otra versión se eliminará.</strong></p>
+            
+            <div class="conflict-options">
+                <button type="button" id="conflict-keep-cloud" class="google-btn-chunky conflict-btn">
+                    Mantener Datos de la Nube
+                </button>
+                <button type="button" id="conflict-keep-local" class="settings-secondary-button conflict-btn-local">
+                    Mantener Datos Locales
+                </button>
             </div>
         </div>
     </dialog>

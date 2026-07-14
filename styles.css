@@ -38,3 +38,162 @@
 @import url("./styles/13-motion.css");
 @import url("./styles/14-beta-features.css");
 @import url("./styles/15-signature-controls.css");
+
+/* Onboarding / Login Styles */
+.onboarding-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, rgba(22, 183, 200, 0.1), rgba(24, 165, 160, 0.2)), var(--surface-default);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Nunito', sans-serif;
+}
+
+.onboarding-card {
+    background-color: var(--surface-panel);
+    padding: 3rem;
+    border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    text-align: center;
+    max-width: 450px;
+    width: 90%;
+    animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpFade {
+    0% { opacity: 0; transform: translateY(40px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+.onboarding-logo {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 1.5rem;
+}
+
+.onboarding-title {
+    font-weight: 800;
+    font-size: 1.8rem;
+    color: var(--text-primary);
+    margin: 0 0 1rem 0;
+}
+
+.onboarding-subtitle {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin: 0 0 2.5rem 0;
+    line-height: 1.5;
+}
+
+/* Chunky Google Button */
+.google-btn-chunky {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background-color: #ffffff;
+    color: #3c4043;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    padding: 0.8rem 1.5rem;
+    border: 2px solid #dadce0;
+    border-radius: 100px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.google-btn-chunky:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+    border-color: #d2e3fc;
+    background-color: #f8f9fa;
+}
+
+.google-btn-chunky:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.google-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.onboarding-skip-link {
+    display: block;
+    margin-top: 1.5rem;
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.onboarding-skip-link:hover {
+    color: var(--text-secondary);
+}
+
+/* Settings integration */
+.google-btn-small {
+    font-size: 0.95rem;
+    padding: 0.6rem 1rem;
+}
+
+/* Conflict Dialog */
+.conflict-dialog {
+    max-width: 500px;
+}
+
+.conflict-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.conflict-btn {
+    border-color: var(--accent-primary) !important;
+    color: var(--accent-primary) !important;
+}
+
+.conflict-btn-local {
+    width: 100%;
+    padding: 0.8rem;
+    border-radius: 100px !important;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .onboarding-card {
+        padding: 2rem 1.5rem;
+    }
+    
+    .onboarding-title {
+        font-size: 1.5rem;
+    }
+
+    .onboarding-subtitle {
+        font-size: 0.95rem;
+        margin-bottom: 2rem;
+    }
+    
+    .google-btn-chunky {
+        font-size: 1rem;
+    }
+}
