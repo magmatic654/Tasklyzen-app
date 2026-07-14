@@ -400,3 +400,341 @@ body.settings-panel-open .settings-button {
     gap: 8px;
     margin-top: 14px;
 }
+
+/* ─── Diálogo de conflicto de datos ─────────────────────────────────────── */
+/* Estilo: identidad táctil Tasklyzen — profundidad inferior, formas       */
+/* redondeadas, colores planos y pasteles cálidos.                         */
+
+.conflict-dialog-modal {
+    width: min(520px, calc(100vw - 32px));
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 18px;
+    overflow: visible;
+}
+
+.conflict-dialog-modal::backdrop {
+    background: rgba(31, 45, 61, 0.55);
+    backdrop-filter: blur(6px);
+}
+
+/* ── Tarjeta principal ─────────────────────────────────────────────────── */
+.conflict-card {
+    padding: 28px 24px 22px;
+    background: #ffffff;
+    border: 3px solid #c9efeb;
+    border-bottom: 6px solid #8be3da;
+    border-radius: 18px;
+    box-shadow: 0 8px 0 rgba(49, 68, 90, 0.08);
+}
+
+body.theme-dark .conflict-card {
+    background: var(--dark-surface, #192638);
+    border-color: rgba(24, 201, 183, 0.25);
+    border-bottom-color: rgba(24, 201, 183, 0.35);
+    box-shadow: 0 8px 0 rgba(0, 0, 0, 0.2);
+    color: var(--paper, #f7fbff);
+}
+
+/* ── Cabecera ──────────────────────────────────────────────────────────── */
+.conflict-header {
+    text-align: center;
+    margin-bottom: 22px;
+}
+
+.conflict-emblem {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    background: var(--signature-amber, #ffd23f);
+    border: 3px solid var(--signature-amber, #ffd23f);
+    border-radius: 50%;
+    box-shadow: 0 4px 0 var(--signature-amber-edge, #d89f00);
+    color: #4d3b0a;
+    margin-bottom: 14px;
+}
+
+.conflict-emblem-svg {
+    width: 26px;
+    height: 26px;
+}
+
+.conflict-header .section-kicker {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--signature-amber-edge, #d89f00);
+    margin-bottom: 4px;
+}
+
+body.theme-dark .conflict-header .section-kicker {
+    color: var(--signature-amber, #ffd23f);
+}
+
+.conflict-header h2 {
+    margin: 0 0 8px;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--signature-ink, #31445a);
+    line-height: 1.25;
+}
+
+body.theme-dark .conflict-header h2 {
+    color: var(--signature-ink, #f3f8fc);
+}
+
+.conflict-subtitle {
+    margin: 0 auto;
+    max-width: 92%;
+    font-size: 0.88rem;
+    color: var(--muted, #65758a);
+    line-height: 1.55;
+}
+
+body.theme-dark .conflict-subtitle {
+    color: #a3b4c8;
+}
+
+/* ── Grid de opciones ──────────────────────────────────────────────────── */
+.conflict-options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+/* ── Tarjeta-botón (sistema táctil compartido) ─────────────────────────── */
+.conflict-option-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 20px 14px 16px;
+    border-radius: var(--signature-radius, 12px);
+    cursor: pointer;
+    font-family: inherit;
+    text-align: center;
+    transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+}
+
+/* —— Local: fondo menta claro, borde menta ——————————————————————————— */
+.conflict-option--local {
+    background: #effcf7;
+    border: 3px solid #a8e9cc;
+    box-shadow: 0 5px 0 #8ad6b6;
+    color: var(--signature-ink, #31445a);
+}
+
+body.theme-dark .conflict-option--local {
+    background: rgba(57, 223, 152, 0.08);
+    border-color: rgba(57, 223, 152, 0.25);
+    box-shadow: 0 5px 0 rgba(23, 170, 112, 0.3);
+    color: var(--paper, #f7fbff);
+}
+
+/* —— Nube: fondo cielo claro, borde cyan ————————————————————————————— */
+.conflict-option--cloud {
+    background: #eefaff;
+    border: 3px solid #b9e7f8;
+    box-shadow: 0 5px 0 #99d5ea;
+    color: var(--signature-ink, #31445a);
+}
+
+body.theme-dark .conflict-option--cloud {
+    background: rgba(53, 189, 242, 0.08);
+    border-color: rgba(53, 189, 242, 0.25);
+    box-shadow: 0 5px 0 rgba(23, 139, 193, 0.3);
+    color: var(--paper, #f7fbff);
+}
+
+/* —— Hover: idéntico al sistema de botones de signature-controls ————— */
+.conflict-option-card:not(:disabled):hover {
+    filter: brightness(1.035) saturate(1.04);
+    transform: translateY(2px);
+}
+
+.conflict-option--local:not(:disabled):hover {
+    box-shadow: 0 3px 0 #8ad6b6;
+}
+
+.conflict-option--cloud:not(:disabled):hover {
+    box-shadow: 0 3px 0 #99d5ea;
+}
+
+body.theme-dark .conflict-option--local:not(:disabled):hover {
+    box-shadow: 0 3px 0 rgba(23, 170, 112, 0.3);
+}
+
+body.theme-dark .conflict-option--cloud:not(:disabled):hover {
+    box-shadow: 0 3px 0 rgba(23, 139, 193, 0.3);
+}
+
+/* —— Active: presionar "hunde" el botón ————————————————————————————— */
+.conflict-option-card:not(:disabled):active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 currentColor;
+}
+
+.conflict-option--local:not(:disabled):active {
+    box-shadow: 0 1px 0 #8ad6b6;
+}
+
+.conflict-option--cloud:not(:disabled):active {
+    box-shadow: 0 1px 0 #99d5ea;
+}
+
+/* —— Focus visible ————————————————————————————————————————————————— */
+.conflict-option-card:focus-visible {
+    outline: 3px solid var(--signature-focus, rgba(53, 189, 242, 0.32));
+    outline-offset: 3px;
+}
+
+/* ── Emblema del ícono dentro de cada tarjeta ───────────────────────────── */
+.conflict-option-emblem {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+}
+
+.conflict-option-emblem svg {
+    width: 22px;
+    height: 22px;
+}
+
+.conflict-option-emblem--local {
+    background: var(--signature-mint, #39df98);
+    border: 2px solid var(--signature-mint, #39df98);
+    box-shadow: 0 3px 0 var(--signature-mint-edge, #17aa70);
+    color: #173c39;
+}
+
+.conflict-option-emblem--cloud {
+    background: var(--signature-info, #35bdf2);
+    border: 2px solid var(--signature-info, #35bdf2);
+    box-shadow: 0 3px 0 var(--signature-info-edge, #178bc1);
+    color: #173a50;
+}
+
+/* ── Textos dentro de la tarjeta ────────────────────────────────────────── */
+.conflict-option-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--signature-ink, #31445a);
+    line-height: 1.2;
+}
+
+body.theme-dark .conflict-option-title {
+    color: var(--signature-ink, #f3f8fc);
+}
+
+.conflict-option-label {
+    display: inline-block;
+    padding: 2px 10px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-radius: 999px;
+    margin-bottom: 6px;
+}
+
+.conflict-option--local .conflict-option-label {
+    background: rgba(57, 223, 152, 0.2);
+    color: var(--signature-mint-edge, #17aa70);
+}
+
+body.theme-dark .conflict-option--local .conflict-option-label {
+    background: rgba(57, 223, 152, 0.15);
+    color: #5eeaa8;
+}
+
+.conflict-option--cloud .conflict-option-label {
+    background: rgba(53, 189, 242, 0.18);
+    color: var(--signature-info-edge, #178bc1);
+}
+
+body.theme-dark .conflict-option--cloud .conflict-option-label {
+    background: rgba(53, 189, 242, 0.15);
+    color: #6fd0f7;
+}
+
+.conflict-option-stats {
+    font-size: 0.84rem;
+    color: var(--muted, #65758a);
+    line-height: 1.6;
+}
+
+body.theme-dark .conflict-option-stats {
+    color: #a3b4c8;
+}
+
+.conflict-stat-sep {
+    margin: 0 3px;
+    opacity: 0.45;
+}
+
+.conflict-option-action {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 6px 16px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    border-radius: 8px;
+    transition: transform 100ms ease;
+}
+
+.conflict-option--local .conflict-option-action {
+    background: var(--signature-mint, #39df98);
+    color: #173c39;
+    box-shadow: 0 3px 0 var(--signature-mint-edge, #17aa70);
+}
+
+.conflict-option--cloud .conflict-option-action {
+    background: var(--signature-info, #35bdf2);
+    color: #173a50;
+    box-shadow: 0 3px 0 var(--signature-info-edge, #178bc1);
+}
+
+.conflict-option-card:hover .conflict-option-action {
+    transform: translateY(1px);
+}
+
+.conflict-option-card:active .conflict-option-action {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 currentColor;
+}
+
+/* ── Nota al pie ───────────────────────────────────────────────────────── */
+.conflict-footnote {
+    margin: 0;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--signature-coral, #ff5f68);
+    font-weight: 700;
+}
+
+body.theme-dark .conflict-footnote {
+    color: var(--signature-salmon, #ff8b91);
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+@media (max-width: 520px) {
+    .conflict-card {
+        padding: 22px 16px 18px;
+    }
+
+    .conflict-options-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}
+
+

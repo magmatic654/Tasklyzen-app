@@ -4113,6 +4113,9 @@ function handleGlobalKeydownForTaskInput(event) {
         if (todoInput) {
             if (event.key === 'Enter') {
                 event.preventDefault();
+            } else if (event.key.length === 1) {
+                event.preventDefault();
+                todoInput.value += event.key;
             }
             if (typeof setTaskCreationOpen === 'function') {
                 setTaskCreationOpen(true, { focus: false });

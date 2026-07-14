@@ -131,8 +131,6 @@
     }
 
     #progress-panel.progress-collapsed {
-        right: 16px;
-        bottom: 16px;
         padding: 0;
     }
 
@@ -859,8 +857,14 @@
     }
 
     #progress-panel.progress-collapsed {
+        left: 12px;
+        right: auto;
+        bottom: 66px;
+    }
+
+    body:not(.task-create-open) .task-create-toggle {
         right: 12px;
-        bottom: 12px;
+        bottom: 66px;
     }
 
     #progress-panel.progress-expanded {
@@ -1031,6 +1035,15 @@
 
 /* Task creation bar: final responsive layout layer. */
 @media (max-width: 1040px) {
+    #progress-panel.progress-collapsed {
+        right: auto;
+        left: 16px;
+        bottom: 72px;
+    }
+    body:not(.task-create-open) .task-create-toggle {
+        bottom: 72px;
+    }
+
     .task-creation-bar {
         grid-template-columns: minmax(104px, 132px) minmax(0, 1fr) minmax(142px, 170px) minmax(104px, 118px);
         grid-template-areas:
@@ -1185,7 +1198,6 @@
 
     .compact-progress-widget {
         padding: 9px 12px 10px;
-        margin-bottom: 24px;
     }
 
     .compact-progress-shell {

@@ -11,6 +11,8 @@
     let unsubscribeSnapshot = null;
     let isApplyingRemoteChange = false;
     let pendingCloudData = null;
+    // Bloquea el listener durante la ventana de resolución de conflicto
+    let conflictPending = false;
 
     // Se invoca desde tasklyzen-auth.js cuando el estado cambia
     function onAuthChange(user, firestoreDb) {
@@ -27,120 +29,168 @@
     function startSync() {
         if (unsubscribeSnapshot) {
             unsubscribeSnapshot();
+            unsubscribeSnapshot = null;
         }
-        
+
         const docRef = db.collection('users').doc(currentUser.uid);
-        
+
         docRef.get().then(docSnap => {
             const cloudData = docSnap.exists ? docSnap.data() : {};
-            const hasCloudData = docSnap.exists && Object.keys(cloudData).length > 0;
-            const todos = localStorage.getItem('tasklyzen-todos');
-            const hasLocalData = todos && todos !== '[]' && todos !== 'null';
-            
-            let isDifferent = false;
-            if (hasLocalData && hasCloudData) {
-                const cloudTodos = cloudData['tasklyzen-todos'];
-                if (cloudTodos && cloudTodos !== todos) {
-                    try {
-                        const parsedCloud = JSON.parse(cloudTodos);
-                        const parsedLocal = JSON.parse(todos);
-                        if (JSON.stringify(parsedCloud) !== JSON.stringify(parsedLocal)) {
-                            isDifferent = true;
-                        }
-                    } catch (e) {
-                        isDifferent = cloudTodos !== todos;
-                    }
+
+            // ── Detectar si cada lado tiene tareas reales ──────────────────
+            // La clave real de tareas según tasklyzen-config.js es 'todos'
+            const TODOS_KEY = (global.TasklyzenConfig && global.TasklyzenConfig.storageKeys)
+                ? global.TasklyzenConfig.storageKeys.todos
+                : 'todos';
+
+            const localTodosStr = localStorage.getItem(TODOS_KEY);
+            const hasLocalTodos = Boolean(
+                localTodosStr && localTodosStr !== '[]' && localTodosStr !== 'null'
+            );
+
+            const cloudTodosStr = cloudData[TODOS_KEY];
+            const hasCloudTodos = Boolean(
+                cloudTodosStr && cloudTodosStr !== '[]' && cloudTodosStr !== 'null'
+            );
+
+            // ── Comparar contenido real (no solo string equality) ──────────
+            let todosAreDifferent = false;
+            if (hasLocalTodos && hasCloudTodos) {
+                try {
+                    const parsedLocal = JSON.parse(localTodosStr);
+                    const parsedCloud = JSON.parse(cloudTodosStr);
+                    todosAreDifferent = JSON.stringify(parsedLocal) !== JSON.stringify(parsedCloud);
+                } catch (_e) {
+                    todosAreDifferent = localTodosStr !== cloudTodosStr;
                 }
+            } else if (hasLocalTodos !== hasCloudTodos) {
+                // Uno tiene tareas y el otro no → siempre diferente
+                todosAreDifferent = true;
             }
 
-            if (hasLocalData && hasCloudData && isDifferent) {
+            // ── Decisión de flujo ──────────────────────────────────────────
+            if (hasLocalTodos && hasCloudTodos && todosAreDifferent) {
+                // CONFLICTO REAL: ambos lados tienen tareas distintas → preguntar
+                conflictPending = true;
                 pendingCloudData = cloudData;
-                const conflictDialog = document.getElementById('data-conflict-dialog');
-                if (conflictDialog && typeof conflictDialog.showModal === 'function') {
-                    conflictDialog.showModal();
-                    
-                    const keepCloudBtn = document.getElementById('conflict-keep-cloud');
-                    const keepLocalBtn = document.getElementById('conflict-keep-local');
-                    
-                    const cleanup = () => {
-                        conflictDialog.close();
-                        if (keepCloudBtn) keepCloudBtn.replaceWith(keepCloudBtn.cloneNode(true));
-                        if (keepLocalBtn) keepLocalBtn.replaceWith(keepLocalBtn.cloneNode(true));
-                    };
+                showConflictDialog(localTodosStr, cloudTodosStr, cloudData, docRef);
 
-                    document.getElementById('conflict-keep-cloud').addEventListener('click', () => {
-                        resolveConflict('cloud');
-                        cleanup();
-                    });
-                    
-                    document.getElementById('conflict-keep-local').addEventListener('click', () => {
-                        resolveConflict('local');
-                        cleanup();
-                    });
-                } else {
-                    // Fallback if dialog not supported, default to cloud
-                    resolveConflict('cloud');
-                }
-            } else if (hasCloudData) {
-                pendingCloudData = cloudData;
-                resolveConflict('cloud');
-            } else if (hasLocalData) {
-                resolveConflict('local');
+            } else if (hasLocalTodos && !hasCloudTodos) {
+                // Solo local tiene datos → subir a la nube sin preguntar
+                uploadLocalToCloud(docRef).then(() => {
+                    startListener(docRef);
+                });
+
+            } else if (!hasLocalTodos && hasCloudTodos) {
+                // Solo la nube tiene datos → aplicar localmente sin preguntar
+                applyCloudToLocal(cloudData);
+                startListener(docRef);
+
             } else {
+                // Sin datos en ningún lado, o datos idénticos → solo escuchar
                 startListener(docRef);
             }
+
         }).catch(err => {
-            console.error("Error al iniciar sincronización:", err);
-            startListener(docRef); // Fallback a local
+            console.error('Error al iniciar sincronización:', err);
+            startListener(db.collection('users').doc(currentUser.uid));
         });
     }
 
+    // ── Muestra el diálogo y espera la decisión del usuario ────────────────
+    function showConflictDialog(localTodosStr, cloudTodosStr, cloudData, docRef) {
+        const conflictDialog = document.getElementById('data-conflict-dialog');
+        if (!conflictDialog || typeof conflictDialog.showModal !== 'function') {
+            // Fallback: preferir local (datos más frescos en este dispositivo)
+            conflictPending = false;
+            uploadLocalToCloud(docRef).then(() => startListener(docRef));
+            return;
+        }
+
+        // Poblar estadísticas locales
+        try {
+            const localTodos = JSON.parse(localTodosStr) || [];
+            const localDone  = localTodos.filter(t => t.completed || t.done).length;
+            const elLT = document.getElementById('conflict-local-tasks');
+            const elLD = document.getElementById('conflict-local-done');
+            if (elLT) elLT.textContent = localTodos.length + (localTodos.length === 1 ? ' tarea' : ' tareas');
+            if (elLD) elLD.textContent = localDone + (localDone === 1 ? ' completada' : ' completadas');
+        } catch (_e) { /* ignore */ }
+
+        // Poblar estadísticas de la nube
+        try {
+            const cloudTodos = JSON.parse(cloudTodosStr) || [];
+            const cloudDone  = cloudTodos.filter(t => t.completed || t.done).length;
+            const elCT = document.getElementById('conflict-cloud-tasks');
+            const elCD = document.getElementById('conflict-cloud-done');
+            if (elCT) elCT.textContent = cloudTodos.length + (cloudTodos.length === 1 ? ' tarea' : ' tareas');
+            if (elCD) elCD.textContent = cloudDone + (cloudDone === 1 ? ' completada' : ' completadas');
+        } catch (_e) { /* ignore */ }
+
+        conflictDialog.showModal();
+
+        // Clonar botones para limpiar listeners anteriores
+        const rawKeepCloud = document.getElementById('conflict-keep-cloud');
+        const rawKeepLocal = document.getElementById('conflict-keep-local');
+        const keepCloud = rawKeepCloud.cloneNode(true);
+        const keepLocal = rawKeepLocal.cloneNode(true);
+        rawKeepCloud.replaceWith(keepCloud);
+        rawKeepLocal.replaceWith(keepLocal);
+
+        const finish = (choice) => {
+            conflictDialog.close();
+            conflictPending = false;
+            pendingCloudData = null;
+            if (choice === 'cloud') {
+                applyCloudToLocal(cloudData);
+                startListener(docRef);
+            } else {
+                // Subir local a la nube y ESPERAR antes de arrancar el listener
+                // para evitar que el snapshot inmediato sobreescriba local con datos viejos
+                uploadLocalToCloud(docRef).then(() => startListener(docRef));
+            }
+        };
+
+        keepCloud.addEventListener('click', () => finish('cloud'));
+        keepLocal.addEventListener('click', () => finish('local'));
+    }
+
+    // ── Aplica todos los campos de la nube a localStorage ─────────────────
+    function applyCloudToLocal(cloudData) {
+        isApplyingRemoteChange = true;
+        for (const [key, value] of Object.entries(cloudData)) {
+            if (localStorage.getItem(key) !== value) {
+                localStorage.setItem(key, value);
+                global.dispatchEvent(new StorageEvent('storage', { key, newValue: value }));
+            }
+        }
+        isApplyingRemoteChange = false;
+    }
+
+    // ── Sube todos los datos locales a Firestore (retorna Promise) ─────────
     function uploadLocalToCloud(docRef) {
         const allLocalData = {};
         for (let i = 0; i < localStorage.length; i++) {
             const k = localStorage.key(i);
             allLocalData[k] = localStorage.getItem(k);
         }
-        docRef.set(allLocalData, { merge: true }).catch(console.error);
+        return docRef.set(allLocalData, { merge: true }).catch(console.error);
     }
 
-    function resolveConflict(choice) {
-        const docRef = db.collection('users').doc(currentUser.uid);
-        if (choice === 'cloud' && pendingCloudData) {
-            isApplyingRemoteChange = true;
-            for (const [key, value] of Object.entries(pendingCloudData)) {
-                if (localStorage.getItem(key) !== value) {
-                    localStorage.setItem(key, value);
-                    const event = new StorageEvent('storage', { key: key, newValue: value });
-                    global.dispatchEvent(event);
-                }
-            }
-            isApplyingRemoteChange = false;
-        } else if (choice === 'local') {
-            uploadLocalToCloud(docRef);
-        }
-        pendingCloudData = null;
-        startListener(docRef);
-    }
-
+    // ── Listener en tiempo real ────────────────────────────────────────────
     function startListener(docRef) {
+        if (unsubscribeSnapshot) {
+            unsubscribeSnapshot();
+        }
         unsubscribeSnapshot = docRef.onSnapshot(docSnap => {
+            // No aplicar mientras hay un conflicto pendiente de resolver
+            if (conflictPending) return;
             if (!docSnap.exists) return;
             if (docSnap.metadata.hasPendingWrites) return;
 
-            const cloudData = docSnap.data();
-            
-            isApplyingRemoteChange = true;
-            for (const [key, value] of Object.entries(cloudData)) {
-                if (localStorage.getItem(key) !== value) {
-                    localStorage.setItem(key, value);
-                    const event = new StorageEvent('storage', { key: key, newValue: value });
-                    global.dispatchEvent(event);
-                }
-            }
-            isApplyingRemoteChange = false;
+            applyCloudToLocal(docSnap.data());
         }, error => {
-            console.error("Error escuchando Firestore:", error);
+            console.error('Error escuchando Firestore:', error);
         });
     }
 
@@ -149,13 +199,14 @@
             unsubscribeSnapshot();
             unsubscribeSnapshot = null;
         }
+        conflictPending = false;
     }
 
     function pushToCloud(key, value) {
         if (currentUser && db && !isApplyingRemoteChange) {
             const docRef = db.collection('users').doc(currentUser.uid);
             docRef.set({ [key]: value }, { merge: true }).catch(err => {
-                console.error("Error sincronizando a la nube:", err);
+                console.error('Error sincronizando a la nube:', err);
             });
         }
     }
@@ -190,8 +241,6 @@
         localStorage.removeItem(key);
         if (currentUser && db && !isApplyingRemoteChange) {
             const docRef = db.collection('users').doc(currentUser.uid);
-            // Usando FieldValue.delete() si estuviéramos en ES Modules, pero aquí pasamos string vacío o null
-            // Ya que Firestore no soporta undefined, usamos un marcador o lo borramos con firebase.firestore.FieldValue.delete()
             if (global.firebase) {
                 docRef.update({ [key]: global.firebase.firestore.FieldValue.delete() }).catch(console.error);
             }
@@ -200,7 +249,6 @@
 
     function subscribe(keys, callback) {
         const watchedKeys = new Set(keys || []);
-
         window.addEventListener('storage', event => {
             if (watchedKeys.size === 0 || watchedKeys.has(event.key)) {
                 callback(event);

@@ -1483,7 +1483,7 @@ body.task-create-open .input-panel {
     position: fixed;
     right: max(18px, calc((100vw - 920px) / 2 + 16px));
     bottom: 96px;
-    z-index: 1136;
+    z-index: 1052;
     display: inline-grid;
     width: 58px;
     height: 58px;
@@ -1546,7 +1546,7 @@ body.task-create-open .task-create-toggle {
     right: auto !important;
     bottom: 18px !important;
     left: 50% !important;
-    z-index: 1134 !important;
+    z-index: 1050 !important;
     width: min(560px, calc(100vw - 24px)) !important;
     padding: 0 !important;
     background: transparent !important;
@@ -1610,4 +1610,13 @@ body.task-create-open .task-create-toggle {
 body.theme-dark .task-create-toggle {
     background: linear-gradient(135deg, #ff8389 0%, #ff6a59 50%, #ffb447 100%);
     box-shadow: 0 7px 0 #a9313c, 0 16px 28px rgba(255, 95, 104, 0.14);
+}
+
+/* Ocultar el botón "+" cuando el menú del widget de progreso está desplegado */
+.compact-progress-widget.is-open ~ .task-create-toggle,
+body:has(.compact-progress-widget.is-open) .task-create-toggle {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.85);
+    transition: opacity 180ms ease, transform 180ms ease;
 }
