@@ -10,9 +10,14 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body data-page="achievements">
-    <button type="button" id="settings-button" class="settings-button" aria-expanded="false" aria-controls="settings-panel">
-        Ajustes
-    </button>
+    <div class="top-nav-buttons" style="position: fixed; top: 1rem; right: 1rem; z-index: 100; display: flex; gap: 0.5rem; align-items: center;">
+        <button type="button" id="auth-button" class="settings-button" style="background-color: var(--surface-panel); border: 1px solid var(--border-soft); color: var(--text-primary); border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer;">
+            Iniciar Sesión
+        </button>
+        <button type="button" id="settings-button" class="settings-button" aria-expanded="false" aria-controls="settings-panel">
+            Ajustes
+        </button>
+    </div>
 
     <aside id="settings-panel" class="settings-panel" aria-label="Panel de configuración" hidden>
         <header class="settings-header">
@@ -251,6 +256,10 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="tasklyzen-auth.js"></script>
     <script src="tasklyzen-config.js"></script>
     <script src="tasklyzen-storage.js"></script>
     <script src="tasklyzen-utils.js"></script>
