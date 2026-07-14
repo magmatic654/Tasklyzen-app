@@ -1,0 +1,402 @@
+/*
+ * Capa: 02-settings-notifications.css
+ * Proposito: Settings panel, notification controls and delete-data dialog.
+ * Nota: extraido de styles.css preservando el orden original de cascada.
+ */
+
+button,
+.task-button,
+.filter-button,
+.progress-tab,
+.summary-window-button,
+.cleanup-button,
+.collection-link,
+.settings-secondary-button,
+.settings-danger-button {
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+button:active:not(:disabled),
+.task-button:active:not(:disabled),
+.filter-button:active:not(:disabled),
+.progress-tab:active:not(:disabled),
+.cleanup-button:active:not(:disabled) {
+    transform: translateY(1px) scale(0.99);
+}
+
+.settings-button {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 70;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 0 16px;
+    color: #ffffff;
+    font-weight: 1000;
+    background: linear-gradient(135deg, var(--coral), var(--coral-soft));
+    border-radius: 999px;
+    box-shadow: 0 14px 30px rgba(44, 62, 80, 0.22), inset 0 -4px 0 rgba(44, 62, 80, 0.14);
+}
+
+.settings-button::before {
+    display: inline-grid;
+    width: 20px;
+    height: 20px;
+    place-items: center;
+    content: "\2699";
+    font-size: 0.95rem;
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+}
+
+.settings-button[aria-expanded="true"] {
+    background: linear-gradient(135deg, var(--teal), var(--teal-deep));
+}
+
+.settings-panel {
+    position: fixed;
+    top: 74px;
+    right: 16px;
+    z-index: 1120;
+    width: min(420px, calc(100vw - 32px));
+    max-height: calc(100vh - 92px);
+    overflow: auto;
+    padding: 16px;
+    color: var(--ink);
+    background:
+        radial-gradient(circle at top right, rgba(22, 183, 200, 0.08), transparent 28%),
+        rgba(255, 255, 255, 0.98);
+    border: 2px solid rgba(24, 165, 160, 0.18);
+    border-radius: 8px;
+    box-shadow: 0 28px 70px rgba(44, 62, 80, 0.24);
+}
+
+body.settings-panel-open .settings-button {
+    z-index: 1130;
+}
+
+.settings-panel[hidden] {
+    display: none;
+}
+
+.settings-header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.settings-header h2,
+.delete-data-card h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    line-height: 1.1;
+}
+
+.settings-close-button,
+.settings-secondary-button,
+.settings-danger-button {
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 0.82rem;
+    font-weight: 1000;
+    border-radius: 8px;
+}
+
+.settings-close-button,
+.settings-secondary-button {
+    color: var(--ink);
+    background: #effafa;
+    box-shadow: inset 0 -3px 0 rgba(24, 165, 160, 0.12);
+}
+
+.settings-danger-button {
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--coral), var(--coral-soft));
+    box-shadow: inset 0 -3px 0 rgba(23, 32, 42, 0.18);
+}
+
+.settings-danger-button:disabled {
+    color: var(--muted);
+    cursor: default;
+    background: #dfe6e9;
+}
+
+.settings-section {
+    padding: 13px;
+    margin-top: 10px;
+    background: #ffffff;
+    border: 2px solid rgba(24, 165, 160, 0.12);
+    border-radius: 8px;
+}
+
+.settings-section h3 {
+    margin: 0 0 10px;
+    font-size: 0.96rem;
+}
+
+.settings-section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 10px;
+}
+
+.settings-section-title-row h3 {
+    margin: 0;
+}
+
+.notification-help-anchor {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+}
+
+.settings-section-title-row .notification-info-tooltip.info-tooltip {
+    position: static;
+}
+
+.settings-section-title-row .notification-info-tooltip.info-tooltip::after {
+    top: calc(100% + 10px);
+    right: 0;
+    bottom: auto;
+    z-index: 80;
+    width: min(316px, calc(100vw - 64px));
+    padding: 12px 13px;
+    color: #ffffff;
+    font-size: 0.78rem;
+    line-height: 1.38;
+    background: #17202a;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 16px 36px rgba(23, 32, 42, 0.24);
+    transform: translateY(-4px);
+}
+
+.settings-section-title-row .notification-info-tooltip.info-tooltip:hover::after,
+.settings-section-title-row .notification-info-tooltip.info-tooltip:focus::after {
+    transform: translateY(0);
+}
+
+.settings-choice-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+
+.settings-choice-group legend {
+    margin-bottom: 8px;
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 1000;
+    text-transform: uppercase;
+}
+
+.settings-choice-group label,
+.settings-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 9px;
+    font-size: 0.84rem;
+    font-weight: 1000;
+    background: var(--soft-blue);
+    border-radius: 8px;
+}
+
+.settings-switch {
+    justify-content: space-between;
+    margin-top: 8px;
+}
+
+.settings-switch span {
+    display: grid;
+    gap: 3px;
+}
+
+.settings-switch small {
+    color: var(--muted);
+    font-size: 0.74rem;
+    font-weight: 900;
+    line-height: 1.25;
+}
+
+.settings-range-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(128px, 42%);
+    align-items: center;
+    gap: 12px;
+    min-height: 54px;
+    padding: 10px;
+    margin-top: 8px;
+    background: var(--soft-blue);
+    border-radius: 8px;
+}
+
+.settings-range-control span {
+    display: grid;
+    gap: 3px;
+}
+
+.settings-range-control small {
+    color: var(--muted);
+    font-size: 0.74rem;
+    font-weight: 900;
+    line-height: 1.25;
+}
+
+.settings-range-control input[type="range"] {
+    width: 100%;
+    accent-color: var(--teal);
+}
+
+.settings-range-control input[type="range"]:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+}
+
+.settings-switch input,
+.settings-choice-group input {
+    accent-color: var(--teal);
+}
+
+.notification-status-card {
+    margin-top: 8px;
+    padding: 10px 12px;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 900;
+    line-height: 1.35;
+    background: #ffffff;
+    border: 2px solid rgba(39, 125, 161, 0.12);
+    border-left: 7px solid var(--blue);
+    border-radius: 8px;
+}
+
+.notification-status-card.active {
+    color: #063f36;
+    border-left-color: var(--teal);
+    background: #f3fffb;
+}
+
+.notification-status-card.pending,
+.notification-status-card.manual {
+    color: #805300;
+    border-left-color: var(--orange);
+    background: #fffaf0;
+}
+
+.notification-status-card.blocked,
+.notification-status-card.unsupported {
+    color: #7d1f1f;
+    border-left-color: var(--danger);
+    background: #fff5f5;
+}
+
+.notification-status-card.off {
+    border-left-color: var(--muted);
+    background: var(--soft-gray);
+}
+
+.settings-inline-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.settings-help-text {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 0.74rem;
+    font-weight: 900;
+    line-height: 1.35;
+}
+
+.settings-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.settings-security .settings-danger-button {
+    width: 100%;
+}
+
+.delete-data-dialog {
+    width: min(480px, calc(100vw - 32px));
+    padding: 0;
+    background: transparent;
+    border: 0;
+}
+
+.delete-data-dialog::backdrop {
+    background: rgba(15, 23, 36, 0.58);
+}
+
+.delete-data-card {
+    padding: 18px;
+    color: var(--ink);
+    background: #ffffff;
+    border: 3px solid rgba(214, 69, 69, 0.24);
+    border-radius: 8px;
+    box-shadow: 0 28px 80px rgba(23, 32, 42, 0.28);
+}
+
+.delete-data-card p {
+    margin: 10px 0;
+    color: var(--muted);
+    font-weight: 900;
+    line-height: 1.35;
+}
+
+.delete-data-card label {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+    font-weight: 900;
+}
+
+.delete-data-card strong {
+    width: max-content;
+    max-width: 100%;
+    padding: 4px 7px;
+    color: #ffffff;
+    background: var(--danger);
+    border-radius: 6px;
+}
+
+.delete-data-card input {
+    min-height: 46px;
+    padding: 0 12px;
+    color: var(--ink);
+    border: 2px solid rgba(214, 69, 69, 0.24);
+    border-radius: 8px;
+    outline: none;
+}
+
+.delete-data-card input:focus {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 4px rgba(214, 69, 69, 0.14);
+}
+
+.delete-data-actions {
+    display: flex;
+    justify-content: end;
+    gap: 8px;
+    margin-top: 14px;
+}

@@ -1,0 +1,56 @@
+/*
+ * Capa: 13-motion.css
+ * Proposito: Global reduced-motion media query.
+ * Nota: extraido de styles.css preservando el orden original de cascada.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .toast,
+    .streak-pill,
+    .streak-pill::before,
+    .streak-pill::after,
+    .completion-celebration,
+    .completion-celebration.show,
+    .completion-celebration.show .burst-dot,
+    .streak-day-celebration,
+    .streak-day-celebration.show,
+    .streak-emblem-mark,
+    .compact-progress-streak.streak-just-protected,
+    .compact-progress-mission-item.mission-progressed,
+    .achievement-showcase,
+    .achievement-showcase.show,
+    .achievement-showcase.show::before,
+    .achievement-showcase.show .achievement-showcase-card,
+    .achievement-showcase.show .achievement-showcase-card::before,
+    .achievement-showcase .showcase-medal::before,
+    .achievement-showcase.show .showcase-line,
+    .todo-item.local-complete-feedback,
+    .todo-item.local-reactivate-feedback,
+    .developer-panel,
+    .developer-toggle,
+    .developer-action,
+    .completion-mark,
+    .goal-track span {
+        animation: none;
+        transition: none;
+    }
+
+    .completion-celebration.show {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+
+    .streak-day-celebration.show {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+
+    .achievement-showcase.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .achievement-showcase.show .achievement-showcase-card {
+        opacity: 1;
+        transform: none;
+    }
+}

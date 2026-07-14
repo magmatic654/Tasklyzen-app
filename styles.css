@@ -1,0 +1,40 @@
+/*
+ * Tasklyzen CSS manifest
+ * Orden de cascada:
+ * 00. styles/00-base-tokens.css
+ * 01. styles/01-themes.css
+ * 02. styles/02-settings-notifications.css
+ * 03. styles/03-layout-brand.css
+ * 04. styles/04-task-entry-progress.css
+ * 05. styles/05-analytics.css
+ * 06. styles/06-gamification.css
+ * 07. styles/07-tasks.css
+ * 08. styles/08-feedback-animations.css
+ * 09. styles/09-theme-overrides.css
+ * 10. styles/10-gamification-overrides.css
+ * 11. styles/11-developer.css
+ * 12. styles/12-responsive.css
+ * 13. styles/13-motion.css
+ * 14. styles/14-beta-features.css
+ * 15. styles/15-signature-controls.css
+ *
+ * Este archivo mantiene un unico punto de entrada para index.html y achievements.html.
+ * No cambiar el orden sin validar visualmente modo claro, modo oscuro y responsive.
+ */
+
+@import url("./styles/00-base-tokens.css");
+@import url("./styles/01-themes.css");
+@import url("./styles/02-settings-notifications.css");
+@import url("./styles/03-layout-brand.css");
+@import url("./styles/04-task-entry-progress.css");
+@import url("./styles/05-analytics.css");
+@import url("./styles/06-gamification.css");
+@import url("./styles/07-tasks.css");
+@import url("./styles/08-feedback-animations.css");
+@import url("./styles/09-theme-overrides.css");
+@import url("./styles/10-gamification-overrides.css");
+@import url("./styles/11-developer.css");
+@import url("./styles/12-responsive.css");
+@import url("./styles/13-motion.css");
+@import url("./styles/14-beta-features.css");
+@import url("./styles/15-signature-controls.css");

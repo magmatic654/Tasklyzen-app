@@ -1,0 +1,180 @@
+/*
+ * Capa: 00-base-tokens.css
+ * Proposito: Base reset and design tokens.
+ * Nota: extraido de styles.css preservando el orden original de cascada.
+ */
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    /* Primitives: raw palette values. Prefer semantic tokens below in new CSS. */
+    --color-ink-900: #31445a;
+    --color-ink-700: #65758a;
+    --color-paper-50: #f7fbff;
+    --color-panel-0: #ffffff;
+    --color-coral-500: #ff5f68;
+    --color-coral-300: #ff8b91;
+    --color-pink-300: #ff91c8;
+    --color-orange-500: #ff9f1c;
+    --color-teal-400: #18c9b7;
+    --color-teal-600: #0f988c;
+    --color-cyan-400: #35bdf2;
+    --color-green-300: #39df98;
+    --color-amber-400: #ffd23f;
+    --color-gold-400: #ffc928;
+    --color-blue-500: #2d8fe8;
+    --color-cream-50: #fffaf0;
+    --color-aqua-50: #effafa;
+    --color-gray-50: #f3f7f7;
+    --color-green-50: #edf7ef;
+    --color-green-100: #c8f6d1;
+    --color-green-300b: #78dfa0;
+    --color-green-500: #28b86a;
+    --color-green-700: #117a43;
+    --color-dark-surface: #192638;
+    --color-dark-surface-strong: #101a29;
+
+    /* Legacy aliases: keep existing selectors compatible. */
+    --ink: var(--color-ink-900);
+    --muted: var(--color-ink-700);
+    --paper: var(--color-paper-50);
+    --panel: var(--color-panel-0);
+    --coral: var(--color-coral-500);
+    --coral-soft: var(--color-coral-300);
+    --pink: var(--color-pink-300);
+    --orange: var(--color-orange-500);
+    --sky-blue: var(--color-teal-400);
+    --teal: var(--color-teal-400);
+    --teal-deep: var(--color-teal-600);
+    --brand-green: var(--color-green-300);
+    --brand-cyan: var(--color-cyan-400);
+    --brand-amber: var(--color-amber-400);
+    --brand-sun: var(--color-gold-400);
+    --brand-coral: var(--color-coral-500);
+    --brand-cream: var(--color-cream-50);
+    --gold: var(--color-gold-400);
+    --blue: var(--color-blue-500);
+    --danger: var(--color-coral-500);
+    --soft-blue: var(--color-aqua-50);
+    --soft-gray: var(--color-gray-50);
+    --green-0: var(--color-green-50);
+    --green-1: var(--color-green-100);
+    --green-2: var(--color-green-300b);
+    --green-3: var(--color-green-500);
+    --green-4: var(--color-green-700);
+    --bright-ink: var(--color-ink-900);
+    --dark-surface: var(--color-dark-surface);
+    --dark-surface-strong: var(--color-dark-surface-strong);
+    --dark-border: rgba(255, 255, 255, 0.12);
+    --shadow: 0 18px 45px rgba(23, 32, 42, 0.14);
+
+    /* Semantic brand tokens. */
+    --brand-primary: var(--teal);
+    --brand-primary-strong: var(--teal-deep);
+    --brand-secondary: var(--brand-cyan);
+    --brand-accent: var(--coral);
+    --brand-accent-soft: var(--coral-soft);
+    --brand-warm: var(--brand-amber);
+
+    /* Semantic section roles: use these to distinguish purpose without adding noise. */
+    --section-create-accent: var(--brand-accent);
+    --section-create-support: var(--brand-warm);
+    --section-tasks-accent: var(--brand-primary);
+    --section-progress-accent: var(--state-info);
+    --section-learning-accent: var(--state-warning);
+    --action-focus: #9b67ed;
+    --action-focus-strong: #7345be;
+
+    /* Firma tactil inspirada en el portapapeles y el check del logo. */
+    --signature-paper: #ffffff;
+    --signature-paper-soft: #f1f8fb;
+    --signature-ink: #31445a;
+    --signature-line: #d6e6eb;
+    --signature-primary: #18c9b7;
+    --signature-primary-edge: #0f988c;
+    --signature-mint: #39df98;
+    --signature-mint-edge: #17aa70;
+    --signature-info: #35bdf2;
+    --signature-info-edge: #178bc1;
+    --signature-coral: #ff5f68;
+    --signature-coral-edge: #d9434e;
+    --signature-salmon: #ff8b91;
+    --signature-amber: #ffd23f;
+    --signature-amber-edge: #d89f00;
+    --signature-violet: #a56cf5;
+    --signature-violet-edge: #7442c2;
+    --signature-radius: 12px;
+    --signature-focus: rgba(53, 189, 242, 0.32);
+
+    /* Semantic surfaces, text, borders and shadows. */
+    --surface-page: var(--paper);
+    --surface-panel: var(--panel);
+    --surface-panel-muted: var(--soft-gray);
+    --surface-info: var(--soft-blue);
+    --surface-success-soft: var(--green-0);
+    --surface-warning-soft: #fff7df;
+    --surface-danger-soft: #fff0f0;
+    --text-primary: var(--ink);
+    --text-secondary: var(--muted);
+    --text-strong: var(--ink);
+    --text-soft: var(--muted);
+    --text-inverse: #ffffff;
+    --text-on-accent: var(--bright-ink);
+    --border-soft: rgba(24, 165, 160, 0.16);
+    --border-strong: rgba(14, 120, 116, 0.38);
+    --border-danger: rgba(249, 89, 89, 0.28);
+    --shadow-raised: var(--shadow);
+    --shadow-soft: 0 12px 30px rgba(23, 32, 42, 0.1);
+
+    /* Semantic states. */
+    --state-success: var(--green-4);
+    --state-success-bright: var(--green-3);
+    --state-info: var(--blue);
+    --state-warning: var(--orange);
+    --state-review: var(--gold);
+    --state-danger: var(--danger);
+    --state-danger-soft: var(--coral-soft);
+
+    /* Progress and analytics. */
+    --progress-empty: var(--soft-gray);
+    --progress-track: var(--green-0);
+    --progress-low: var(--green-1);
+    --progress-medium: var(--green-2);
+    --progress-high: var(--green-3);
+    --progress-complete: var(--green-4);
+    --chart-created: var(--brand-cyan);
+    --chart-completed: var(--green-3);
+    --chart-pending: var(--danger);
+    --chart-habit: var(--gold);
+
+    /* Tasks. */
+    --task-normal: var(--brand-primary);
+    --task-important: var(--state-warning);
+    --task-urgent: var(--state-danger);
+    --task-on-time: var(--state-success);
+    --task-due-soon: var(--state-warning);
+    --task-expired: var(--state-danger);
+
+    /* Streaks and achievements. */
+    --streak-base: var(--brand-primary);
+    --streak-advanced: var(--brand-secondary);
+    --streak-epic: #7657f0;
+    --streak-legendary: var(--gold);
+    --streak-mythic: #ff4f6d;
+    --achievement-common: var(--soft-gray);
+    --achievement-uncommon: var(--green-2);
+    --achievement-rare: var(--blue);
+    --achievement-epic: #7657f0;
+    --achievement-legendary: var(--gold);
+    --achievement-mythic: #ff3f5f;
+
+    /* Shared gradients and motion. */
+    --app-background: #f7fbff;
+    --panel-gradient: var(--surface-panel);
+    --action-gradient: var(--brand-primary);
+    --danger-gradient: var(--state-danger);
+    --motion-fast: 160ms;
+    --motion-normal: 260ms;
+    --motion-slow: 520ms;
+}

@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasklyzen</title>
+    <link rel="icon" type="image/svg+xml" href="assets/tasklyzen-icon.svg">
+    <link rel="apple-touch-icon" href="assets/tasklyzen-icon.svg">
+    <meta name="theme-color" content="#16B7C8">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="app">
+    <button type="button" id="settings-button" class="settings-button" aria-expanded="false" aria-controls="settings-panel">
+        Ajustes
+    </button>
+
+    <aside id="settings-panel" class="settings-panel" aria-label="Panel de configuración" hidden>
+        <header class="settings-header">
+            <div>
+                <p class="section-kicker">Configuración</p>
+                <h2>Personaliza Tasklyzen</h2>
+            </div>
+            <button type="button" id="settings-close" class="settings-close-button" aria-label="Cerrar configuración">Cerrar</button>
+        </header>
+
+        <section class="settings-section" aria-labelledby="settings-personalization-title">
+            <h3 id="settings-personalization-title">Personalización</h3>
+            <fieldset class="settings-choice-group">
+                <legend>Tema visual</legend>
+                <label><input type="radio" name="settings-theme" value="light"> Claro</label>
+                <label><input type="radio" name="settings-theme" value="dark"> Oscuro</label>
+            </fieldset>
+        </section>
+
+        <section class="settings-section" aria-labelledby="settings-notifications-title">
+            <div class="settings-section-title-row">
+                <h3 id="settings-notifications-title">Notificaciones</h3>
+                <span class="notification-help-anchor has-info-tooltip">
+                    <button
+                        type="button"
+                        class="info-tooltip notification-info-tooltip"
+                        aria-label="Cómo funcionan los recordatorios"
+                        data-tooltip="Los recordatorios aparecen cuando Tasklyzen queda en segundo plano y tienes tareas vencidas, por vencer o pendientes. Probar aviso solo envía una muestra para confirmar que los avisos funcionan; no cambia tus tareas ni tu progreso."
+                    >?</button>
+                </span>
+            </div>
+            <label class="settings-switch" for="settings-notifications">
+                <span>
+                    <strong>Recordatorios inteligentes</strong>
+                    <small>Avisa cuando tengas pendientes relevantes.</small>
+                </span>
+                <input type="checkbox" id="settings-notifications">
+            </label>
+            <div id="settings-notification-status" class="notification-status-card" aria-live="polite">
+                <span id="settings-notification-status-text">Estado: revisando permisos de avisos.</span>
+            </div>
+            <div class="settings-inline-actions">
+                <button type="button" id="settings-notification-permission" class="settings-secondary-button">Permitir avisos</button>
+                <button type="button" id="settings-notification-test" class="settings-secondary-button">Probar aviso</button>
+            </div>
+            <p id="settings-notification-guide" class="settings-help-text">Los avisos externos aparecen cuando Tasklyzen queda en segundo plano. Dentro de la app verás mensajes discretos.</p>
+        </section>
+
+        <section class="settings-section" aria-labelledby="settings-motion-title">
+            <h3 id="settings-motion-title">Sonido y animaciones</h3>
+            <label class="settings-switch" for="settings-sound">
+                <span>
+                    <strong>Efectos sonoros</strong>
+                    <small>Reproduce un sonido breve al completar tareas.</small>
+                </span>
+                <input type="checkbox" id="settings-sound">
+            </label>
+            <label class="settings-range-control" for="settings-sound-volume">
+                <span>
+                    <strong>Volumen</strong>
+                    <small><span id="settings-sound-volume-value">70%</span> de intensidad</small>
+                </span>
+                <input type="range" id="settings-sound-volume" min="0" max="100" step="5" value="70">
+            </label>
+            <label class="settings-switch" for="settings-animations">
+                <span>
+                    <strong>Animaciones de celebración</strong>
+                    <small>Controla los efectos visuales al avanzar.</small>
+                </span>
+                <input type="checkbox" id="settings-animations">
+            </label>
+        </section>
+
+        <section class="settings-section" aria-labelledby="settings-analytics-title">
+            <h3 id="settings-analytics-title">Analítica</h3>
+            <label class="settings-switch" for="settings-simplified-analytics">
+                <span>
+                    <strong>Analítica simplificada</strong>
+                    <small>Muestra solo métricas clave y oculta datos secundarios.</small>
+                </span>
+                <input type="checkbox" id="settings-simplified-analytics">
+            </label>
+        </section>
+
+        <section class="settings-section settings-security" aria-labelledby="settings-security-title">
+            <h3 id="settings-security-title">Seguridad</h3>
+            <div class="settings-actions">
+                <button type="button" id="settings-export-data" class="settings-secondary-button">Exportar respaldo</button>
+                <button type="button" id="settings-import-data" class="settings-secondary-button">Importar respaldo</button>
+                <input type="file" id="settings-import-file" class="sr-only" accept="application/json">
+            </div>
+            <button type="button" id="settings-delete-data" class="settings-danger-button">Eliminar todos los datos</button>
+        </section>
+    </aside>
+
+    <dialog id="delete-data-dialog" class="delete-data-dialog" aria-labelledby="delete-data-title">
+        <div class="delete-data-card">
+            <p class="section-kicker">Acción irreversible</p>
+            <h2 id="delete-data-title">Eliminar todos los datos</h2>
+            <p>Esta acción eliminará todos tus datos de manera permanente. No podrás recuperarlos.</p>
+            <label for="delete-confirm-input">
+                Escribe exactamente <strong id="delete-confirm-code">CONFIRMAR-0000</strong>
+                <input type="text" id="delete-confirm-input" autocomplete="off">
+            </label>
+            <div class="delete-data-actions">
+                <button type="button" id="cancel-delete-data" class="settings-secondary-button">Cancelar</button>
+                <button type="button" id="confirm-delete-data" class="settings-danger-button" disabled>Eliminar definitivamente</button>
+            </div>
+        </div>
+    </dialog>
+
+    <main class="todo-app">
+        <section class="title-panel app-title-panel" aria-labelledby="app-title">
+            <div class="brand-lockup">
+                <img class="brand-logo brand-logo-light" src="assets/tasklyzen-logo.svg" alt="Tasklyzen">
+                <img class="brand-logo brand-logo-dark" src="assets/tasklyzen-logo-dark.svg" alt="Tasklyzen">
+                <div class="brand-copy">
+                    <p class="eyebrow">Enfoque diario</p>
+                    <h1 id="app-title" class="sr-only">Tasklyzen</h1>
+                </div>
+            </div>
+        </section>
+
+        <section id="compact-progress-widget" class="compact-progress-widget" aria-label="Mini menú de progreso">
+            <div class="compact-progress-shell">
+                <button type="button" class="compact-progress-summary" data-progress-shortcut="today" aria-label="Abrir progreso de hoy">
+                    <strong id="compact-progress-today">Hoy 0/3</strong>
+                </button>
+                <div class="compact-progress-track" aria-hidden="true">
+                    <span id="compact-progress-today-bar"></span>
+                </div>
+                <button type="button" class="compact-progress-chip compact-progress-streak" data-progress-shortcut="streak" aria-label="Abrir racha actual">
+                    <span class="compact-progress-icon" aria-hidden="true"></span>
+                    <strong id="compact-progress-streak">0</strong>
+                </button>
+                <button type="button" class="compact-progress-chip" data-progress-shortcut="analytics" aria-label="Abrir avance semanal">
+                    <span>Semana</span>
+                    <strong id="compact-progress-week">0%</strong>
+                </button>
+                <button type="button" id="compact-progress-toggle" class="compact-progress-toggle" aria-expanded="false" aria-controls="compact-progress-menu" aria-label="Mostrar detalles de progreso"></button>
+            </div>
+            <div id="compact-progress-menu" class="compact-progress-menu" hidden role="menu" aria-label="Detalles de progreso">
+                <button type="button" id="compact-progress-today-item" class="compact-progress-menu-item compact-progress-goal-item" data-progress-shortcut="today" role="menuitem">
+                    <span class="compact-progress-menu-icon compact-progress-menu-today" aria-hidden="true"></span>
+                    <span>
+                        <strong>Completa tu meta de hoy</strong>
+                        <small id="compact-progress-today-note">Empieza con 1 tarea</small>
+                    </span>
+                    <span id="compact-progress-today-status" class="compact-progress-row-status">0/3</span>
+                </button>
+                <button type="button" id="compact-progress-mission-item" class="compact-progress-menu-item compact-progress-goal-item compact-progress-mission-item" data-progress-shortcut="today" role="menuitem">
+                    <span class="compact-progress-menu-icon compact-progress-menu-mission" aria-hidden="true"></span>
+                    <span>
+                        <strong id="compact-progress-mission-title">Misión diaria</strong>
+                        <small id="compact-progress-mission-note">Descubre el reto de hoy</small>
+                    </span>
+                    <span id="compact-progress-mission-status" class="compact-progress-row-status compact-progress-mission-status">0/1</span>
+                </button>
+                <button type="button" id="compact-progress-streak-menu-item" class="compact-progress-menu-item compact-progress-goal-item compact-progress-streak" data-progress-shortcut="streak" role="menuitem">
+                    <span class="compact-progress-menu-icon compact-progress-menu-streak" aria-hidden="true"></span>
+                    <span>
+                        <strong>Mantén tu racha activa</strong>
+                        <small id="compact-progress-streak-note">Sin racha</small>
+                    </span>
+                    <span id="compact-progress-streak-status" class="compact-progress-row-status">Pendiente</span>
+                </button>
+                <button type="button" id="compact-progress-week-item" class="compact-progress-menu-item compact-progress-goal-item" data-progress-shortcut="analytics" role="menuitem">
+                    <span class="compact-progress-menu-icon compact-progress-menu-week" aria-hidden="true"></span>
+                    <span>
+                        <strong>Revisa tu avance semanal</strong>
+                        <small id="compact-progress-week-note">0 completadas</small>
+                    </span>
+                    <span id="compact-progress-week-status" class="compact-progress-row-status">0/21</span>
+                </button>
+                <button type="button" id="compact-achievement-news" class="compact-progress-menu-item compact-achievement-news" data-progress-shortcut="achievements" role="menuitem" hidden>
+                    <span class="compact-progress-menu-icon compact-progress-menu-achievement" aria-hidden="true"></span>
+                    <span>
+                        <strong>Nuevos logros</strong>
+                        <small id="compact-achievement-news-note">Tienes progreso por descubrir</small>
+                    </span>
+                    <span id="compact-achievement-news-count" class="achievement-new-count">0</span>
+                </button>
+            </div>
+        </section>
+
+        <section id="task-create-panel" class="input-panel" aria-label="Crear nueva tarea">
+            <form id="todo-form" class="todo-form task-creation-bar">
+                <div class="task-title-field">
+                    <label class="sr-only" for="todo-input">Nueva tarea</label>
+                    <input type="text" id="todo-input" placeholder="Escribe una nueva tarea" autocomplete="off">
+                </div>
+                <div class="task-main-options">
+                    <label class="sr-only" for="priority-input">Prioridad</label>
+                    <select id="priority-input" class="priority-input" aria-label="Prioridad de la tarea">
+                        <option value="normal">Normal</option>
+                        <option value="important">Importante</option>
+                        <option value="urgent">Urgente</option>
+                    </select>
+                    <div class="task-date-field" aria-label="Fecha límite">
+                        <label class="sr-only" for="time-limit-input">Fecha límite opcional</label>
+                        <input type="date" id="time-limit-input" class="time-limit-input" aria-label="Fecha límite opcional de la tarea; déjalo vacío si no tiene vencimiento" title="Déjalo vacío si la tarea no tiene vencimiento" tabindex="-1">
+                        <div class="due-date-options" role="group" aria-label="Elegir fecha límite">
+                            <button type="button" class="due-date-option active" data-due-preset="none" aria-pressed="true">Sin fecha</button>
+                            <button type="button" class="due-date-option" data-due-preset="today" aria-pressed="false">Hoy</button>
+                            <button type="button" class="due-date-option" data-due-preset="tomorrow" aria-pressed="false">Mañana</button>
+                            <button type="button" class="due-date-option due-date-custom" data-due-preset="custom" aria-pressed="false">Elegir</button>
+                        </div>
+                        <select id="due-date-compact-select" class="due-date-compact-select" aria-label="Fecha límite de la tarea">
+                            <option value="none" selected>Sin fecha</option>
+                            <option value="today">Hoy</option>
+                            <option value="tomorrow">Mañana</option>
+                            <option value="custom">Elegir fecha</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit">Añadir</button>
+                <div class="task-secondary-options" aria-label="Opciones secundarias de tarea">
+                    <label class="sr-only" for="task-type-input">Tipo de tarea</label>
+                    <select id="task-type-input" class="task-type-input" aria-label="Tipo de tarea">
+                        <option value="normal" selected>Tarea simple</option>
+                        <option value="composite">Hito</option>
+                    </select>
+                    <label class="habit-toggle" for="habit-input">
+                        <input type="checkbox" id="habit-input">
+                        <span>Hábito</span>
+                    </label>
+                </div>
+                <section id="composite-task-builder" class="composite-task-builder" hidden aria-label="Constructor de subtareas">
+                    <div class="composite-builder-heading">
+                        <div>
+                            <strong>Subtareas</strong>
+                            <small>Divide el trabajo en pasos claros.</small>
+                        </div>
+                        <span id="composite-builder-count">0 añadidas</span>
+                    </div>
+                    <div class="subtask-draft-entry">
+                        <label class="sr-only" for="subtask-draft-input">Título de la subtarea</label>
+                        <input id="subtask-draft-input" type="text" placeholder="Escribe una subtarea" autocomplete="off">
+                        <label class="subtask-optional-toggle" for="subtask-draft-optional">
+                            <input id="subtask-draft-optional" type="checkbox">
+                            <span>Opcional</span>
+                        </label>
+                        <button id="add-subtask-draft" type="button" class="subtask-add-button">Añadir</button>
+                    </div>
+                    <p id="composite-builder-error" class="composite-builder-error" role="alert" hidden></p>
+                    <ol id="composite-builder-list" class="composite-builder-list"></ol>
+                </section>
+            </form>
+            <aside id="quick-create-layer" class="quick-create-layer" hidden role="status" aria-live="polite" aria-label="Creación rápida">
+                <span class="quick-create-kicker">Creación rápida</span>
+                <strong id="quick-create-title">Nueva tarea</strong>
+                <span id="quick-create-status">Enter guarda · Esc cancela</span>
+            </aside>
+        </section>
+        <button type="button" id="task-create-toggle" class="task-create-toggle" aria-expanded="false" aria-controls="task-create-panel" aria-label="Crear nueva tarea">
+            <span aria-hidden="true"></span>
+        </button>
+
+        <section class="tasks-panel" aria-label="Tareas por completar">
+            <div class="tasks-heading">
+                <div class="tasks-heading-copy">
+                    <h2>Tareas</h2>
+                    <span id="task-count">0 pendientes</span>
+                </div>
+                <button type="button" id="focus-mode-button" class="task-race-button">
+                    <span class="race-flag-icon" aria-hidden="true"></span>
+                    <span>Modo Carrera</span>
+                </button>
+            </div>
+            <article id="next-action-card" class="next-action-card" aria-live="polite" hidden>
+                <div>
+                    <p class="section-kicker">Siguiente mejor acción</p>
+                    <h3 id="next-action-title">Elige una tarea para empezar</h3>
+                    <p id="next-action-reason">Cuando tengas pendientes, aquí aparecerá la tarea más conveniente para avanzar.</p>
+                </div>
+                <div class="next-action-buttons">
+                    <button type="button" id="next-action-complete" class="task-button complete-button">Completar</button>
+                    <button type="button" id="next-action-edit" class="task-button edit-button">Editar</button>
+                </div>
+            </article>
+            <div class="task-toolbar" aria-label="Filtrar tareas">
+                <button type="button" class="filter-button" data-filter="all">Todas</button>
+                <button type="button" class="filter-button active" data-filter="pending">Pendientes</button>
+                <button type="button" class="filter-button" data-filter="completed">Completadas</button>
+            </div>
+            <div class="task-toolbar-actions" aria-label="Acciones de tareas completadas">
+                <button type="button" id="clear-completed-tasks" class="cleanup-button">Limpiar hechas</button>
+            </div>
+            <p id="task-summary" class="task-summary">0 tareas registradas</p>
+            <ul id="todo-list"></ul>
+            <section id="expired-tasks-panel" class="expired-tasks-panel" aria-labelledby="expired-tasks-title">
+                <div class="expired-tasks-heading">
+                    <div>
+                        <p class="section-kicker">Aprendizaje</p>
+                        <h3 id="expired-tasks-title">Tareas vencidas</h3>
+                    </div>
+                    <span id="expired-task-count">0</span>
+                </div>
+                <p id="expired-task-summary" class="expired-task-summary">Sin tareas vencidas por ahora.</p>
+                <ul id="expired-task-list" class="expired-task-list"></ul>
+            </section>
+        </section>
+
+        <section id="progress-panel" class="progress-panel progress-collapsed" aria-label="Seguimiento de tareas completadas">
+            <button type="button" class="progress-sheet-handle" aria-label="Arrastra hacia abajo para cerrar progreso"></button>
+            <div class="progress-heading">
+                <div>
+                    <p id="progress-heading-kicker" class="section-kicker">Enfoque diario</p>
+                    <h2 id="progress-heading-title">Progreso de hoy</h2>
+                </div>
+                <div class="progress-heading-actions">
+                    <button type="button" id="progress-toggle" class="progress-toggle-button" aria-expanded="false" aria-controls="progress-detail-layer" aria-label="Abrir panel de progreso">Progreso</button>
+                    <div class="streak-pill" aria-live="polite">
+                        <span id="streak-count">0</span>
+                        <span id="streak-label">días seguidos</span>
+                        <span id="streak-tier">Sin racha</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="progress-detail-layer" class="progress-detail-layer" hidden>
+            <div class="progress-tabs" role="tablist" aria-label="Vistas de progreso">
+                <button type="button" class="progress-tab active" data-progress-view="today" role="tab" aria-selected="true">Hoy</button>
+                <button type="button" class="progress-tab" data-progress-view="analytics" role="tab" aria-selected="false">Rendimiento</button>
+                <button type="button" class="progress-tab" data-progress-view="streak" role="tab" aria-selected="false">Racha</button>
+                <button type="button" class="progress-tab" data-progress-view="achievements" role="tab" aria-selected="false">
+                    Logros <span id="achievement-tab-new-count" class="achievement-new-count" hidden>0</span>
+                </button>
+            </div>
+
+            <div class="motivation-card" data-progress-section="today" aria-live="polite">
+                <div class="motivation-copy">
+                    <p class="section-kicker">Impulso de hoy</p>
+                    <h3 id="motivation-title">Empieza con una tarea</h3>
+                    <p id="motivation-message">Completa una tarea para pintar el cuadro de hoy.</p>
+                </div>
+                <div class="daily-goal">
+                    <span id="daily-goal-count">0/3</span>
+                    <p>meta diaria</p>
+                    <div class="goal-track" aria-hidden="true">
+                        <span id="daily-goal-bar"></span>
+                    </div>
+                    <label class="goal-setting" for="daily-goal-input">
+                        <span>Meta</span>
+                        <input type="number" id="daily-goal-input" min="1" max="20" value="3">
+                    </label>
+                    <div class="recommended-goal">
+                        <span id="recommended-goal-text">Meta sugerida: 1</span>
+                        <button type="button" id="apply-recommended-goal">Usar</button>
+                    </div>
+                </div>
+            </div>
+
+            <section class="analytics-panel" data-progress-section="analytics" aria-label="Rendimiento de tareas">
+                <header class="performance-header">
+                    <div>
+                        <p class="section-kicker">Rendimiento</p>
+                        <h3>Tu avance en claro</h3>
+                    </div>
+                    <div id="analytics-period-control" class="analytics-period-control" role="group" aria-label="Periodo de rendimiento">
+                        <button type="button" data-analytics-period="weekly" aria-pressed="true">Semana</button>
+                        <button type="button" data-analytics-period="monthly" aria-pressed="false">Mes</button>
+                        <button type="button" data-analytics-period="quarterly" aria-pressed="false">3 meses</button>
+                    </div>
+                </header>
+
+                <article class="performance-overview" aria-live="polite">
+                    <div class="performance-score">
+                        <span>Tareas completadas</span>
+                        <strong id="analytics-completion-rate">0%</strong>
+                        <p id="analytics-completion-detail">0 de 0 tareas del periodo</p>
+                    </div>
+                    <div class="performance-comparison">
+                        <span id="analytics-period-comparison" class="comparison-neutral">Sin periodo anterior comparable</span>
+                        <div class="performance-progress" role="progressbar" aria-label="Porcentaje de tareas completadas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                            <span id="analytics-completion-bar"></span>
+                        </div>
+                    </div>
+                </article>
+
+                <section class="performance-trend" aria-labelledby="performance-trend-title">
+                    <div class="performance-section-heading">
+                        <div>
+                            <p class="section-kicker">Ritmo</p>
+                            <h4 id="performance-trend-title">Avance por día</h4>
+                        </div>
+                        <span class="performance-goal-key"><i aria-hidden="true"></i> Meta diaria</span>
+                    </div>
+                    <div id="weekly-flow-chart" class="weekly-flow-chart"></div>
+                </section>
+
+                <section class="performance-balance" aria-labelledby="performance-balance-title">
+                    <div class="performance-section-heading">
+                        <div>
+                            <p class="section-kicker">Balance</p>
+                            <h4 id="performance-balance-title">Resultado del periodo</h4>
+                        </div>
+                        <span id="analytics-balance-label">Sin actividad</span>
+                    </div>
+                    <div class="performance-balance-track" role="img" aria-label="Distribución de tareas completadas y sin completar">
+                        <span id="analytics-balance-completed" class="balance-completed"></span>
+                        <span id="analytics-balance-pending" class="balance-pending"></span>
+                    </div>
+                    <div class="performance-balance-legend" aria-hidden="true">
+                        <span><i class="legend-completed"></i> Completadas</span>
+                        <span><i class="legend-pending"></i> Sin completar</span>
+                    </div>
+                </section>
+
+                <article class="performance-advice" aria-live="polite">
+                    <span class="performance-advice-mark" aria-hidden="true"></span>
+                    <div>
+                        <p class="section-kicker">Próximo ajuste</p>
+                        <h4 id="analytics-action-title">Empieza con una tarea pequeña</h4>
+                        <p id="analytics-action-message">Completa una tarea para obtener una recomendación basada en tu ritmo.</p>
+                    </div>
+                </article>
+
+                <details class="performance-details">
+                    <summary>Ver detalles</summary>
+                    <div class="performance-detail-grid">
+                        <article>
+                            <strong id="analytics-active-days">0</strong>
+                            <span>Días activos</span>
+                            <small>Días con al menos una tarea completada</small>
+                        </article>
+                        <article>
+                            <strong id="analytics-best-rhythm">Sin patrón</strong>
+                            <span>Mejor ritmo</span>
+                            <small id="analytics-best-rhythm-detail">Se necesitan más datos</small>
+                        </article>
+                        <article id="analytics-habit-detail" hidden>
+                            <strong id="analytics-habit-rate">0%</strong>
+                            <span>Hábitos completados</span>
+                            <small id="analytics-habit-count">0 de 0 hábitos</small>
+                        </article>
+                    </div>
+                </details>
+            </section>
+
+            <article id="daily-mission-card" class="daily-mission-card" data-progress-section="today" aria-live="polite">
+                <div>
+                    <p class="section-kicker">Misión diaria</p>
+                    <h3 id="daily-mission-title">Completa una tarea</h3>
+                    <p id="daily-mission-message">Una pequeña victoria basta para activar el día.</p>
+                </div>
+                <span id="daily-mission-status">0/1</span>
+            </article>
+
+            <article id="daily-close-card" class="daily-close-card" data-progress-section="today" aria-live="polite" hidden>
+                <div>
+                    <p class="section-kicker">Cierre diario</p>
+                    <h3 id="daily-close-title">Meta cumplida</h3>
+                    <p id="daily-close-summary">Buen avance de hoy.</p>
+                    <ul id="daily-close-achievements" class="daily-close-achievements"></ul>
+                </div>
+            </article>
+
+            <article id="streak-hero-card" class="streak-hero-card streak-empty" data-progress-section="streak" aria-live="polite">
+                <div class="streak-hero-identity">
+                    <span id="streak-hero-emblem" class="streak-emblem" aria-hidden="true">
+                        <i class="streak-emblem-core"></i>
+                        <i class="streak-emblem-mark"></i>
+                    </span>
+                    <div class="streak-hero-copy">
+                        <p class="section-kicker">Tu racha</p>
+                        <h3><strong id="streak-hero-count">0</strong> <span id="streak-hero-unit">días</span></h3>
+                        <span id="streak-hero-tier" class="streak-hero-tier">Sin racha</span>
+                        <p id="streak-hero-status">Completa una tarea hoy para empezar.</p>
+                    </div>
+                </div>
+                <div class="streak-next-level">
+                    <div class="streak-next-heading">
+                        <div>
+                            <span>Siguiente nivel</span>
+                            <strong id="reward-title">Primer día encendido</strong>
+                        </div>
+                        <span id="reward-count">0/1</span>
+                    </div>
+                    <div class="reward-track" role="progressbar" aria-label="Progreso hacia el siguiente nivel" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0">
+                        <span id="reward-bar"></span>
+                    </div>
+                    <p id="reward-message">Completa una tarea hoy para estrenar tu racha.</p>
+                    <small id="streak-remaining">Falta 1 día</small>
+                </div>
+            </article>
+
+            <div class="streak-compact-stats" data-progress-section="streak" aria-label="Datos principales de racha">
+                <article>
+                    <span id="record-streak-total">0</span>
+                    <p>Récord personal</p>
+                </article>
+                <article class="shield-tile">
+                    <span id="shield-total">0</span>
+                    <p>Escudos disponibles</p>
+                </article>
+            </div>
+
+            <details class="streak-route-disclosure" data-progress-section="streak">
+                <summary>
+                    <span>Ver ruta completa</span>
+                    <small id="streak-route-summary">0 niveles alcanzados</small>
+                </summary>
+                <div id="streak-prestige-road" class="streak-prestige-road" aria-label="Ruta de prestigio de racha"></div>
+            </details>
+
+            <article id="streak-safety-card" class="streak-safety-card" data-progress-section="streak" aria-live="polite" hidden>
+                <div>
+                    <p class="section-kicker">Protección</p>
+                    <h3>Escudos de racha</h3>
+                    <p id="shield-message">Gana 1 escudo por cada 5 días activos reales.</p>
+                </div>
+                <button type="button" id="rescue-button" class="rescue-button" disabled>Rescatar ayer</button>
+            </article>
+
+            <section class="achievement-overview" data-progress-section="achievements" aria-labelledby="achievement-overview-title">
+                <div class="achievement-overview-heading">
+                    <div>
+                        <p class="section-kicker">Progreso personal</p>
+                        <h3 id="achievement-overview-title">Tus logros</h3>
+                    </div>
+                    <a class="collection-link" href="achievements.html">Abrir colección</a>
+                </div>
+                <p id="achievement-overview-count" class="achievement-overview-count">Empieza con una tarea para construir tu recorrido.</p>
+                <div class="achievement-overview-grid" aria-live="polite">
+                    <div id="achievement-latest-card"></div>
+                    <div id="achievement-next-card"></div>
+                </div>
+            </section>
+
+            <div class="contribution-panel" data-progress-section="streak">
+                <div class="contribution-heading">
+                    <h3>Progreso reciente</h3>
+                    <div class="contribution-legend" aria-label="Intensidad de tareas completadas">
+                        <span>Menos</span>
+                        <i class="legend-cell level-0"></i>
+                        <i class="legend-cell level-1"></i>
+                        <i class="legend-cell level-2"></i>
+                        <i class="legend-cell level-3"></i>
+                        <i class="legend-cell level-4"></i>
+                        <span>Más</span>
+                    </div>
+                </div>
+                <div class="contribution-scroll">
+                    <div id="contribution-grid" class="contribution-grid" role="list" aria-label="Calendario de tareas completadas"></div>
+                </div>
+            </div>
+            </div>
+        </section>
+    </main>
+
+    <dialog
+        id="overdue-review-dialog"
+        class="overdue-review-dialog"
+        aria-labelledby="overdue-review-title"
+        aria-describedby="overdue-review-description overdue-review-warning"
+    >
+        <div class="overdue-review-card">
+            <header class="overdue-review-header">
+                <div>
+                    <p class="section-kicker">Revisi&oacute;n segura</p>
+                    <h2 id="overdue-review-title">Tareas vencidas por revisar</h2>
+                </div>
+                <span id="overdue-review-count" class="overdue-review-count" aria-label="Cantidad de tareas vencidas">0</span>
+            </header>
+            <p id="overdue-review-description" class="overdue-review-description">
+                Revisa estas tareas y decide si quieres conservarlas o eliminarlas.
+            </p>
+            <p id="overdue-review-warning" class="overdue-review-warning">
+                Las tareas vencidas y no completadas se eliminan autom&aacute;ticamente al acumular 30 d&iacute;as de vencimiento.
+            </p>
+            <ul id="overdue-review-list" class="overdue-review-list" tabindex="0" aria-label="Tareas incluidas en la revisi&oacute;n"></ul>
+            <div id="overdue-review-actions" class="overdue-review-actions">
+                <button type="button" class="overdue-review-keep" data-overdue-review-action="keep">Conservar por ahora</button>
+                <button type="button" class="overdue-review-delete" data-overdue-review-action="request-delete">Eliminar tareas vencidas</button>
+            </div>
+            <section id="overdue-review-confirmation" class="overdue-review-confirmation" aria-live="assertive" hidden>
+                <strong>Confirma la eliminaci&oacute;n</strong>
+                <p id="overdue-review-confirm-text">Esta acci&oacute;n no se puede deshacer.</p>
+                <div class="overdue-review-confirm-actions">
+                    <button type="button" class="overdue-review-cancel" data-overdue-review-action="cancel-delete">Cancelar</button>
+                    <button type="button" id="confirm-delete-overdue" class="overdue-review-delete" data-overdue-review-action="confirm-delete">Eliminar definitivamente</button>
+                </div>
+            </section>
+        </div>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="completion-celebration" class="completion-celebration" aria-hidden="true">
+        <div class="completion-badge">
+            <span class="completion-mark" aria-hidden="true"></span>
+            <strong id="completion-title">Tarea completada</strong>
+        </div>
+        <span class="burst-dot dot-1"></span>
+        <span class="burst-dot dot-2"></span>
+        <span class="burst-dot dot-3"></span>
+        <span class="burst-dot dot-4"></span>
+        <span class="burst-dot dot-5"></span>
+    </div>
+    <div id="streak-day-celebration" class="streak-day-celebration" aria-hidden="true">
+        <div id="streak-celebration-card" class="streak-celebration-card streak-empty">
+            <span id="streak-celebration-emblem" class="streak-emblem" aria-hidden="true">
+                <i class="streak-emblem-core"></i>
+                <i class="streak-emblem-mark"></i>
+            </span>
+            <div>
+                <small id="streak-celebration-kicker">Racha actualizada</small>
+                <strong id="streak-celebration-title">1 día</strong>
+                <span id="streak-celebration-message">Tu constancia ya cuenta hoy.</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="achievement-showcase" class="achievement-showcase" aria-hidden="true" role="status" aria-live="polite">
+        <div class="achievement-showcase-card">
+            <span id="showcase-rarity" class="showcase-rarity">Común</span>
+            <div class="showcase-medal" aria-hidden="true">
+                <span id="showcase-mark">A</span>
+            </div>
+            <p class="section-kicker">Logro desbloqueado</p>
+            <strong id="showcase-title">Primer impulso</strong>
+            <p id="showcase-message">Completa una tarea y enciende el día.</p>
+        </div>
+    </div>
+
+    <script src="tasklyzen-config.js"></script>
+    <script src="tasklyzen-storage.js"></script>
+    <script src="tasklyzen-utils.js"></script>
+    <script src="tasklyzen-composite-tasks.js"></script>
+    <script src="tasklyzen-tasks.js"></script>
+    <script src="components/tasklyzen-ui-components.js"></script>
+    <script src="tasklyzen-overdue-review.js"></script>
+    <script src="components/tasklyzen-task-creation-ui.js"></script>
+    <script src="tasklyzen-settings.js"></script>
+    <script src="tasklyzen-notifications.js"></script>
+    <script src="tasklyzen-task-ui.js"></script>
+    <script src="tasklyzen-quick-create.js"></script>
+    <script src="tasklyzen-analytics-progress.js"></script>
+    <script src="tasklyzen-achievements.js"></script>
+    <script src="tasklyzen-gamification.js"></script>
+    <script src="tasklyzen-gamification-ui.js"></script>
+    <script src="tasklyzen-features.js"></script>
+    <script src="tasklyzen-developer.js"></script>
+    <script src="tasklyzen-dom.js"></script>
+    <script src="tasklyzen-oop.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

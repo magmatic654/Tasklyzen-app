@@ -1,0 +1,1270 @@
+/*
+ * Capa: 12-responsive.css
+ * Proposito: Responsive rules for mobile and narrow layouts.
+ * Nota: extraido de styles.css preservando el orden original de cascada.
+ */
+@media (max-width: 840px) {
+    .task-creation-bar .task-main-options {
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+
+    .task-creation-bar .task-secondary-options {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        justify-self: start;
+        justify-content: flex-start;
+        padding-top: 2px;
+    }
+
+    .task-creation-bar .due-date-options {
+        display: grid;
+    }
+
+    .task-creation-bar .task-date-field {
+        width: 100%;
+    }
+
+    .task-creation-bar .due-date-compact-select {
+        display: none;
+    }
+}
+
+@media (max-width: 680px) {
+    .settings-button {
+        top: 10px;
+        right: 10px;
+        min-height: 42px;
+        padding: 0 13px;
+    }
+
+    .settings-panel {
+        top: 60px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-height: calc(100vh - 74px);
+    }
+
+    .settings-choice-group,
+    .settings-range-control,
+    .settings-inline-actions,
+    .settings-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-header,
+    .delete-data-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .settings-close-button,
+    .delete-data-actions button {
+        width: 100%;
+    }
+
+    .todo-app,
+    .achievement-page {
+        width: min(100% - 20px, 920px);
+        margin: 18px auto;
+    }
+
+    .title-panel,
+    .input-panel,
+    .progress-panel,
+    .tasks-panel {
+        padding: 18px;
+    }
+
+    .input-panel {
+        position: static;
+        top: auto;
+        z-index: auto;
+    }
+
+    .quick-create-layer {
+        display: none !important;
+    }
+
+    .progress-heading,
+    .contribution-heading,
+    .app-title-panel,
+    .achievement-title-panel,
+    .collection-intro {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .brand-lockup {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .brand-logo {
+        width: min(100%, 340px);
+    }
+
+    .achievement-title-copy {
+        grid-template-columns: auto 1fr;
+    }
+
+    .page-title-icon {
+        width: 58px;
+    }
+
+    .progress-heading-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .summary-window-button {
+        width: 100%;
+    }
+
+    .progress-toggle-button {
+        width: 100%;
+    }
+
+    body.progress-panel-open {
+        overflow: hidden;
+    }
+
+    #progress-panel.progress-collapsed {
+        right: 16px;
+        bottom: 16px;
+        padding: 0;
+    }
+
+    #progress-panel.progress-collapsed .progress-toggle-button {
+        width: auto;
+        min-height: 46px;
+    }
+
+    #progress-panel.progress-expanded {
+        top: auto;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: auto;
+        height: min(88dvh, calc(100dvh - 12px));
+        max-height: calc(100dvh - 12px);
+        padding: 34px 12px max(14px, env(safe-area-inset-bottom));
+        border-right: 0;
+        border-bottom: 0;
+        border-left: 0;
+        border-radius: 18px 18px 0 0;
+        transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #progress-panel.progress-expanded.is-dragging {
+        transition: none;
+    }
+
+    #progress-panel.progress-expanded.progress-closing {
+        transform: translateY(calc(100% + 24px));
+    }
+
+    #progress-panel.progress-expanded::before {
+        display: none;
+    }
+
+    #progress-panel.progress-expanded .progress-sheet-handle {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        z-index: 8;
+        display: grid;
+        width: 100%;
+        height: 32px;
+        padding: 9px 0 0;
+        place-items: start center;
+        margin: 0;
+        background: transparent;
+        border: 0;
+        cursor: grab;
+        touch-action: none;
+    }
+
+    #progress-panel.progress-expanded .progress-sheet-handle::before {
+        display: block;
+        width: 46px;
+        height: 5px;
+        content: "";
+        background: rgba(39, 125, 161, 0.32);
+        border-radius: 999px;
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.54);
+    }
+
+    #progress-panel.progress-expanded.is-dragging .progress-sheet-handle {
+        cursor: grabbing;
+    }
+
+    #progress-panel.progress-expanded .progress-heading {
+        position: relative;
+        z-index: 5;
+        grid-row: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: minmax(44px, auto);
+        align-items: center;
+        justify-content: stretch;
+        gap: 8px;
+        min-height: 54px;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        overflow: visible;
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: none;
+    }
+
+    #progress-panel.progress-expanded .progress-heading > div:first-child {
+        min-width: 0;
+    }
+
+    #progress-panel.progress-expanded .progress-heading .section-kicker {
+        display: none;
+    }
+
+    #progress-panel.progress-expanded .progress-heading h2 {
+        margin: 0;
+        font-size: 1.05rem;
+        line-height: 1.05;
+    }
+
+    #progress-panel.progress-expanded .progress-heading-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 7px;
+    }
+
+    #progress-panel.progress-expanded .summary-window-button,
+    #progress-panel.progress-expanded .streak-pill {
+        display: none;
+    }
+
+    #progress-panel.progress-expanded .progress-toggle-button {
+        width: auto;
+        min-height: 40px;
+        padding: 0 13px;
+        font-size: 0.72rem;
+    }
+
+    #progress-panel.progress-expanded .progress-tabs {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        display: flex;
+        gap: 8px;
+        margin: 0 0 12px;
+        padding: 6px;
+        background: #f7fffd;
+        border-color: rgba(22, 183, 200, 0.18);
+        box-shadow: 0 8px 18px rgba(39, 125, 161, 0.1);
+        backdrop-filter: none;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+
+    #progress-panel.progress-expanded .progress-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    #progress-panel.progress-expanded .progress-tab {
+        flex: 0 0 auto;
+        min-width: 112px;
+        min-height: 44px;
+        padding: 0 12px;
+        font-size: 0.72rem;
+        white-space: nowrap;
+    }
+
+    #progress-panel.progress-expanded .progress-detail-layer {
+        position: relative;
+        z-index: 1;
+        grid-row: 2;
+        min-height: 0;
+        padding: 0 2px 22px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #progress-panel.progress-expanded .analytics-panel,
+    #progress-panel.progress-expanded .motivation-card,
+    #progress-panel.progress-expanded .daily-mission-card,
+    #progress-panel.progress-expanded .daily-close-card,
+    #progress-panel.progress-expanded .streak-suite,
+    #progress-panel.progress-expanded .streak-prestige-road,
+    #progress-panel.progress-expanded .achievement-row,
+    #progress-panel.progress-expanded .streak-safety-card,
+    #progress-panel.progress-expanded .next-reward-card,
+    #progress-panel.progress-expanded .featured-achievements,
+    #progress-panel.progress-expanded .contribution-panel {
+        padding: 12px;
+    }
+
+    #progress-panel.progress-expanded .analytics-summary-grid,
+    #progress-panel.progress-expanded .analytics-rings,
+    #progress-panel.progress-expanded .analytics-clarity-board,
+    #progress-panel.progress-expanded .analytics-insights,
+    #progress-panel.progress-expanded .monthly-metrics-grid,
+    #progress-panel.progress-expanded .monthly-history-list,
+    #progress-panel.progress-expanded .summary-metric-grid,
+    #progress-panel.progress-expanded .summary-insight-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #progress-panel.progress-expanded .weekly-line-chart {
+        --weekly-chart-height: 118px;
+        --weekly-chart-track: 100%;
+        padding: 10px 8px;
+        overflow: hidden;
+    }
+
+    #progress-panel.progress-expanded .weekly-line-labels span {
+        font-size: 0.58rem;
+    }
+
+    .streak-pill {
+        min-width: 0;
+    }
+
+    .streak-prestige-road {
+        grid-auto-flow: row;
+        grid-auto-columns: initial;
+        grid-template-columns: 1fr;
+        overflow-x: visible;
+    }
+
+    .streak-hero-card {
+        grid-template-columns: 1fr;
+        gap: 13px;
+        padding: 14px;
+    }
+
+    .streak-hero-identity {
+        gap: 12px;
+    }
+
+    .streak-emblem {
+        width: 88px;
+        height: 98px;
+    }
+
+    .streak-compact-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .motivation-card {
+        grid-template-columns: 1fr;
+    }
+
+    .progress-tabs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .analytics-focus-card {
+        grid-template-columns: 1fr;
+    }
+
+    .analytics-focus-metrics,
+    .monthly-recap-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .analytics-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .performance-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .analytics-period-control {
+        width: 100%;
+    }
+
+    .performance-overview {
+        grid-template-columns: 1fr;
+        gap: 13px;
+    }
+
+    .performance-detail-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .analytics-subheading {
+        flex-direction: column;
+    }
+
+    .period-select-label {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .period-select {
+        flex: 1 1 auto;
+    }
+
+    .weekly-line-chart {
+        --weekly-chart-height: 136px;
+        --weekly-chart-track: 363px;
+    }
+
+    .analytics-summary-grid,
+    .analytics-rings,
+    .analytics-clarity-board,
+    .monthly-metrics-grid,
+    .monthly-history-list,
+    .analytics-insights {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .analytics-coach-grid,
+    .analytics-decision-grid,
+    .monthly-recap-card,
+    .summary-deep-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .analytics-summary-modal {
+        width: min(100% - 18px, 940px);
+        max-height: calc(100vh - 18px);
+    }
+
+    .analytics-summary-window {
+        max-height: calc(100vh - 18px);
+    }
+
+    .analytics-modal-header,
+    .summary-recommendation,
+    .summary-month-card,
+    .summary-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .analytics-modal-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .modal-close-button,
+    .summary-recommendation button {
+        width: 100%;
+    }
+
+    .summary-metric-grid,
+    .summary-insight-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .analytics-focus-card .analytics-focus-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .streak-suite,
+    .achievement-row,
+    .achievement-list,
+    .featured-achievement-list,
+    .collection-summary,
+    .rarity-ladder,
+    .collection-controls,
+    .streak-safety-card {
+        grid-template-columns: 1fr;
+    }
+
+    .next-reward-card {
+        grid-template-columns: 1fr;
+    }
+
+    .next-action-card,
+    .daily-mission-card,
+    .daily-close-card {
+        grid-template-columns: 1fr;
+    }
+
+    .next-action-buttons {
+        justify-content: stretch;
+    }
+
+    .tasks-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .tasks-heading-copy {
+        justify-content: space-between;
+    }
+
+    .task-race-button {
+        width: 100%;
+    }
+
+    .habit-toggle {
+        justify-content: flex-start;
+    }
+
+    .featured-achievements-heading,
+    .personal-achievements-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .collection-panel {
+        padding: 18px;
+    }
+
+    .task-toolbar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: thin;
+    }
+
+    .filter-button,
+    .cleanup-button {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .edit-fields,
+    .todo-item {
+        grid-template-columns: 1fr;
+    }
+
+    .todo-form {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+    }
+
+    .task-main-options,
+    .task-secondary-options,
+    .composite-task-builder {
+        grid-column: 1 / -1;
+    }
+
+    .task-title-field {
+        grid-column: 1;
+        min-width: 0;
+    }
+
+    .todo-form > button[type="submit"] {
+        grid-column: 2;
+        grid-row: 1;
+        align-self: start;
+        min-width: 118px;
+        padding-inline: 16px;
+    }
+
+    .task-main-options {
+        width: 100%;
+        grid-template-columns: minmax(104px, 0.34fr) minmax(0, 1fr);
+    }
+
+    #todo-input,
+    .task-type-input,
+    .priority-input,
+    .time-limit-input,
+    .habit-toggle,
+    .due-date-option,
+    .todo-form > button[type="submit"] {
+        min-height: 46px;
+    }
+
+    #todo-input,
+    .task-type-input,
+    .priority-input,
+    .time-limit-input {
+        padding-inline: 12px;
+        font-size: 0.86rem;
+    }
+
+    .habit-toggle {
+        min-width: 0;
+        padding-inline: 12px;
+        border-radius: 8px;
+    }
+
+    .task-date-field {
+        width: 100%;
+    }
+
+    .todo-form .due-date-option {
+        min-width: 0;
+        padding-inline: 7px;
+        font-size: 0.75rem;
+    }
+
+    .composite-task-builder {
+        max-height: min(56dvh, 420px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .subtask-draft-entry,
+    .inline-subtask-form {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .subtask-draft-entry > input,
+    .inline-subtask-form > input {
+        grid-column: 1 / -1;
+    }
+
+    .composite-builder-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+    }
+
+    .composite-builder-item-title {
+        grid-column: 1 / -1;
+    }
+
+    .composite-builder-confirmation {
+        grid-template-columns: 1fr;
+    }
+
+    .composite-builder-keep-button,
+    .composite-builder-discard-button {
+        width: 100%;
+        min-height: 42px;
+    }
+
+    .subtask-item {
+        grid-template-columns: 36px minmax(0, 1fr) auto;
+    }
+
+    .subtask-actions {
+        grid-column: 2 / -1;
+        display: inline-flex;
+        justify-self: end;
+        width: 0;
+        max-width: 0;
+    }
+
+    .subtask-item:focus .subtask-actions,
+    .subtask-item:focus-within .subtask-actions,
+    .subtask-item.is-editing .subtask-actions {
+        width: max-content;
+        max-width: 100%;
+    }
+
+    .subtask-action {
+        width: 34px;
+        min-height: 34px;
+        padding-inline: 0;
+    }
+
+    .subtask-edit-input {
+        grid-column: 2 / -1;
+    }
+
+    .subtask-edit-optional {
+        grid-column: 2 / -1;
+    }
+
+    .composite-confirmation {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .composite-confirm-cancel,
+    .composite-confirm-approve {
+        width: 100%;
+        min-height: 42px;
+    }
+
+    .subtask-check {
+        width: 40px;
+        height: 40px;
+        margin-inline: -2px;
+    }
+
+    .composite-progress-badge {
+        grid-column: 2 / 4;
+        justify-self: start;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .todo-actions {
+        justify-content: stretch;
+    }
+
+    .todo-content.task-compact-row {
+        grid-template-columns: 36px minmax(0, 1fr) auto;
+        grid-template-areas:
+            "check title expand"
+            "check badge actions";
+        row-gap: 6px;
+    }
+
+    .task-essential-badge {
+        grid-column: auto;
+        justify-self: start;
+        max-width: min(100%, 180px);
+    }
+
+    .task-quick-actions {
+        justify-self: end;
+    }
+
+    .task-more-button,
+    .task-details-toggle {
+        width: 28px;
+        height: 28px;
+    }
+
+    .task-action-menu {
+        right: -2px;
+        min-width: 138px;
+    }
+
+    .task-menu-action {
+        min-height: 34px;
+        font-size: 0.72rem;
+    }
+
+    .todo-details {
+        padding-left: 0;
+    }
+
+    .todo-item.expanded .todo-details {
+        padding-left: 0;
+    }
+
+    .task-edit-content {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "text"
+            "options"
+            "actions";
+    }
+
+    .task-edit-content .edit-options {
+        max-width: none;
+    }
+
+    .task-edit-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .task-edit-actions .task-button {
+        min-width: 0;
+    }
+
+    .task-check-button {
+        width: 34px;
+        height: 34px;
+    }
+
+    .task-button {
+        flex: 1 1 110px;
+    }
+
+    .toast {
+        right: 16px;
+        bottom: 16px;
+        left: 16px;
+        max-width: none;
+        text-align: center;
+    }
+
+    .completion-celebration {
+        bottom: 74px;
+        width: min(260px, calc(100vw - 40px));
+    }
+
+    .achievement-showcase {
+        padding: 18px;
+    }
+
+    .achievement-showcase-card {
+        padding: 18px;
+    }
+
+    .showcase-line {
+        width: 96px;
+    }
+
+    .developer-toggle {
+        right: 14px;
+        bottom: 14px;
+        width: 56px;
+        height: 56px;
+    }
+
+    .developer-panel {
+        inset: 10px;
+        width: auto;
+        padding: 14px;
+    }
+
+    .developer-panel-header {
+        top: -14px;
+    }
+
+    .developer-summary,
+    .developer-grid,
+    .developer-overdue-status {
+        grid-template-columns: 1fr;
+    }
+
+    .developer-action {
+        flex: 1 1 140px;
+    }
+}
+
+@media (max-width: 480px) {
+    .task-creation-bar {
+        grid-template-columns: 1fr;
+    }
+
+    .task-creation-bar .task-title-field,
+    .task-creation-bar > button[type="submit"],
+    .task-creation-bar .task-main-options,
+    .task-creation-bar .task-secondary-options {
+        grid-column: 1;
+        grid-row: auto;
+        width: 100%;
+    }
+
+    .task-creation-bar > button[type="submit"] {
+        justify-self: stretch;
+    }
+
+    .task-creation-bar .task-secondary-options {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 460px) {
+    .todo-app,
+    .achievement-page {
+        width: min(100% - 14px, 920px);
+        margin: 12px auto;
+    }
+
+    .title-panel,
+    .input-panel,
+    .tasks-panel {
+        padding: 14px;
+    }
+
+    #progress-panel.progress-collapsed {
+        right: 12px;
+        bottom: 12px;
+    }
+
+    #progress-panel.progress-expanded {
+        height: min(90dvh, calc(100dvh - 8px));
+        max-height: calc(100dvh - 8px);
+        padding-inline: 10px;
+    }
+
+    #progress-panel.progress-expanded .progress-tab {
+        min-width: 102px;
+    }
+
+    .todo-form {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .task-title-field,
+    .todo-form > button[type="submit"] {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
+    .task-main-options {
+        grid-template-columns: 1fr;
+    }
+
+    #todo-input,
+    .task-type-input,
+    .priority-input,
+    .time-limit-input,
+    .habit-toggle,
+    .due-date-option,
+    .todo-form > button[type="submit"] {
+        min-height: 44px;
+    }
+
+    .due-date-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #todo-input,
+    .task-type-input,
+    .priority-input,
+    .time-limit-input {
+        padding-inline: 10px;
+    }
+
+    .task-edit-content .edit-options {
+        grid-template-columns: 1fr;
+    }
+
+    .analytics-chart-heading,
+    .analytics-chart-row {
+        grid-template-columns: 1fr;
+    }
+
+    .analytics-panel {
+        padding: 12px;
+    }
+
+    .streak-hero-identity {
+        align-items: flex-start;
+    }
+
+    .streak-emblem {
+        width: 72px;
+        height: 82px;
+    }
+
+    .streak-emblem-core {
+        width: 34px;
+        height: 45px;
+    }
+
+    .streak-hero-copy h3 strong {
+        font-size: 2.45rem;
+    }
+
+    .streak-compact-stats article {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .streak-compact-stats p {
+        text-align: left;
+    }
+
+    .streak-route-disclosure > summary {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .analytics-period-control button {
+        min-height: 40px;
+        padding-inline: 6px;
+        font-size: 0.7rem;
+    }
+
+    .performance-overview,
+    .performance-trend,
+    .performance-balance {
+        padding: 13px;
+    }
+
+    .performance-section-heading {
+        align-items: flex-start;
+    }
+
+    .performance-section-heading > span {
+        max-width: 48%;
+        text-align: right;
+    }
+
+    .performance-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .analytics-chart-heading {
+        display: grid;
+        align-items: start;
+    }
+
+    .analytics-chart-heading span {
+        width: max-content;
+    }
+
+    .analytics-chart-row {
+        gap: 7px;
+    }
+
+    .analytics-chart-row em {
+        text-align: left;
+    }
+
+    .analytics-summary-grid,
+    .analytics-rings,
+    .analytics-clarity-board,
+    .analytics-insights,
+    .monthly-recap-stats,
+    .monthly-metrics-grid,
+    .monthly-history-list,
+    .summary-metric-grid,
+    .summary-insight-grid,
+    .summary-month-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .weekly-flow-row {
+        grid-template-columns: 42px minmax(0, 1fr) 46px;
+    }
+
+    .weekly-line-chart {
+        --weekly-chart-height: 118px;
+        --weekly-chart-track: 315px;
+    }
+
+    .weekly-line-labels span {
+        font-size: 0.62rem;
+    }
+
+    .consistency-strip {
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+    }
+}
+
+/* Task creation bar: final responsive layout layer. */
+@media (max-width: 1040px) {
+    .task-creation-bar {
+        grid-template-columns: minmax(104px, 132px) minmax(0, 1fr) minmax(142px, 170px) minmax(104px, 118px);
+        grid-template-areas:
+            "title title title submit"
+            "date date date date"
+            "priority . type habit";
+        gap: 9px 10px;
+    }
+
+    .task-creation-bar .task-main-options,
+    .task-creation-bar .task-secondary-options {
+        display: contents;
+    }
+
+    .task-creation-bar .task-title-field {
+        grid-area: title;
+    }
+
+    .task-creation-bar .priority-input {
+        grid-area: priority;
+    }
+
+    .task-creation-bar .task-date-field {
+        grid-area: date;
+    }
+
+    .task-creation-bar .task-type-input {
+        grid-area: type;
+    }
+
+    .task-creation-bar .habit-toggle {
+        grid-area: habit;
+    }
+
+    .task-creation-bar > button[type="submit"] {
+        grid-area: submit;
+    }
+
+    .task-creation-bar .task-date-field {
+        width: 100%;
+    }
+
+    .task-creation-bar .due-date-options {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .task-creation-bar .due-date-compact-select {
+        display: none;
+    }
+
+    .task-creation-bar .priority-input,
+    .task-creation-bar .task-type-input,
+    .task-creation-bar .habit-toggle {
+        padding-inline: 10px;
+        font-size: 0.82rem;
+    }
+
+    .task-creation-bar .habit-toggle {
+        gap: 6px;
+    }
+}
+
+@media (max-width: 650px) {
+    .overdue-review-dialog {
+        width: calc(100vw - 24px);
+        max-height: calc(100dvh - 24px);
+        margin: 12px auto auto;
+    }
+
+    .overdue-review-card {
+        gap: 11px;
+        max-height: calc(100dvh - 24px);
+        padding: 16px;
+    }
+
+    .overdue-review-header {
+        align-items: flex-start;
+    }
+
+    .overdue-review-list {
+        max-height: min(40dvh, 360px);
+    }
+
+    .overdue-review-actions,
+    .overdue-review-confirm-actions {
+        flex-direction: column;
+    }
+
+    .overdue-review-actions button,
+    .overdue-review-confirm-actions button {
+        width: 100%;
+    }
+
+    .task-creation-bar {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-areas:
+            "title title"
+            "date date"
+            "priority type"
+            "habit submit";
+        gap: 9px;
+    }
+
+    .task-creation-bar .task-title-field {
+        grid-area: title;
+    }
+
+    .task-creation-bar .priority-input {
+        grid-area: priority;
+    }
+
+    .task-creation-bar .task-date-field {
+        grid-area: date;
+    }
+
+    .task-creation-bar .task-type-input {
+        grid-area: type;
+    }
+
+    .task-creation-bar .habit-toggle {
+        grid-area: habit;
+    }
+
+    .task-creation-bar > button[type="submit"] {
+        grid-area: submit;
+        width: 100%;
+        min-width: 0;
+        justify-self: stretch;
+    }
+
+    .task-creation-bar .due-date-options {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .task-creation-bar .due-date-compact-select {
+        display: none;
+    }
+
+    .task-creation-bar .priority-input,
+    .task-creation-bar .task-type-input,
+    .task-creation-bar .due-date-compact-select,
+    .task-creation-bar .habit-toggle,
+    .task-creation-bar > button[type="submit"] {
+        min-height: 46px;
+    }
+
+    .task-creation-bar .habit-toggle {
+        justify-content: center;
+    }
+
+    .compact-progress-widget {
+        padding: 9px 12px 10px;
+    }
+
+    .compact-progress-shell {
+        grid-template-columns: auto minmax(54px, 1fr) auto auto 30px;
+        padding-left: 11px;
+    }
+
+    .compact-progress-summary strong,
+    .compact-progress-chip {
+        font-size: 0.74rem;
+    }
+
+    .compact-progress-chip {
+        padding: 0 6px;
+    }
+
+    .compact-progress-menu {
+        width: calc(100% - 24px);
+    }
+}
+
+@media (max-width: 430px) {
+    .compact-progress-widget {
+        padding: 8px;
+    }
+
+    .compact-progress-shell {
+        grid-template-columns: auto minmax(38px, 1fr) auto auto 28px;
+        min-height: 36px;
+        padding-left: 9px;
+    }
+
+    .compact-progress-summary {
+        padding-right: 7px;
+    }
+
+    .compact-progress-summary strong,
+    .compact-progress-chip {
+        font-size: 0.68rem;
+    }
+
+    .compact-progress-chip {
+        gap: 3px;
+        padding: 0 4px;
+    }
+
+    .compact-progress-icon {
+        width: 15px;
+        height: 15px;
+    }
+
+    .compact-progress-menu {
+        top: calc(100% - 5px);
+        width: calc(100% - 16px);
+        padding: 8px;
+    }
+
+    .compact-progress-menu-item {
+        min-height: 40px;
+        padding: 6px;
+    }
+}
+
+@media (max-width: 390px) {
+    .prestige-chapter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .task-creation-bar {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "title"
+            "date"
+            "priority"
+            "type"
+            "habit"
+            "submit";
+    }
+
+    .task-creation-bar .due-date-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

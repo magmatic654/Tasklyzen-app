@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasklyzen | Logros</title>
+    <link rel="icon" type="image/svg+xml" href="assets/tasklyzen-icon.svg">
+    <link rel="apple-touch-icon" href="assets/tasklyzen-icon.svg">
+    <meta name="theme-color" content="#16B7C8">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="achievements">
+    <button type="button" id="settings-button" class="settings-button" aria-expanded="false" aria-controls="settings-panel">
+        Ajustes
+    </button>
+
+    <aside id="settings-panel" class="settings-panel" aria-label="Panel de configuración" hidden>
+        <header class="settings-header">
+            <div>
+                <p class="section-kicker">Configuración</p>
+                <h2>Personaliza Tasklyzen</h2>
+            </div>
+            <button type="button" id="settings-close" class="settings-close-button" aria-label="Cerrar configuración">Cerrar</button>
+        </header>
+
+        <section class="settings-section" aria-labelledby="settings-personalization-title">
+            <h3 id="settings-personalization-title">Personalización</h3>
+            <fieldset class="settings-choice-group">
+                <legend>Tema visual</legend>
+                <label><input type="radio" name="settings-theme" value="light"> Claro</label>
+                <label><input type="radio" name="settings-theme" value="dark"> Oscuro</label>
+                <label><input type="radio" name="settings-theme" value="custom"> Personalizado</label>
+            </fieldset>
+            <div class="settings-color-grid" aria-label="Colores personalizados">
+                <label for="settings-custom-primary">Principal <input type="color" id="settings-custom-primary" value="#18A5A0"></label>
+                <label for="settings-custom-accent">Botones <input type="color" id="settings-custom-accent" value="#F95959"></label>
+                <label for="settings-custom-paper">Fondo <input type="color" id="settings-custom-paper" value="#F7FBFA"></label>
+            </div>
+        </section>
+
+        <section class="settings-section" aria-labelledby="settings-notifications-title">
+            <h3 id="settings-notifications-title">Notificaciones</h3>
+            <label class="settings-switch" for="settings-notifications">
+                <span>
+                    <strong>Alertas de vencimiento</strong>
+                    <small>Avisa cuando una tarea esté próxima a vencer.</small>
+                </span>
+                <input type="checkbox" id="settings-notifications">
+            </label>
+        </section>
+
+        <section class="settings-section" aria-labelledby="settings-motion-title">
+            <h3 id="settings-motion-title">Sonido y animaciones</h3>
+            <label class="settings-switch" for="settings-sound">
+                <span>
+                    <strong>Efectos sonoros</strong>
+                    <small>Reproduce un sonido breve al completar tareas.</small>
+                </span>
+                <input type="checkbox" id="settings-sound">
+            </label>
+            <label class="settings-switch" for="settings-animations">
+                <span>
+                    <strong>Animaciones de celebración</strong>
+                    <small>Controla los efectos visuales al avanzar.</small>
+                </span>
+                <input type="checkbox" id="settings-animations">
+            </label>
+        </section>
+
+        <section class="settings-section" aria-labelledby="settings-analytics-title">
+            <h3 id="settings-analytics-title">Analítica</h3>
+            <label class="settings-switch" for="settings-simplified-analytics">
+                <span>
+                    <strong>Analítica simplificada</strong>
+                    <small>Muestra solo métricas clave y oculta datos secundarios.</small>
+                </span>
+                <input type="checkbox" id="settings-simplified-analytics">
+            </label>
+        </section>
+
+        <section class="settings-section settings-security" aria-labelledby="settings-security-title">
+            <h3 id="settings-security-title">Seguridad</h3>
+            <div class="settings-actions">
+                <button type="button" id="settings-export-data" class="settings-secondary-button">Exportar respaldo</button>
+                <button type="button" id="settings-import-data" class="settings-secondary-button">Importar respaldo</button>
+                <input type="file" id="settings-import-file" class="sr-only" accept="application/json">
+            </div>
+            <button type="button" id="settings-delete-data" class="settings-danger-button">Eliminar todos los datos</button>
+        </section>
+    </aside>
+
+    <dialog id="delete-data-dialog" class="delete-data-dialog" aria-labelledby="delete-data-title">
+        <div class="delete-data-card">
+            <p class="section-kicker">Acción irreversible</p>
+            <h2 id="delete-data-title">Eliminar todos los datos</h2>
+            <p>Esta acción eliminará todos tus datos de manera permanente. No podrás recuperarlos.</p>
+            <label for="delete-confirm-input">
+                Escribe exactamente <strong id="delete-confirm-code">CONFIRMAR-0000</strong>
+                <input type="text" id="delete-confirm-input" autocomplete="off">
+            </label>
+            <div class="delete-data-actions">
+                <button type="button" id="cancel-delete-data" class="settings-secondary-button">Cancelar</button>
+                <button type="button" id="confirm-delete-data" class="settings-danger-button" disabled>Eliminar definitivamente</button>
+            </div>
+        </div>
+    </dialog>
+
+    <main class="achievement-page">
+        <section class="title-panel achievement-title-panel" aria-labelledby="achievement-page-title">
+            <div class="achievement-title-copy">
+                <img class="page-title-icon" src="assets/tasklyzen-icon.svg" alt="" aria-hidden="true">
+                <p class="eyebrow">Recorrido personal</p>
+                <h1 id="achievement-page-title">Logros</h1>
+            </div>
+            <a class="back-link" href="index.html">Volver a tareas</a>
+        </section>
+
+        <section class="collection-panel" aria-label="Resumen de logros">
+            <div class="collection-intro">
+                <div>
+                    <p class="section-kicker">Tu recorrido</p>
+                    <h2>Evidencia de lo que has construido</h2>
+                    <p>Los logros de hoy se confirman al cerrar el día. Hasta entonces se ajustan si tu progreso cambia.</p>
+                </div>
+                <span id="achievement-page-hint">0/0 coleccionados</span>
+            </div>
+
+            <div class="collection-summary" aria-label="Estado de la colección">
+                <article>
+                    <span id="collection-earned-total">0</span>
+                    <p>Conseguidos</p>
+                </article>
+                <article>
+                    <span id="collection-pending-total">0</span>
+                    <p>En revisión hoy</p>
+                </article>
+                <article>
+                    <span id="collection-new-total">0</span>
+                    <p>Nuevos</p>
+                </article>
+                <article>
+                    <span id="collection-rarity-total">Común</span>
+                    <p>Mayor rareza</p>
+                </article>
+            </div>
+
+            <section class="achievement-journey" aria-labelledby="achievement-journey-title">
+                <div class="achievement-journey-heading">
+                    <div>
+                        <p class="section-kicker">Lo importante ahora</p>
+                        <h3 id="achievement-journey-title">Tu recorrido de un vistazo</h3>
+                    </div>
+                </div>
+                <div class="achievement-journey-grid">
+                    <div class="achievement-journey-block">
+                        <h4>Último logro</h4>
+                        <div id="achievement-page-latest"></div>
+                    </div>
+                    <div class="achievement-journey-block">
+                        <h4>Siguiente objetivo</h4>
+                        <div id="achievement-page-next"></div>
+                    </div>
+                </div>
+                <div class="achievement-milestones">
+                    <div class="achievement-milestones-heading">
+                        <h4>Momentos clave</h4>
+                        <span>Los avances que mejor representan tu recorrido</span>
+                    </div>
+                    <div id="achievement-milestones-list" class="achievement-milestones-list"></div>
+                </div>
+            </section>
+
+            <div class="rarity-ladder" aria-label="Escala de rarezas">
+                <span class="rarity-step rarity-common"><strong>I</strong>Común</span>
+                <span class="rarity-step rarity-uncommon"><strong>II</strong>Poco común</span>
+                <span class="rarity-step rarity-rare"><strong>III</strong>Raro</span>
+                <span class="rarity-step rarity-epic"><strong>IV</strong>Épico</span>
+                <span class="rarity-step rarity-legendary"><strong>V</strong>Legendario</span>
+                <span class="rarity-step rarity-mythic"><strong>VI</strong>Mítico</span>
+            </div>
+
+            <div class="collection-section-heading">
+                <div>
+                    <p class="section-kicker">Explorar</p>
+                    <h3>Colección completa</h3>
+                </div>
+            </div>
+            <div class="collection-controls" aria-label="Ordenar y filtrar logros">
+                <label for="achievement-category-filter">
+                    <span>Colección</span>
+                    <select id="achievement-category-filter">
+                        <option value="all">Todas</option>
+                        <option value="daily">Diarias</option>
+                        <option value="streak">Rachas</option>
+                        <option value="priority">Prioridades</option>
+                        <option value="volume">Volumen</option>
+                        <option value="shields">Escudos</option>
+                    </select>
+                </label>
+                <label for="achievement-rarity-filter">
+                    <span>Rareza</span>
+                    <select id="achievement-rarity-filter">
+                        <option value="all">Todas</option>
+                        <option value="common">Común</option>
+                        <option value="uncommon">Poco común</option>
+                        <option value="rare">Raro</option>
+                        <option value="epic">Épico</option>
+                        <option value="legendary">Legendario</option>
+                        <option value="mythic">Mítico</option>
+                    </select>
+                </label>
+                <label for="achievement-sort-input">
+                    <span>Orden</span>
+                    <select id="achievement-sort-input">
+                        <option value="smart">Recomendado</option>
+                        <option value="rarity-desc">Rareza alta</option>
+                        <option value="rarity-asc">Rareza baja</option>
+                        <option value="progress-desc">Más cerca</option>
+                        <option value="collected-first">Conseguidos primero</option>
+                        <option value="title-asc">A-Z</option>
+                    </select>
+                </label>
+            </div>
+
+            <div id="achievement-page-list" class="achievement-page-list" aria-live="polite"></div>
+        </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="completion-celebration" class="completion-celebration" aria-hidden="true">
+        <div class="completion-badge">
+            <span class="completion-mark" aria-hidden="true"></span>
+            <strong id="completion-title">Tarea completada</strong>
+        </div>
+        <span class="burst-dot dot-1"></span>
+        <span class="burst-dot dot-2"></span>
+        <span class="burst-dot dot-3"></span>
+        <span class="burst-dot dot-4"></span>
+        <span class="burst-dot dot-5"></span>
+    </div>
+
+    <div id="achievement-showcase" class="achievement-showcase" aria-hidden="true" role="status" aria-live="polite">
+        <div class="achievement-showcase-card">
+            <span id="showcase-rarity" class="showcase-rarity">Común</span>
+            <div class="showcase-medal" aria-hidden="true">
+                <span id="showcase-mark">A</span>
+            </div>
+            <p class="section-kicker">Logro desbloqueado</p>
+            <strong id="showcase-title">Primer impulso</strong>
+            <p id="showcase-message">Completa una tarea y enciende el día.</p>
+        </div>
+    </div>
+
+    <script src="tasklyzen-config.js"></script>
+    <script src="tasklyzen-storage.js"></script>
+    <script src="tasklyzen-utils.js"></script>
+    <script src="tasklyzen-composite-tasks.js"></script>
+    <script src="tasklyzen-tasks.js"></script>
+    <script src="components/tasklyzen-ui-components.js"></script>
+    <script src="tasklyzen-overdue-review.js"></script>
+    <script src="components/tasklyzen-task-creation-ui.js"></script>
+    <script src="tasklyzen-settings.js"></script>
+    <script src="tasklyzen-notifications.js"></script>
+    <script src="tasklyzen-task-ui.js"></script>
+    <script src="tasklyzen-quick-create.js"></script>
+    <script src="tasklyzen-analytics-progress.js"></script>
+    <script src="tasklyzen-achievements.js"></script>
+    <script src="tasklyzen-gamification.js"></script>
+    <script src="tasklyzen-gamification-ui.js"></script>
+    <script src="tasklyzen-features.js"></script>
+    <script src="tasklyzen-developer.js"></script>
+    <script src="tasklyzen-dom.js"></script>
+    <script src="tasklyzen-oop.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

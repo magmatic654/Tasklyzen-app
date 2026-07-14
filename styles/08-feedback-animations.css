@@ -1,0 +1,897 @@
+/*
+ * Capa: 08-feedback-animations.css
+ * Proposito: Toast, completion celebration, achievement showcase and their keyframes.
+ * Nota: extraido de styles.css preservando el orden original de cascada.
+ */
+.toast {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 1200;
+    max-width: min(420px, calc(100vw - 32px));
+    padding: 14px 18px;
+    color: #ffffff;
+    font-weight: 900;
+    background: var(--ink);
+    border-radius: 8px;
+    box-shadow: 0 18px 45px rgba(23, 32, 42, 0.22);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(18px);
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast.success {
+    background: var(--green-4);
+}
+
+.toast.info {
+    background: var(--blue);
+}
+
+.toast.error {
+    background: var(--danger);
+}
+
+.completion-celebration {
+    position: fixed;
+    left: 50%;
+    bottom: 84px;
+    z-index: 19;
+    width: 260px;
+    height: 120px;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, 28px) scale(0.94);
+}
+
+.completion-celebration.show {
+    animation: completion-pop 1450ms ease both;
+}
+
+.completion-celebration.goal.show {
+    animation: goal-pop 1900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.completion-celebration.legendary.show {
+    animation: legendary-rise 2100ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.completion-celebration.goal::before,
+.completion-celebration.legendary::before {
+    position: absolute;
+    inset: 6px 0 auto;
+    height: 92px;
+    content: "";
+    border-radius: 999px;
+    opacity: 0;
+    transform: scale(0.65);
+}
+
+.completion-celebration.goal.show::before {
+    background: radial-gradient(circle, rgba(249, 199, 79, 0.34), transparent 66%);
+    animation: aura-bloom 1150ms ease-out both;
+}
+
+.completion-celebration.legendary.show::before {
+    background:
+        radial-gradient(circle at 35% 50%, rgba(249, 199, 79, 0.36), transparent 45%),
+        radial-gradient(circle at 68% 48%, rgba(255, 111, 97, 0.28), transparent 42%),
+        radial-gradient(circle, rgba(0, 168, 150, 0.22), transparent 70%);
+    animation: aura-bloom 1500ms ease-out both;
+}
+
+.completion-badge {
+    position: absolute;
+    right: 20px;
+    bottom: 18px;
+    left: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 54px;
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--teal), var(--green-4));
+    border-radius: 8px;
+    box-shadow: 0 16px 34px rgba(17, 122, 67, 0.22);
+}
+
+.completion-celebration.goal .completion-badge {
+    color: var(--ink);
+    background: linear-gradient(135deg, var(--gold), var(--orange));
+    box-shadow: 0 18px 38px rgba(249, 199, 79, 0.28);
+}
+
+.completion-celebration.legendary .completion-badge {
+    background: linear-gradient(135deg, var(--green-4), var(--teal), var(--blue));
+    box-shadow: 0 20px 44px rgba(0, 168, 150, 0.28), 0 0 0 6px rgba(249, 199, 79, 0.18);
+}
+
+.completion-mark {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    background: #ffffff;
+    border-radius: 50%;
+}
+
+.completion-mark::after {
+    position: absolute;
+    top: 7px;
+    left: 9px;
+    width: 7px;
+    height: 12px;
+    content: "";
+    border-right: 4px solid var(--green-4);
+    border-bottom: 4px solid var(--green-4);
+    transform: rotate(42deg);
+}
+
+.completion-celebration.goal .completion-mark::after {
+    border-color: var(--orange);
+}
+
+.completion-celebration.legendary .completion-mark {
+    animation: mark-spin 720ms ease both;
+}
+
+.burst-dot {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: var(--gold);
+    border-radius: 50%;
+    opacity: 0;
+}
+
+.dot-1 {
+    left: 46px;
+    bottom: 42px;
+    background: var(--gold);
+}
+
+.dot-2 {
+    left: 76px;
+    bottom: 78px;
+    background: var(--coral);
+}
+
+.dot-3 {
+    right: 68px;
+    bottom: 84px;
+    background: var(--teal);
+}
+
+.dot-4 {
+    right: 42px;
+    bottom: 42px;
+    background: var(--blue);
+}
+
+.dot-5 {
+    left: 126px;
+    bottom: 96px;
+    background: var(--green-2);
+}
+
+.completion-celebration.show .burst-dot {
+    animation: burst-dot 900ms ease-out both;
+}
+
+.completion-celebration.goal.show .burst-dot {
+    width: 14px;
+    height: 14px;
+    animation: goal-burst-dot 1250ms ease-out both;
+}
+
+.completion-celebration.legendary.show .burst-dot {
+    width: 16px;
+    height: 16px;
+    animation: legendary-burst-dot 1450ms ease-out both;
+}
+
+.completion-celebration.show .dot-2 {
+    animation-delay: 60ms;
+}
+
+.completion-celebration.show .dot-3 {
+    animation-delay: 90ms;
+}
+
+.completion-celebration.show .dot-4 {
+    animation-delay: 120ms;
+}
+
+.completion-celebration.show .dot-5 {
+    animation-delay: 150ms;
+}
+
+@keyframes completion-pop {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 28px) scale(0.94);
+    }
+
+    16%,
+    72% {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -10px) scale(0.98);
+    }
+}
+
+@keyframes goal-pop {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 34px) scale(0.88);
+    }
+
+    18% {
+        opacity: 1;
+        transform: translate(-50%, -4px) scale(1.08);
+    }
+
+    68% {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -14px) scale(0.98);
+    }
+}
+
+@keyframes legendary-rise {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 42px) scale(0.82) rotate(-2deg);
+    }
+
+    18% {
+        opacity: 1;
+        transform: translate(-50%, -8px) scale(1.12) rotate(1deg);
+    }
+
+    55% {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1.03) rotate(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -22px) scale(0.98);
+    }
+}
+
+@keyframes aura-bloom {
+    0% {
+        opacity: 0;
+        transform: scale(0.55);
+    }
+
+    25% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1.3);
+    }
+}
+
+@keyframes mark-spin {
+    0% {
+        transform: rotate(-14deg) scale(0.82);
+    }
+
+    60% {
+        transform: rotate(12deg) scale(1.1);
+    }
+
+    100% {
+        transform: rotate(0) scale(1);
+    }
+}
+
+@keyframes burst-dot {
+    0% {
+        opacity: 0;
+        transform: translateY(16px) scale(0.4);
+    }
+
+    22% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-34px) scale(1);
+    }
+}
+
+@keyframes goal-burst-dot {
+    0% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.34);
+    }
+
+    18% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-48px) scale(1.18);
+    }
+}
+
+@keyframes legendary-burst-dot {
+    0% {
+        opacity: 0;
+        transform: translateY(24px) scale(0.28) rotate(0);
+    }
+
+    16% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-62px) scale(1.34) rotate(180deg);
+    }
+}
+
+.streak-day-celebration {
+    position: fixed;
+    top: 76px;
+    left: 50%;
+    z-index: 1180;
+    width: min(390px, calc(100vw - 28px));
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -18px) scale(0.96);
+}
+
+.streak-day-celebration.show {
+    animation: streak-day-arrival 1900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.streak-day-celebration.milestone.show {
+    animation-duration: 3100ms;
+}
+
+.streak-day-celebration.record.show {
+    animation-duration: 2500ms;
+}
+
+.streak-celebration-card {
+    display: grid;
+    grid-template-columns: 62px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    min-height: 82px;
+    padding: 11px 14px;
+    color: var(--streak-ink);
+    background: var(--streak-bg);
+    border: 2px solid var(--streak-border);
+    border-radius: 10px;
+    box-shadow: 0 18px 42px var(--streak-glow), 0 12px 30px rgba(23, 32, 42, 0.18);
+}
+
+.streak-celebration-card .streak-emblem {
+    width: 58px;
+    height: 66px;
+}
+
+.streak-celebration-card .streak-emblem::after {
+    inset: 5px;
+}
+
+.streak-celebration-card .streak-emblem-core {
+    width: 25px;
+    height: 34px;
+}
+
+.streak-celebration-card .streak-emblem-mark {
+    width: 38px;
+    height: 38px;
+    border-width: 2px;
+}
+
+.streak-celebration-card > div,
+.streak-celebration-card small,
+.streak-celebration-card strong,
+.streak-celebration-card span {
+    display: block;
+    min-width: 0;
+}
+
+.streak-celebration-card small {
+    color: var(--streak-soft-ink);
+    font-size: 0.64rem;
+    font-weight: 1000;
+    text-transform: uppercase;
+}
+
+.streak-celebration-card strong {
+    margin-top: 3px;
+    color: var(--streak-ink);
+    font-size: 1.08rem;
+    font-weight: 1000;
+    line-height: 1.05;
+}
+
+.streak-celebration-card > div > span {
+    margin-top: 4px;
+    color: var(--streak-soft-ink);
+    font-size: 0.72rem;
+    font-weight: 900;
+    line-height: 1.25;
+}
+
+@keyframes streak-day-arrival {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -20px) scale(0.94);
+    }
+
+    12%,
+    78% {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -8px) scale(0.98);
+    }
+}
+
+.achievement-showcase {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+}
+
+.achievement-showcase.show {
+    visibility: visible;
+    animation: showcase-fade 2200ms ease both;
+}
+
+.achievement-showcase::before {
+    position: absolute;
+    inset: 0;
+    content: "";
+    background: rgba(23, 32, 42, 0.18);
+    opacity: 0;
+}
+
+.achievement-showcase.show::before {
+    animation: showcase-backdrop 900ms ease both;
+}
+
+.achievement-showcase-card {
+    position: relative;
+    z-index: 1;
+    width: min(360px, 100%);
+    padding: 22px;
+    overflow: hidden;
+    text-align: center;
+    background: #ffffff;
+    border: 3px solid rgba(39, 125, 161, 0.16);
+    border-radius: 8px;
+    box-shadow: 0 26px 70px rgba(23, 32, 42, 0.24);
+    transform: translateY(24px) scale(0.86);
+}
+
+.achievement-showcase.show .achievement-showcase-card {
+    animation: achievement-common-stage 2200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.achievement-showcase.rarity-uncommon.show .achievement-showcase-card {
+    animation-name: achievement-uncommon-stage;
+}
+
+.achievement-showcase.rarity-rare.show .achievement-showcase-card {
+    animation-name: achievement-rare-stage;
+    border-color: rgba(249, 199, 79, 0.72);
+}
+
+.achievement-showcase.rarity-epic.show .achievement-showcase-card {
+    animation-name: achievement-epic-stage;
+    border-color: rgba(255, 111, 97, 0.6);
+}
+
+.achievement-showcase.rarity-legendary.show .achievement-showcase-card {
+    animation-name: achievement-legendary-stage;
+    border-color: rgba(255, 159, 28, 0.82);
+}
+
+.achievement-showcase.rarity-mythic.show .achievement-showcase-card {
+    animation-name: achievement-mythic-stage;
+    border-color: rgba(24, 127, 184, 0.62);
+}
+
+.achievement-showcase-card::before {
+    position: absolute;
+    inset: -45%;
+    content: "";
+    background: conic-gradient(from 90deg, transparent, rgba(0, 168, 150, 0.16), transparent 30%);
+    opacity: 0;
+}
+
+.achievement-showcase.show .achievement-showcase-card::before {
+    animation: showcase-sheen 1600ms ease-out both;
+}
+
+.achievement-showcase.rarity-rare .achievement-showcase-card::before {
+    background: conic-gradient(from 90deg, transparent, rgba(249, 199, 79, 0.32), transparent 32%);
+}
+
+.achievement-showcase.rarity-epic .achievement-showcase-card::before {
+    background: conic-gradient(from 90deg, transparent, rgba(255, 111, 97, 0.34), rgba(249, 199, 79, 0.2), transparent 34%);
+}
+
+.achievement-showcase.rarity-legendary .achievement-showcase-card::before {
+    background: conic-gradient(from 90deg, rgba(249, 199, 79, 0.12), rgba(255, 159, 28, 0.4), rgba(255, 111, 97, 0.28), rgba(249, 199, 79, 0.12));
+}
+
+.achievement-showcase.rarity-mythic .achievement-showcase-card::before {
+    background: conic-gradient(from 90deg, rgba(17, 138, 178, 0.14), rgba(0, 168, 150, 0.34), rgba(120, 223, 160, 0.26), rgba(17, 138, 178, 0.14));
+}
+
+.showcase-rarity {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    max-width: 100%;
+    padding: 7px 10px;
+    color: var(--ink);
+    font-size: 0.72rem;
+    font-weight: 900;
+    line-height: 1;
+    text-transform: uppercase;
+    background: var(--soft-blue);
+    border-radius: 999px;
+}
+
+.showcase-medal {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 90px;
+    height: 90px;
+    margin: 18px auto 14px;
+    color: #ffffff;
+    font-size: 2rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--blue), var(--teal));
+    border-radius: 50%;
+    box-shadow: inset 0 -8px 0 rgba(23, 32, 42, 0.16);
+}
+
+.showcase-medal::before,
+.showcase-medal::after {
+    position: absolute;
+    content: "";
+    pointer-events: none;
+}
+
+.showcase-medal::before {
+    inset: -10px;
+    z-index: -1;
+    border: 3px solid rgba(255, 255, 255, 0.62);
+    border-radius: inherit;
+    opacity: 0;
+}
+
+.showcase-medal::after {
+    inset: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    border-radius: inherit;
+}
+
+.achievement-showcase.rarity-uncommon .showcase-medal {
+    background: linear-gradient(135deg, var(--teal), var(--green-3));
+}
+
+.achievement-showcase.rarity-rare .showcase-medal {
+    color: var(--ink);
+    background: linear-gradient(135deg, var(--gold), var(--orange));
+    border-radius: 22px;
+    transform: rotate(-4deg);
+}
+
+.achievement-showcase.rarity-epic .showcase-medal {
+    background: linear-gradient(135deg, var(--coral), var(--danger));
+    border-radius: 28px 28px 42px 42px;
+}
+
+.achievement-showcase.rarity-legendary .showcase-medal {
+    color: var(--ink);
+    background: linear-gradient(135deg, var(--gold), var(--orange), var(--coral));
+    clip-path: polygon(24% 6%, 76% 6%, 100% 50%, 76% 94%, 24% 94%, 0 50%);
+    box-shadow: 0 0 0 10px rgba(249, 199, 79, 0.18), inset 0 -8px 0 rgba(128, 83, 0, 0.16);
+}
+
+.achievement-showcase.rarity-legendary .showcase-medal::before {
+    opacity: 1;
+    clip-path: polygon(24% 6%, 76% 6%, 100% 50%, 76% 94%, 24% 94%, 0 50%);
+    animation: showcase-medal-frame 1600ms ease-in-out infinite;
+}
+
+.achievement-showcase.rarity-mythic .showcase-medal {
+    background: linear-gradient(135deg, var(--blue), var(--teal), var(--green-2));
+    clip-path: polygon(50% 0, 62% 25%, 90% 12%, 76% 40%, 100% 50%, 76% 60%, 90% 88%, 62% 75%, 50% 100%, 38% 75%, 10% 88%, 24% 60%, 0 50%, 24% 40%, 10% 12%, 38% 25%);
+    box-shadow: 0 0 0 10px rgba(24, 127, 184, 0.16), inset 0 -8px 0 rgba(23, 32, 42, 0.18);
+}
+
+.achievement-showcase.rarity-mythic .showcase-medal::before {
+    opacity: 1;
+    clip-path: polygon(50% 0, 62% 25%, 90% 12%, 76% 40%, 100% 50%, 76% 60%, 90% 88%, 62% 75%, 50% 100%, 38% 75%, 10% 88%, 24% 60%, 0 50%, 24% 40%, 10% 12%, 38% 25%);
+    animation: showcase-medal-frame 1300ms ease-in-out infinite;
+}
+
+.achievement-showcase-card strong {
+    position: relative;
+    z-index: 1;
+    display: block;
+    color: var(--ink);
+    font-size: 1.5rem;
+    font-weight: 900;
+    line-height: 1.05;
+}
+
+.achievement-showcase-card p {
+    position: relative;
+    z-index: 1;
+}
+
+.achievement-showcase-card > p:last-child {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-weight: 900;
+    line-height: 1.3;
+}
+
+.showcase-line {
+    position: absolute;
+    z-index: 0;
+    width: 150px;
+    height: 12px;
+    border-radius: 999px;
+    opacity: 0;
+}
+
+.achievement-showcase.show .showcase-line {
+    animation: showcase-line 1000ms ease-out both;
+}
+
+.line-1 {
+    top: 22%;
+    left: 18%;
+    background: var(--gold);
+}
+
+.line-2 {
+    right: 16%;
+    bottom: 28%;
+    background: var(--teal);
+    animation-delay: 120ms;
+}
+
+.line-3 {
+    right: 28%;
+    top: 18%;
+    background: var(--coral);
+    animation-delay: 200ms;
+}
+
+@keyframes showcase-fade {
+    0%,
+    100% {
+        opacity: 0;
+    }
+
+    10%,
+    82% {
+        opacity: 1;
+    }
+}
+
+@keyframes showcase-backdrop {
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes achievement-common-stage {
+    0% {
+        opacity: 0;
+        transform: translateY(24px) scale(0.86);
+    }
+
+    18%,
+    76% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-12px) scale(0.98);
+    }
+}
+
+@keyframes achievement-uncommon-stage {
+    0% {
+        opacity: 0;
+        transform: translateX(-28px) scale(0.9);
+    }
+
+    18%,
+    76% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateX(18px) scale(0.98);
+    }
+}
+
+@keyframes achievement-rare-stage {
+    0% {
+        opacity: 0;
+        transform: translateY(28px) scale(0.82) rotate(-2deg);
+    }
+
+    18% {
+        opacity: 1;
+        transform: translateY(-4px) scale(1.06) rotate(1deg);
+    }
+
+    76% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-14px) scale(0.98);
+    }
+}
+
+@keyframes achievement-epic-stage {
+    0% {
+        opacity: 0;
+        transform: scale(0.76) rotate(-5deg);
+        filter: saturate(1);
+    }
+
+    20% {
+        opacity: 1;
+        transform: scale(1.08) rotate(2deg);
+        filter: saturate(1.25);
+    }
+
+    76% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(0.96) rotate(1deg);
+    }
+}
+
+@keyframes achievement-legendary-stage {
+    0% {
+        opacity: 0;
+        transform: translateY(36px) scale(0.72);
+        box-shadow: 0 0 0 rgba(249, 199, 79, 0);
+    }
+
+    20% {
+        opacity: 1;
+        transform: translateY(-8px) scale(1.12);
+        box-shadow: 0 28px 80px rgba(249, 199, 79, 0.34);
+    }
+
+    72% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.98);
+    }
+}
+
+@keyframes achievement-mythic-stage {
+    0% {
+        opacity: 0;
+        transform: perspective(700px) rotateX(18deg) scale(0.72);
+        filter: saturate(1);
+    }
+
+    22% {
+        opacity: 1;
+        transform: perspective(700px) rotateX(0) scale(1.12);
+        filter: saturate(1.3);
+    }
+
+    74% {
+        opacity: 1;
+        transform: perspective(700px) rotateX(0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: perspective(700px) rotateX(-10deg) scale(0.96);
+    }
+}
+
+@keyframes showcase-medal-frame {
+    0%,
+    100% {
+        opacity: 0.36;
+        transform: scale(0.94);
+    }
+
+    50% {
+        opacity: 0.84;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes showcase-sheen {
+    0% {
+        opacity: 0;
+        transform: rotate(0deg) scale(0.7);
+    }
+
+    20% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        transform: rotate(220deg) scale(1.2);
+    }
+}
+
+@keyframes showcase-line {
+    0% {
+        opacity: 0;
+        transform: translateY(22px) scaleX(0.3);
+    }
+
+    24% {
+        opacity: 0.92;
+    }

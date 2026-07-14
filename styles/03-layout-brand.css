@@ -1,0 +1,177 @@
+/*
+ * Capa: 03-layout-brand.css
+ * Proposito: Main containers, title panels, brand lockup and navigation links.
+ * Nota: extraido de styles.css preservando el orden original de cascada.
+ */
+.todo-app {
+    width: min(920px, calc(100% - 32px));
+    margin: 36px auto;
+}
+
+.achievement-page {
+    width: min(1120px, calc(100% - 32px));
+    margin: 36px auto;
+}
+
+.title-panel {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: 30px 28px;
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 88% 12%, rgba(22, 183, 200, 0.12), transparent 30%),
+        radial-gradient(circle at 12% 10%, rgba(50, 224, 166, 0.14), transparent 32%),
+        linear-gradient(135deg, #ffffff 0%, #f3fffb 56%, #f6fbfd 100%);
+    border: 2px solid rgba(22, 183, 200, 0.18);
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    box-shadow: inset 0 -5px 0 rgba(22, 183, 200, 0.1), var(--shadow);
+}
+
+.title-panel::before,
+.title-panel::after {
+    position: absolute;
+    z-index: -1;
+    content: "";
+    pointer-events: none;
+}
+
+.title-panel::before {
+    inset: 0;
+    opacity: 0.72;
+    background:
+        linear-gradient(120deg, rgba(255, 255, 255, 0.68), transparent 42%),
+        radial-gradient(circle at 72% 42%, rgba(22, 183, 200, 0.1), transparent 20%);
+}
+
+.title-panel::after {
+    right: 24px;
+    bottom: 18px;
+    width: 136px;
+    height: 14px;
+    background: linear-gradient(90deg, var(--brand-green), var(--brand-cyan), var(--brand-primary), var(--brand-coral));
+    border-radius: 999px;
+    opacity: 0.5;
+}
+
+.eyebrow {
+    margin: 0 0 8px;
+    font-size: 0.9rem;
+    font-weight: 900;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    color: var(--coral);
+}
+
+h1 {
+    margin: 0;
+    font-family: "Cooper Black", "Arial Rounded MT Bold", "Trebuchet MS", cursive;
+    font-size: clamp(2.3rem, 8vw, 4.8rem);
+    line-height: 0.95;
+}
+
+.brand-lockup {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: clamp(12px, 3vw, 20px);
+}
+
+.brand-copy {
+    min-width: 0;
+}
+
+.brand-logo {
+    display: block;
+    width: clamp(250px, 48vw, 500px);
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 16px 24px rgba(44, 62, 80, 0.12));
+}
+
+.brand-logo-dark {
+    display: none;
+}
+
+body.theme-dark .brand-logo-light {
+    display: none;
+}
+
+body.theme-dark .brand-logo-dark {
+    display: block;
+}
+
+.app-title-panel .eyebrow {
+    color: var(--coral);
+}
+
+.app-title-panel::after {
+    display: none;
+}
+
+.app-title-panel,
+.achievement-title-panel {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 20px;
+    border-radius: 8px 8px 0 0;
+}
+
+.back-link,
+.collection-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 14px;
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 900;
+    text-decoration: none;
+    text-transform: uppercase;
+    background: var(--coral);
+    border-radius: 8px;
+    box-shadow: 0 7px 0 rgba(23, 32, 42, 0.14);
+}
+
+.collection-link {
+    color: var(--ink);
+    background: var(--gold);
+}
+
+.achievement-title-copy {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 14px;
+    align-items: center;
+}
+
+.achievement-title-copy .eyebrow {
+    align-self: end;
+    margin-bottom: 4px;
+}
+
+.achievement-title-copy h1 {
+    grid-column: 2;
+}
+
+.page-title-icon {
+    grid-row: 1 / span 2;
+    width: clamp(54px, 8vw, 78px);
+    height: auto;
+    filter: drop-shadow(0 12px 18px rgba(44, 62, 80, 0.14));
+}
+
+.input-panel {
+    padding: 22px;
+    background:
+        radial-gradient(circle at 88% 10%, rgba(22, 183, 200, 0.08), transparent 28%),
+        linear-gradient(135deg, rgba(249, 89, 89, 0.045), rgba(255, 255, 255, 0.94) 52%, rgba(22, 183, 200, 0.055)),
+        #ffffff;
+    border-right: 2px solid rgba(22, 183, 200, 0.16);
+    border-left: 2px solid rgba(22, 183, 200, 0.16);
+    border-bottom: 4px solid rgba(22, 183, 200, 0.13);
+}

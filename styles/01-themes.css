@@ -1,0 +1,386 @@
+/*
+ * Capa: 01-themes.css
+ * Proposito: Body themes, dark-mode base, simplified analytics and reduced-animation class.
+ * Nota: extraido de styles.css preservando el orden original de cascada.
+ */
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    color: var(--text-primary);
+    font-family: "Nunito", "Varela Round", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+    background: var(--app-background);
+}
+
+body.theme-dark {
+    --ink: #f5f8fb;
+    --muted: #cbd7e8;
+    --paper: #0f1724;
+    --panel: #172233;
+    --soft-blue: #132a3d;
+    --soft-gray: #1f2d3f;
+    --green-0: #183525;
+    --green-1: #1f5b37;
+    --green-2: #4fc77d;
+    --green-3: #2faf69;
+    --green-4: #1f8a50;
+    --dark-text-strong: #ffffff;
+    --dark-text-soft: #dbe6f4;
+    --dark-chart-track: #0b1421;
+    --dark-info: #5bd7ff;
+    --dark-complete: #2ee39b;
+    --dark-review: #ffd166;
+    --dark-warning: #ffb15e;
+    --dark-danger: #ff756d;
+    --shadow: 0 22px 50px rgba(0, 0, 0, 0.28);
+    --surface-page: var(--paper);
+    --surface-panel: var(--panel);
+    --surface-panel-muted: var(--dark-surface);
+    --surface-info: var(--dark-surface-strong);
+    --surface-success-soft: #153124;
+    --surface-warning-soft: #332913;
+    --surface-danger-soft: #351d24;
+    --text-primary: var(--ink);
+    --text-secondary: var(--muted);
+    --text-strong: var(--dark-text-strong);
+    --text-soft: var(--dark-text-soft);
+    --border-soft: var(--dark-border);
+    --border-strong: rgba(91, 215, 255, 0.24);
+    --border-danger: rgba(255, 117, 109, 0.32);
+    --shadow-raised: var(--shadow);
+    --shadow-soft: 0 14px 34px rgba(0, 0, 0, 0.22);
+    --state-success: var(--dark-complete);
+    --state-success-bright: #21c985;
+    --state-info: var(--dark-info);
+    --state-warning: var(--dark-warning);
+    --state-review: var(--dark-review);
+    --state-danger: var(--dark-danger);
+    --state-danger-soft: #ff9b7a;
+    --progress-empty: #27364a;
+    --progress-track: var(--dark-chart-track);
+    --progress-low: #1f5b37;
+    --progress-medium: #2faf69;
+    --progress-high: #2ee39b;
+    --progress-complete: var(--dark-complete);
+    --chart-created: var(--dark-info);
+    --chart-completed: var(--dark-complete);
+    --chart-pending: var(--dark-danger);
+    --chart-habit: var(--dark-review);
+    --task-normal: var(--dark-info);
+    --task-important: var(--dark-warning);
+    --task-urgent: var(--dark-danger);
+    --task-on-time: var(--dark-complete);
+    --task-due-soon: var(--dark-warning);
+    --task-expired: var(--dark-danger);
+    --section-create-accent: var(--dark-danger);
+    --section-create-support: var(--dark-warning);
+    --section-tasks-accent: var(--dark-complete);
+    --section-progress-accent: var(--dark-info);
+    --section-learning-accent: var(--dark-warning);
+    --action-focus: #385a74;
+    --action-focus-strong: #243f58;
+    --signature-paper: #1d2e47;
+    --signature-paper-soft: #17263c;
+    --signature-ink: #f3f8fc;
+    --signature-line: #3b526d;
+    --signature-primary: #25d8c5;
+    --signature-primary-edge: #10988c;
+    --signature-mint: #4beaab;
+    --signature-mint-edge: #18a971;
+    --signature-info: #4ac9fa;
+    --signature-info-edge: #1689c2;
+    --signature-coral: #ff7078;
+    --signature-coral-edge: #c83f4a;
+    --signature-salmon: #ffaaa3;
+    --signature-amber: #ffda55;
+    --signature-amber-edge: #bd8700;
+    --signature-violet: #ba82ff;
+    --signature-violet-edge: #7448ba;
+    --signature-focus: rgba(83, 204, 224, 0.42);
+    --app-background: #101a2a;
+    --panel-gradient: #17263c;
+    background: var(--app-background);
+}
+
+body.theme-dark .input-panel,
+body.theme-dark .analytics-panel,
+body.theme-dark .progress-panel,
+body.theme-dark .tasks-panel,
+body.theme-dark .settings-panel,
+body.theme-dark .delete-data-card,
+body.theme-dark .analytics-summary-window {
+    color: var(--text-primary);
+    background: var(--panel-gradient);
+    border-color: var(--border-soft);
+}
+
+body.theme-dark :where(
+    .todo-item,
+    .empty-state,
+    .analytics-metric,
+    .analytics-action-card,
+    .analytics-risk-card,
+    .analytics-insight,
+    .analytics-ring-card,
+    .analytics-context-card,
+    .analytics-clarity-panel,
+    .analytics-clarity-board,
+    .monthly-analysis-panel,
+    .monthly-performance-summary,
+    .monthly-recap-card,
+    .monthly-history-item,
+    .weekly-flow-panel,
+    .settings-section,
+    .achievement-tile,
+    .achievement-card,
+    .achievement-empty-state,
+    .streak-type-card,
+    .featured-achievements,
+    .contribution-panel,
+    .expired-tasks-panel,
+    .next-action-card,
+    .daily-mission-card,
+    .daily-close-card,
+    .streak-safety-card,
+    .next-reward-card,
+    .motivation-card,
+    .prestige-step,
+    .rarity-step,
+    .collection-summary article,
+    .collection-controls,
+    .summary-hero-copy,
+    .summary-risk-card,
+    .summary-recommendation,
+    .summary-section,
+    .summary-month-card,
+    .summary-metric,
+    .summary-insight,
+    .achievement-showcase-card,
+    .compact-progress-widget,
+    .compact-progress-shell,
+    .compact-progress-menu,
+    .compact-progress-menu-item,
+    .developer-panel,
+    .developer-section,
+    .developer-summary article,
+    .developer-overdue-status article
+) {
+    color: var(--text-primary);
+    background: var(--surface-panel-muted);
+    border-color: var(--border-soft);
+}
+
+body.theme-dark :where(
+    #todo-input,
+    .priority-input,
+    .time-limit-input,
+    .habit-toggle,
+    .summary-window-button,
+    .progress-tab,
+    .filter-button,
+    .collection-controls select,
+    .goal-setting input,
+    .edit-input,
+    .edit-priority-input,
+    .edit-time-limit-input,
+    .settings-panel input[type="text"],
+    .settings-panel input[type="color"],
+    .delete-data-card input,
+    .developer-field input,
+    .developer-field select,
+    .info-tooltip.info-tooltip,
+    .analytics-chip,
+    .showcase-rarity
+) {
+    color: var(--text-primary);
+    background: var(--surface-info);
+    border-color: var(--border-soft);
+}
+
+body.theme-dark .settings-button,
+body.theme-dark .settings-secondary-button {
+    color: var(--ink);
+    background: #223247;
+}
+
+body.theme-dark .developer-overdue-status strong {
+    color: var(--teal);
+}
+
+body.theme-dark .developer-overdue-status span {
+    color: var(--dark-text-soft);
+}
+
+body.theme-dark .compact-progress-menu-item small {
+    color: var(--dark-text-soft);
+}
+
+body.theme-dark .settings-range-control {
+    background: var(--dark-surface-strong);
+    border: 1px solid var(--dark-border);
+}
+
+body.theme-dark .notification-status-card {
+    color: var(--dark-text-soft);
+    background: var(--dark-surface-strong);
+    border-color: var(--dark-border);
+}
+
+body.theme-dark .notification-status-card.active {
+    color: var(--dark-text-strong);
+    background: #10241e;
+    border-left-color: var(--dark-complete);
+}
+
+body.theme-dark .notification-status-card.pending,
+body.theme-dark .notification-status-card.manual {
+    color: var(--dark-text-strong);
+    background: #211b12;
+    border-left-color: var(--dark-warning);
+}
+
+body.theme-dark .notification-status-card.blocked,
+body.theme-dark .notification-status-card.unsupported {
+    color: var(--dark-text-strong);
+    background: #27171d;
+    border-left-color: var(--dark-danger);
+}
+
+body.theme-dark :where(
+    .collection-link,
+    .analytics-profile.profile-burst,
+    .analytics-profile.profile-ambitious,
+    .analytics-risk-card.risk-medium > span,
+    .analytics-action-card > span,
+    .summary-risk-card.risk-medium > span,
+    .analytics-chip.chip-warning,
+    #achievement-page-hint,
+    #daily-mission-status,
+    .rarity-step.rarity-rare strong,
+    .rarity-step.rarity-legendary strong,
+    .achievement-showcase.rarity-rare .showcase-medal,
+    .achievement-showcase.rarity-legendary .showcase-medal,
+    .developer-action.secondary,
+    .cleanup-button:disabled,
+    .recommended-goal button:disabled,
+    .rescue-button:disabled,
+    .summary-recommendation button:disabled,
+    .settings-danger-button:disabled
+) {
+    color: var(--bright-ink);
+}
+
+body.theme-dark :where(
+    .daily-mission-card.complete,
+    .monthly-performance-summary.tone-strong,
+    .summary-hero-copy,
+    .summary-month-card
+) {
+    background: linear-gradient(135deg, #153124, #162b2f);
+    border-color: rgba(0, 168, 150, 0.28);
+}
+
+body.theme-dark :where(
+    .monthly-performance-summary.tone-habit,
+    .monthly-performance-summary.tone-steady,
+    .summary-recommendation,
+    .rarity-step.rarity-legendary,
+    .daily-close-card
+) {
+    background: linear-gradient(135deg, #332913, #231d12);
+    border-color: rgba(249, 199, 79, 0.32);
+}
+
+body.theme-dark :where(
+    .monthly-performance-summary.tone-alert,
+    .task-funnel-warning,
+    .daily-mission-card.warning
+) {
+    color: var(--ink);
+    background: linear-gradient(135deg, #351d24, #241820);
+    border-color: rgba(255, 111, 97, 0.32);
+}
+
+body.theme-dark :where(.analytics-ring, .analytics-ring-card.habit-ring .analytics-ring, .analytics-ring-card.complete-ring .analytics-ring, .analytics-ring-card.pending-ring .analytics-ring) {
+    background:
+        radial-gradient(circle at center, var(--dark-surface-strong) 0 57%, transparent 58%),
+        conic-gradient(var(--blue) var(--percent), #314054 0);
+}
+
+body.theme-dark .analytics-ring strong {
+    color: var(--ink);
+}
+
+body.theme-dark .analytics-modal-header,
+body.theme-dark .developer-panel-header {
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+}
+
+body.theme-dark .info-tooltip.info-tooltip::after {
+    color: var(--bright-ink);
+    background: #ffffff;
+}
+
+body.theme-dark .progress-tab.active,
+body.theme-dark .filter-button.active {
+    color: #ffffff;
+    background: var(--blue);
+    border-color: var(--blue);
+}
+
+body.theme-dark .summary-window-button:hover,
+body.theme-dark .summary-window-button:focus-visible {
+    color: #ffffff;
+}
+
+body.theme-dark select option {
+    color: var(--ink);
+    background: var(--dark-surface-strong);
+}
+
+body.analytics-simple .monthly-analysis-panel,
+body.analytics-simple .analytics-action-card,
+body.analytics-simple .analytics-insights,
+body.analytics-simple .analytics-rings,
+body.analytics-simple .analytics-clarity-board,
+body.analytics-simple .analytics-decision-grid {
+    display: none !important;
+}
+
+body.analytics-simple .performance-details {
+    display: none !important;
+}
+
+body.analytics-simple .analytics-summary-grid .analytics-metric:nth-child(3) {
+    display: none;
+}
+
+body.analytics-simple .analytics-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body.reduced-animations *,
+body.reduced-animations *::before,
+body.reduced-animations *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+}
+
+body.reduced-animations .completion-celebration,
+body.reduced-animations .achievement-showcase {
+    display: none !important;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+button {
+    border: 0;
+    cursor: pointer;
+}

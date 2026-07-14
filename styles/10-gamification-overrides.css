@@ -1,0 +1,3225 @@
+/*
+ * Capa: 10-gamification-overrides.css
+ * Proposito: Streak progression, rarity hierarchy and achievement visual refinements.
+ * Nota: extraido de styles.css preservando el orden original de cascada.
+ */
+/* Streak progression system: one visual language across pill, cards and road. */
+.streak-pill,
+.prestige-step,
+.next-reward-card,
+.streak-hero-card,
+.streak-celebration-card,
+.compact-progress-streak {
+    --streak-bg: linear-gradient(135deg, var(--brand-green), var(--teal));
+    --streak-border: rgba(24, 165, 160, 0.34);
+    --streak-ink: var(--bright-ink);
+    --streak-soft-ink: rgba(44, 62, 80, 0.78);
+    --streak-glow: rgba(24, 165, 160, 0.18);
+    --streak-accent: var(--brand-green);
+    --streak-track: rgba(44, 62, 80, 0.16);
+}
+
+.streak-pill.streak-empty,
+.prestige-step.streak-empty,
+.next-reward-card.streak-empty,
+.streak-hero-card.streak-empty,
+.streak-celebration-card.streak-empty,
+.compact-progress-streak.streak-empty {
+    --streak-bg: linear-gradient(135deg, #ffffff, #f2f8fb);
+    --streak-border: rgba(39, 125, 161, 0.2);
+    --streak-ink: var(--muted);
+    --streak-soft-ink: var(--muted);
+    --streak-glow: rgba(39, 125, 161, 0.08);
+    --streak-accent: #7fa4bd;
+    --streak-track: rgba(39, 125, 161, 0.16);
+}
+
+.streak-pill.streak-kindled,
+.prestige-step.streak-kindled,
+.next-reward-card.streak-kindled,
+.streak-hero-card.streak-kindled,
+.streak-celebration-card.streak-kindled,
+.compact-progress-streak.streak-kindled {
+    --streak-bg: linear-gradient(135deg, #a8ffc9, #32e0a6);
+    --streak-border: rgba(11, 185, 135, 0.5);
+    --streak-ink: #063f36;
+    --streak-soft-ink: #0b5b4d;
+    --streak-accent: #0bb987;
+    --streak-glow: rgba(11, 185, 135, 0.24);
+    --streak-track: rgba(6, 63, 54, 0.16);
+}
+
+.streak-pill.streak-spark,
+.prestige-step.streak-spark,
+.next-reward-card.streak-spark,
+.streak-hero-card.streak-spark,
+.streak-celebration-card.streak-spark,
+.compact-progress-streak.streak-spark {
+    --streak-bg: linear-gradient(135deg, #40edb3, #16b7c8);
+    --streak-border: rgba(15, 143, 188, 0.48);
+    --streak-ink: #063552;
+    --streak-soft-ink: #0d5b68;
+    --streak-accent: #0f8fbc;
+    --streak-glow: rgba(15, 143, 188, 0.25);
+    --streak-track: rgba(6, 53, 82, 0.16);
+}
+
+.streak-pill.streak-hot,
+.prestige-step.streak-hot,
+.next-reward-card.streak-hot,
+.streak-hero-card.streak-hot,
+.streak-celebration-card.streak-hot,
+.compact-progress-streak.streak-hot {
+    --streak-bg: linear-gradient(135deg, #76e4ff, #2b9dff 62%, #1674d8);
+    --streak-border: rgba(22, 116, 216, 0.58);
+    --streak-ink: #061d35;
+    --streak-soft-ink: #073f67;
+    --streak-accent: #1674d8;
+    --streak-glow: rgba(43, 157, 255, 0.3);
+    --streak-track: rgba(6, 29, 53, 0.18);
+}
+
+.streak-pill.streak-blaze,
+.prestige-step.streak-blaze,
+.next-reward-card.streak-blaze,
+.streak-hero-card.streak-blaze,
+.streak-celebration-card.streak-blaze,
+.compact-progress-streak.streak-blaze {
+    --streak-bg: linear-gradient(135deg, #2b9dff, #1766e8 58%, #123eaa);
+    --streak-border: rgba(23, 102, 232, 0.68);
+    --streak-ink: #ffffff;
+    --streak-soft-ink: rgba(255, 255, 255, 0.86);
+    --streak-accent: #1766e8;
+    --streak-glow: rgba(23, 102, 232, 0.38);
+    --streak-track: rgba(255, 255, 255, 0.28);
+}
+
+.streak-pill.streak-comet,
+.prestige-step.streak-comet,
+.next-reward-card.streak-comet,
+.streak-hero-card.streak-comet,
+.streak-celebration-card.streak-comet,
+.compact-progress-streak.streak-comet {
+    --streak-bg: linear-gradient(135deg, #1766e8, #2d3fb8 55%, #1a2478);
+    --streak-border: rgba(45, 63, 184, 0.72);
+    --streak-ink: #ffffff;
+    --streak-soft-ink: rgba(255, 255, 255, 0.84);
+    --streak-accent: #2d3fb8;
+    --streak-glow: rgba(45, 63, 184, 0.42);
+    --streak-track: rgba(255, 255, 255, 0.24);
+}
+
+.streak-pill.streak-forge,
+.prestige-step.streak-forge,
+.next-reward-card.streak-forge,
+.streak-hero-card.streak-forge,
+.streak-celebration-card.streak-forge,
+.compact-progress-streak.streak-forge {
+    --streak-bg: linear-gradient(135deg, #2d3fb8, #6b4be8 58%, #8a4fff);
+    --streak-border: rgba(107, 75, 232, 0.72);
+    --streak-ink: #ffffff;
+    --streak-soft-ink: rgba(255, 255, 255, 0.86);
+    --streak-accent: #8a4fff;
+    --streak-glow: rgba(107, 75, 232, 0.44);
+    --streak-track: rgba(255, 255, 255, 0.25);
+}
+
+.streak-pill.streak-mythic,
+.prestige-step.streak-mythic,
+.next-reward-card.streak-mythic,
+.streak-hero-card.streak-mythic,
+.streak-celebration-card.streak-mythic,
+.compact-progress-streak.streak-mythic {
+    --streak-bg: linear-gradient(135deg, #6b4be8, #9b4dff 50%, #d04dff);
+    --streak-border: rgba(155, 77, 255, 0.76);
+    --streak-ink: #ffffff;
+    --streak-soft-ink: rgba(255, 255, 255, 0.86);
+    --streak-accent: #d04dff;
+    --streak-glow: rgba(155, 77, 255, 0.48);
+    --streak-track: rgba(255, 255, 255, 0.25);
+}
+
+.streak-pill.streak-immortal,
+.prestige-step.streak-immortal,
+.next-reward-card.streak-immortal,
+.streak-hero-card.streak-immortal,
+.streak-celebration-card.streak-immortal,
+.compact-progress-streak.streak-immortal {
+    --streak-bg: linear-gradient(135deg, #9b4dff, #ff4f68 58%, #e83045);
+    --streak-border: rgba(255, 79, 104, 0.78);
+    --streak-ink: #ffffff;
+    --streak-soft-ink: rgba(255, 255, 255, 0.86);
+    --streak-accent: #ff4f68;
+    --streak-glow: rgba(255, 79, 104, 0.5);
+    --streak-track: rgba(255, 255, 255, 0.25);
+}
+
+.streak-pill.streak-ascendant,
+.prestige-step.streak-ascendant,
+.next-reward-card.streak-ascendant,
+.streak-hero-card.streak-ascendant,
+.streak-celebration-card.streak-ascendant,
+.compact-progress-streak.streak-ascendant {
+    --streak-bg: linear-gradient(135deg, #ff4f68, #ff8a1c 52%, #ffb13d);
+    --streak-border: rgba(255, 138, 28, 0.7);
+    --streak-ink: var(--bright-ink);
+    --streak-soft-ink: #633000;
+    --streak-accent: #c95d00;
+    --streak-glow: rgba(255, 138, 28, 0.4);
+    --streak-track: rgba(99, 48, 0, 0.18);
+}
+
+.streak-pill.streak-eternal,
+.prestige-step.streak-eternal,
+.next-reward-card.streak-eternal,
+.streak-hero-card.streak-eternal,
+.streak-celebration-card.streak-eternal,
+.compact-progress-streak.streak-eternal {
+    --streak-bg: linear-gradient(135deg, #ffb13d, #ffc107 62%, #ffe680);
+    --streak-border: rgba(255, 193, 7, 0.7);
+    --streak-ink: var(--bright-ink);
+    --streak-soft-ink: #5e4300;
+    --streak-accent: #d89100;
+    --streak-glow: rgba(255, 193, 7, 0.36);
+    --streak-track: rgba(94, 67, 0, 0.18);
+}
+
+.streak-pill.streak-celestial,
+.prestige-step.streak-celestial,
+.next-reward-card.streak-celestial,
+.streak-hero-card.streak-celestial,
+.streak-celebration-card.streak-celestial,
+.compact-progress-streak.streak-celestial {
+    --streak-bg: linear-gradient(135deg, #fff7bd, #ffe680 32%, #ffc107 70%, #ff9f1c);
+    --streak-border: rgba(255, 193, 7, 0.78);
+    --streak-ink: var(--bright-ink);
+    --streak-soft-ink: #5e4300;
+    --streak-accent: #c88a00;
+    --streak-glow: rgba(255, 193, 7, 0.42);
+    --streak-track: rgba(94, 67, 0, 0.2);
+}
+
+.streak-pill.streak-transcendent,
+.prestige-step.streak-transcendent,
+.next-reward-card.streak-transcendent,
+.streak-hero-card.streak-transcendent,
+.streak-celebration-card.streak-transcendent,
+.compact-progress-streak.streak-transcendent {
+    --streak-bg: linear-gradient(135deg, #fffdf0, #fff1a0 24%, #ffc107 56%, #ff9f1c 78%, #ff7e7e);
+    --streak-border: rgba(255, 193, 7, 0.86);
+    --streak-ink: var(--bright-ink);
+    --streak-soft-ink: #5e2f00;
+    --streak-accent: #a65f00;
+    --streak-glow: rgba(255, 193, 7, 0.48);
+    --streak-track: rgba(94, 47, 0, 0.2);
+}
+
+/* Current streak: one identity card with an emblem that gains detail by tier. */
+.streak-hero-card {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(196px, 0.82fr);
+    gap: 14px;
+    margin-bottom: 12px;
+    padding: 18px;
+    overflow: hidden;
+    color: var(--streak-ink);
+    background: var(--streak-bg);
+    border: 2px solid var(--streak-border);
+    border-radius: 10px;
+    box-shadow: inset 0 -6px 0 rgba(23, 32, 42, 0.12), 0 15px 30px var(--streak-glow);
+}
+
+.streak-hero-card > * {
+    min-width: 0;
+}
+
+.streak-hero-card::before {
+    position: absolute;
+    top: -54px;
+    right: -42px;
+    z-index: -1;
+    width: 180px;
+    height: 180px;
+    content: "";
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3), transparent 68%);
+    border-radius: 50%;
+}
+
+.streak-hero-identity {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+}
+
+.streak-emblem {
+    position: relative;
+    display: grid;
+    flex: 0 0 auto;
+    width: 104px;
+    height: 116px;
+    place-items: center;
+    filter: drop-shadow(0 12px 14px var(--streak-glow));
+}
+
+.streak-emblem::before,
+.streak-emblem::after {
+    position: absolute;
+    content: "";
+    clip-path: polygon(50% 0, 91% 16%, 86% 68%, 50% 100%, 14% 68%, 9% 16%);
+}
+
+.streak-emblem::before {
+    inset: 0;
+    background: var(--streak-accent);
+}
+
+.streak-emblem::after {
+    inset: 7px;
+    background: var(--streak-bg);
+    box-shadow: inset 0 -8px 0 rgba(23, 32, 42, 0.12);
+}
+
+.streak-emblem-core {
+    position: relative;
+    z-index: 2;
+    width: 44px;
+    height: 58px;
+    background: var(--streak-accent);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 48 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23000' d='M26 2c6 10 4 18 1 24 5-3 8-8 9-14 7 7 11 15 11 25 0 14-10 25-23 25S1 51 1 37c0-10 5-19 14-25-1 8 1 14 6 18-1-11 1-20 5-28Zm-2 35c-5 5-7 9-7 14 0 5 3 9 7 9s8-4 8-9c0-5-3-9-8-14Z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 48 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23000' d='M26 2c6 10 4 18 1 24 5-3 8-8 9-14 7 7 11 15 11 25 0 14-10 25-23 25S1 51 1 37c0-10 5-19 14-25-1 8 1 14 6 18-1-11 1-20 5-28Zm-2 35c-5 5-7 9-7 14 0 5 3 9 7 9s8-4 8-9c0-5-3-9-8-14Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.streak-emblem-mark {
+    position: absolute;
+    z-index: 1;
+    width: 68px;
+    height: 68px;
+    border: 3px solid var(--streak-accent);
+    border-radius: 50%;
+    opacity: 0.22;
+}
+
+.streak-hero-card:is(.streak-hot, .streak-blaze, .streak-comet) .streak-emblem-mark {
+    width: 76px;
+    height: 76px;
+    opacity: 0.58;
+    box-shadow: 0 0 0 5px var(--streak-glow);
+}
+
+.streak-hero-card:is(.streak-forge, .streak-mythic, .streak-immortal, .streak-ascendant, .streak-eternal, .streak-celestial, .streak-transcendent) .streak-emblem-mark,
+.streak-celebration-card:is(.streak-forge, .streak-mythic, .streak-immortal, .streak-ascendant, .streak-eternal, .streak-celestial, .streak-transcendent) .streak-emblem-mark {
+    width: 82px;
+    height: 82px;
+    opacity: 0.86;
+    border-width: 4px;
+    box-shadow: 0 0 0 7px var(--streak-glow), 0 0 24px var(--streak-glow);
+}
+
+.streak-hero-copy {
+    min-width: 0;
+}
+
+.streak-hero-copy .section-kicker,
+.streak-next-level > p,
+.streak-hero-copy > p:last-child {
+    color: var(--streak-soft-ink);
+}
+
+.streak-hero-copy h3 {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 3px 0 6px;
+    color: var(--streak-ink);
+}
+
+.streak-hero-copy h3 strong {
+    max-width: 100%;
+    font-size: clamp(2.6rem, 5vw, 3.5rem);
+    line-height: 0.9;
+}
+
+.streak-hero-copy h3 span {
+    font-size: 1rem;
+}
+
+.streak-hero-tier {
+    display: inline-block;
+    padding: 5px 8px;
+    color: var(--streak-ink);
+    font-size: 0.7rem;
+    font-weight: 1000;
+    line-height: 1;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.24);
+    border-radius: 999px;
+}
+
+.streak-hero-copy > p:last-child {
+    margin: 9px 0 0;
+    font-size: 0.8rem;
+    font-weight: 900;
+    line-height: 1.3;
+}
+
+.streak-next-level {
+    align-self: center;
+    min-width: 0;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: 8px;
+}
+
+.streak-hero-card.streak-count-long .streak-hero-identity {
+    gap: 10px;
+}
+
+.streak-hero-card.streak-count-long .streak-emblem {
+    width: 82px;
+    height: 94px;
+}
+
+.streak-hero-card.streak-count-long .streak-hero-copy h3 {
+    gap: 4px;
+}
+
+.streak-hero-card.streak-count-long .streak-hero-copy h3 strong {
+    font-size: 2.85rem;
+}
+
+.streak-hero-card.streak-count-long .streak-hero-copy h3 span {
+    font-size: 0.82rem;
+}
+
+.streak-hero-card.streak-count-very-long .streak-hero-copy h3 {
+    display: grid;
+    gap: 2px;
+}
+
+.streak-hero-card.streak-count-very-long .streak-hero-copy h3 strong {
+    font-size: 2.5rem;
+}
+
+.streak-next-heading {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.streak-next-heading div,
+.streak-next-heading div span,
+.streak-next-heading div strong {
+    display: block;
+}
+
+.streak-next-heading div span {
+    color: var(--streak-soft-ink);
+    font-size: 0.65rem;
+    font-weight: 1000;
+    text-transform: uppercase;
+}
+
+.streak-next-heading div strong {
+    margin-top: 4px;
+    color: var(--streak-ink);
+    font-size: 0.94rem;
+}
+
+.streak-next-heading > span {
+    flex: 0 0 auto;
+    color: var(--streak-ink);
+    font-size: 0.76rem;
+    font-weight: 1000;
+}
+
+.streak-next-level .reward-track {
+    height: 11px;
+    margin-top: 12px;
+    overflow: hidden;
+    background: var(--streak-track);
+    border-radius: 999px;
+}
+
+.streak-next-level .reward-track span {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: var(--streak-accent);
+    border-radius: inherit;
+    transition: width 220ms ease;
+}
+
+.streak-next-level p {
+    margin: 9px 0 4px;
+    font-size: 0.72rem;
+    font-weight: 900;
+    line-height: 1.28;
+}
+
+.streak-next-level small {
+    color: var(--streak-ink);
+    font-size: 0.72rem;
+    font-weight: 1000;
+}
+
+.streak-compact-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.streak-compact-stats article {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    padding: 11px 13px;
+    background: var(--surface-panel);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+}
+
+.streak-compact-stats span {
+    color: var(--brand-primary-strong);
+    font-size: 1.2rem;
+    font-weight: 1000;
+}
+
+.streak-compact-stats p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-align: right;
+}
+
+.streak-route-disclosure {
+    margin-bottom: 12px;
+    background: var(--surface-panel-muted);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+}
+
+.streak-route-disclosure > summary {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 42px 13px 14px;
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    font-weight: 1000;
+    cursor: pointer;
+    list-style: none;
+}
+
+.streak-route-disclosure > summary::-webkit-details-marker {
+    display: none;
+}
+
+.streak-route-disclosure > summary small {
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+}
+
+.streak-route-disclosure > summary::after {
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--text-secondary);
+    border-bottom: 2px solid var(--text-secondary);
+    content: "";
+    transform: translateY(-65%) rotate(45deg);
+    transition: transform 140ms ease;
+}
+
+.streak-route-disclosure[open] > summary::after {
+    transform: translateY(-25%) rotate(225deg);
+}
+
+.streak-route-disclosure .streak-prestige-road {
+    margin: 0;
+    padding: 0 10px 10px;
+}
+
+.streak-safety-card[hidden] {
+    display: none !important;
+}
+
+.compact-progress-streak .compact-progress-icon,
+.compact-progress-menu-streak {
+    background: var(--streak-accent);
+}
+
+.compact-progress-streak[data-today-state="pending"] .compact-progress-icon {
+    opacity: 0.72;
+}
+
+.compact-progress-streak[data-today-state="protected"] .compact-progress-icon {
+    filter: drop-shadow(0 0 5px var(--streak-glow));
+}
+
+.streak-pill {
+    padding: 14px 18px;
+    color: var(--streak-ink);
+    background: var(--streak-bg) !important;
+    border: 2px solid var(--streak-border);
+    border-radius: 14px;
+    box-shadow: inset 0 -5px 0 rgba(23, 32, 42, 0.12), 0 14px 28px var(--streak-glow), 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.streak-pill::before {
+    opacity: 0;
+    background: linear-gradient(110deg, transparent 0 18%, rgba(255, 255, 255, 0.34) 26%, transparent 34% 100%);
+}
+
+.streak-pill::after {
+    inset: 7px;
+    opacity: 1;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    animation: none;
+}
+
+.streak-pill.streak-empty {
+    border-style: dashed;
+    box-shadow: inset 0 -5px 0 rgba(39, 125, 161, 0.05);
+}
+
+.streak-pill.streak-forge::before,
+.streak-pill.streak-mythic::before,
+.streak-pill.streak-immortal::before,
+.streak-pill.streak-ascendant::before,
+.streak-pill.streak-eternal::before,
+.streak-pill.streak-celestial::before,
+.streak-pill.streak-transcendent::before {
+    opacity: 1;
+    animation: streak-sheen 2800ms ease-in-out infinite;
+}
+
+.streak-pill.streak-blaze,
+.streak-pill.streak-comet,
+.streak-pill.streak-forge,
+.streak-pill.streak-mythic,
+.streak-pill.streak-immortal {
+    text-shadow: 0 1px 2px rgba(7, 21, 34, 0.26);
+}
+
+.streak-pill.streak-ascendant,
+.streak-pill.streak-eternal,
+.streak-pill.streak-celestial,
+.streak-pill.streak-transcendent {
+    text-shadow: none;
+}
+
+.streak-pill.streak-mythic::after,
+.streak-pill.streak-immortal::after,
+.streak-pill.streak-ascendant::after,
+.streak-pill.streak-eternal::after,
+.streak-pill.streak-celestial::after,
+.streak-pill.streak-transcendent::after {
+    opacity: 1;
+    animation: streak-quality-frame 3200ms ease-in-out infinite !important;
+}
+
+.streak-pill.streak-live {
+    animation: streak-breathe 2600ms ease-in-out infinite;
+}
+
+#streak-count,
+#streak-label,
+#streak-tier {
+    color: inherit;
+}
+
+body.theme-dark .streak-pill #streak-count,
+body.theme-dark .streak-pill #streak-label,
+body.theme-dark .streak-pill #streak-tier {
+    color: inherit;
+}
+
+#streak-tier {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.24);
+}
+
+.streak-empty #streak-tier,
+.streak-kindled #streak-tier,
+.streak-spark #streak-tier,
+.streak-hot #streak-tier,
+.streak-ascendant #streak-tier,
+.streak-eternal #streak-tier,
+.streak-celestial #streak-tier,
+.streak-transcendent #streak-tier {
+    color: var(--streak-ink);
+    background: rgba(255, 255, 255, 0.5);
+    border-color: rgba(128, 83, 0, 0.12);
+}
+
+.streak-suite {
+    gap: 10px;
+}
+
+.streak-type-card {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: 15px;
+    color: var(--type-ink, var(--ink));
+    background:
+        radial-gradient(circle at 88% 8%, var(--type-glow, rgba(22, 183, 200, 0.18)), transparent 34%),
+        linear-gradient(135deg, var(--type-surface, #ffffff), #ffffff 72%);
+    border-color: var(--type-border, rgba(22, 183, 200, 0.16));
+    border-radius: 12px;
+    box-shadow: inset 0 -3px 0 var(--type-depth, rgba(22, 183, 200, 0.07)), 0 8px 18px rgba(39, 125, 161, 0.055);
+}
+
+.streak-type-card::before {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    content: "";
+    opacity: 0.36;
+    background: radial-gradient(circle at 86% 12%, var(--type-accent, rgba(22, 183, 200, 0.18)), transparent 32%);
+}
+
+.streak-type-card span {
+    color: var(--type-ink, var(--teal));
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.active-streak-card {
+    --type-accent: rgba(50, 224, 166, 0.16);
+    --type-border: rgba(11, 185, 135, 0.22);
+    --type-depth: rgba(11, 185, 135, 0.08);
+    --type-glow: rgba(50, 224, 166, 0.14);
+    --type-ink: #087262;
+    --type-surface: #f7fffb;
+}
+
+.perfect-streak-card {
+    --type-accent: rgba(43, 140, 255, 0.14);
+    --type-border: rgba(21, 110, 207, 0.22);
+    --type-depth: rgba(21, 110, 207, 0.08);
+    --type-glow: rgba(43, 140, 255, 0.13);
+    --type-ink: #1d68ad;
+    --type-surface: #f6fbff;
+}
+
+.legendary-streak-card {
+    --type-accent: rgba(255, 159, 28, 0.16);
+    --type-border: rgba(255, 159, 28, 0.26);
+    --type-depth: rgba(255, 159, 28, 0.08);
+    --type-glow: rgba(255, 193, 7, 0.14);
+    --type-ink: #a85d08;
+    --type-surface: #fffaf0;
+}
+
+.prestige-step {
+    min-height: 92px;
+    padding: 13px 10px 17px;
+    background:
+        radial-gradient(circle at 86% 10%, var(--streak-glow), transparent 34%),
+        linear-gradient(135deg, #ffffff, #f4f8fb);
+    border: 2px solid var(--streak-border);
+    border-radius: 12px;
+    opacity: 1;
+    box-shadow: inset 0 -4px 0 rgba(23, 32, 42, 0.045), 0 8px 18px rgba(39, 125, 161, 0.06);
+    place-items: center;
+    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.prestige-step::before {
+    right: 10px;
+    bottom: 9px;
+    left: 10px;
+    height: 6px;
+    background: rgba(39, 125, 161, 0.12);
+}
+
+.prestige-step::after {
+    position: absolute;
+    top: 9px;
+    right: 9px;
+    width: 10px;
+    height: 10px;
+    content: "";
+    background: var(--streak-accent);
+    border-radius: 999px;
+    opacity: 0.42;
+}
+
+.prestige-step.reached {
+    color: var(--streak-ink);
+    background: var(--streak-bg) !important;
+    border-color: var(--streak-border);
+    opacity: 1;
+    box-shadow: inset 0 -5px 0 rgba(23, 32, 42, 0.12), 0 12px 24px var(--streak-glow), 0 0 0 1px rgba(255, 255, 255, 0.24);
+}
+
+.prestige-step.reached::before {
+    background: var(--streak-track);
+}
+
+.prestige-step.reached::after {
+    background: var(--streak-accent);
+    box-shadow: 0 0 0 4px var(--streak-glow);
+    opacity: 1;
+}
+
+.prestige-step.reached strong,
+.prestige-step.reached em {
+    color: inherit;
+}
+
+.prestige-step strong,
+.prestige-step em {
+    width: 100%;
+    max-width: 100%;
+    text-align: center;
+}
+
+.prestige-step strong {
+    color: var(--streak-accent);
+    font-size: 1.16rem;
+    text-shadow: none;
+}
+
+.prestige-step em {
+    color: var(--streak-soft-ink);
+    font-size: 0.66rem;
+    line-height: 1.08;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+}
+
+.prestige-step.reached strong {
+    font-size: 1.2rem;
+}
+
+.prestige-step.reached em {
+    color: var(--streak-ink);
+}
+
+.prestige-step.reached:hover {
+    transform: translateY(-2px);
+}
+
+.prestige-step.locked strong {
+    color: var(--streak-accent);
+}
+
+.prestige-step.locked em {
+    color: var(--streak-soft-ink);
+}
+
+.prestige-step.locked.streak-blaze em {
+    color: #1766e8;
+}
+
+.prestige-step.locked.streak-hot {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(43, 157, 255, 0.26), transparent 34%),
+        linear-gradient(135deg, #f3fcff, #e9f5ff) !important;
+}
+
+.prestige-step.locked.streak-blaze {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(23, 102, 232, 0.28), transparent 34%),
+        linear-gradient(135deg, #f1f7ff, #e5efff) !important;
+}
+
+.prestige-step.locked.streak-comet em {
+    color: #2d3fb8;
+}
+
+.prestige-step.locked.streak-comet {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(45, 63, 184, 0.3), transparent 34%),
+        linear-gradient(135deg, #f0f3ff, #e6eaff) !important;
+}
+
+.prestige-step.locked.streak-forge em {
+    color: #6b4be8;
+}
+
+.prestige-step.locked.streak-forge {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(107, 75, 232, 0.3), transparent 34%),
+        linear-gradient(135deg, #f5f1ff, #ece6ff) !important;
+}
+
+.prestige-step.locked.streak-mythic em {
+    color: #9b4dff;
+}
+
+.prestige-step.locked.streak-mythic {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(155, 77, 255, 0.32), transparent 34%),
+        linear-gradient(135deg, #fbf0ff, #f2e4ff) !important;
+}
+
+.prestige-step.locked.streak-immortal em {
+    color: #d7354f;
+}
+
+.prestige-step.locked.streak-immortal {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(255, 79, 104, 0.34), transparent 34%),
+        linear-gradient(135deg, #fff1f4, #ffe4e9) !important;
+}
+
+.prestige-step.locked.streak-ascendant em {
+    color: #a94d00;
+}
+
+.prestige-step.locked.streak-ascendant {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(255, 138, 28, 0.34), transparent 34%),
+        linear-gradient(135deg, #fff7ea, #ffe7c7) !important;
+}
+
+.prestige-step.locked {
+    --locked-bg: radial-gradient(circle at 88% 10%, rgba(135, 148, 161, 0.14), transparent 34%), linear-gradient(135deg, #f8fafc, #eef2f5);
+    --locked-border: rgba(96, 109, 121, 0.22);
+    --locked-ink: #53616f;
+    --locked-soft: #606d79;
+    --locked-line: rgba(96, 109, 121, 0.12);
+    --locked-dot: #b4bec8;
+    --lock-body: linear-gradient(135deg, #94a2ae, #66727f);
+    --lock-shackle: #8794a1;
+    --lock-slot: #eef2f5;
+    --streak-accent: var(--locked-ink);
+    --streak-soft-ink: var(--locked-soft);
+    align-content: center;
+    justify-items: center;
+    gap: 7px;
+    color: var(--locked-ink);
+    background: var(--locked-bg) !important;
+    border-color: var(--locked-border);
+    border-style: dashed;
+    box-shadow: inset 0 -3px 0 rgba(96, 109, 121, 0.055), 0 6px 14px rgba(96, 109, 121, 0.045);
+}
+
+.prestige-step.locked.streak-kindled {
+    --locked-bg: radial-gradient(circle at 88% 10%, rgba(50, 224, 166, 0.18), transparent 34%), linear-gradient(135deg, #f7fffb, #eefaf4);
+    --locked-border: rgba(11, 185, 135, 0.24);
+    --locked-ink: #2f7668;
+    --locked-soft: #47766d;
+    --locked-line: rgba(11, 185, 135, 0.14);
+    --locked-dot: #86d8c4;
+    --lock-body: linear-gradient(135deg, #7bcfba, #4d9385);
+    --lock-shackle: #6bbcae;
+}
+
+.prestige-step.locked.streak-spark {
+    --locked-bg: radial-gradient(circle at 88% 10%, rgba(22, 183, 200, 0.18), transparent 34%), linear-gradient(135deg, #f2fdff, #eaf7fb);
+    --locked-border: rgba(15, 143, 188, 0.24);
+    --locked-ink: #386f86;
+    --locked-soft: #527688;
+    --locked-line: rgba(15, 143, 188, 0.14);
+    --locked-dot: #87cddb;
+    --lock-body: linear-gradient(135deg, #7fcad8, #4f8fa1);
+    --lock-shackle: #6eb8ca;
+}
+
+.prestige-step.locked.streak-hot,
+.prestige-step.locked.streak-blaze,
+.prestige-step.locked.streak-comet {
+    --locked-bg: radial-gradient(circle at 88% 10%, rgba(43, 157, 255, 0.2), transparent 34%), linear-gradient(135deg, #f5fbff, #eaf2ff);
+    --locked-border: rgba(43, 140, 255, 0.25);
+    --locked-ink: #3c6f9e;
+    --locked-soft: #587593;
+    --locked-line: rgba(43, 140, 255, 0.14);
+    --locked-dot: #9fc5ee;
+    --lock-body: linear-gradient(135deg, #8fbdea, #557fa8);
+    --lock-shackle: #7aa8d8;
+}
+
+.prestige-step.locked.streak-forge,
+.prestige-step.locked.streak-mythic {
+    --locked-bg: radial-gradient(circle at 88% 10%, rgba(155, 77, 255, 0.18), transparent 34%), linear-gradient(135deg, #fbf7ff, #f0eaff);
+    --locked-border: rgba(107, 75, 232, 0.24);
+    --locked-ink: #6d5a96;
+    --locked-soft: #736b8c;
+    --locked-line: rgba(107, 75, 232, 0.13);
+    --locked-dot: #c1abea;
+    --lock-body: linear-gradient(135deg, #b6a1df, #7a6aa6);
+    --lock-shackle: #a291d0;
+}
+
+.prestige-step.locked.streak-immortal {
+    --locked-bg: radial-gradient(circle at 88% 10%, rgba(255, 79, 104, 0.18), transparent 34%), linear-gradient(135deg, #fff7f8, #ffecef);
+    --locked-border: rgba(255, 79, 104, 0.24);
+    --locked-ink: #9a5964;
+    --locked-soft: #8d6870;
+    --locked-line: rgba(255, 79, 104, 0.13);
+    --locked-dot: #eba3af;
+    --lock-body: linear-gradient(135deg, #e69aa8, #ad6874);
+    --lock-shackle: #d48898;
+}
+
+.prestige-step.locked.streak-ascendant,
+.prestige-step.locked.streak-eternal,
+.prestige-step.locked.streak-celestial,
+.prestige-step.locked.streak-transcendent {
+    --locked-bg: radial-gradient(circle at 88% 10%, rgba(255, 177, 61, 0.2), transparent 34%), linear-gradient(135deg, #fffaf0, #fff0d9);
+    --locked-border: rgba(255, 159, 28, 0.25);
+    --locked-ink: #8b642d;
+    --locked-soft: #7d6a4a;
+    --locked-line: rgba(255, 159, 28, 0.14);
+    --locked-dot: #e9c27f;
+    --lock-body: linear-gradient(135deg, #e2bd76, #a98245);
+    --lock-shackle: #d4ad67;
+}
+
+.prestige-step.locked::before {
+    background: var(--locked-line);
+}
+
+.prestige-step.locked::after {
+    background: var(--locked-dot);
+    box-shadow: none;
+    opacity: 0.34;
+}
+
+.prestige-step.locked strong {
+    color: #66727f;
+    font-size: 1.04rem;
+}
+
+.prestige-lock-icon {
+    position: relative;
+    display: inline-grid;
+    width: 38px;
+    height: 42px;
+    margin: 0 auto;
+    place-items: center;
+    background:
+        radial-gradient(circle at 50% 68%, var(--lock-slot) 0 3px, transparent 3.4px),
+        linear-gradient(var(--lock-slot), var(--lock-slot)) 50% 79% / 4px 8px no-repeat,
+        linear-gradient(135deg, rgba(255, 255, 255, 0.38), transparent 42%) 50% 100% / 30px 26px no-repeat,
+        var(--lock-body) 50% 100% / 30px 26px no-repeat;
+    filter: drop-shadow(0 4px 8px rgba(96, 109, 121, 0.14));
+}
+
+.prestige-lock-icon::before {
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    width: 18px;
+    height: 17px;
+    content: "";
+    border: 4px solid var(--lock-shackle);
+    border-bottom: 0;
+    border-radius: 13px 13px 0 0;
+    transform: translateX(-50%);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28);
+}
+
+.prestige-lock-icon::after {
+    position: absolute;
+    right: 4px;
+    bottom: 5px;
+    left: 4px;
+    height: 4px;
+    content: "";
+    background: rgba(39, 50, 60, 0.12);
+    border-radius: 999px;
+}
+
+.prestige-step.locked em,
+.prestige-step.locked.streak-hot em,
+.prestige-step.locked.streak-blaze em,
+.prestige-step.locked.streak-comet em,
+.prestige-step.locked.streak-forge em,
+.prestige-step.locked.streak-mythic em,
+.prestige-step.locked.streak-immortal em,
+.prestige-step.locked.streak-ascendant em {
+    color: var(--locked-soft);
+    font-size: 0.66rem;
+    line-height: 1.14;
+    text-transform: none;
+}
+
+.prestige-step.streak-celestial.reached,
+.prestige-step.streak-transcendent.reached {
+    clip-path: none;
+    border-radius: 14px;
+}
+
+.prestige-step.streak-forge,
+.prestige-step.streak-mythic,
+.prestige-step.streak-immortal,
+.prestige-step.streak-ascendant,
+.prestige-step.streak-eternal,
+.prestige-step.streak-celestial,
+.prestige-step.streak-transcendent {
+    border-width: 2px;
+}
+
+.prestige-step.streak-mythic.reached,
+.prestige-step.streak-immortal.reached {
+    box-shadow: inset 0 -5px 0 rgba(23, 32, 42, 0.16), 0 16px 32px var(--streak-glow), 0 0 0 3px rgba(255, 255, 255, 0.16);
+}
+
+.prestige-step.streak-eternal.reached,
+.prestige-step.streak-celestial.reached,
+.prestige-step.streak-transcendent.reached {
+    box-shadow: inset 0 -5px 0 rgba(94, 67, 0, 0.12), 0 18px 36px var(--streak-glow), 0 0 0 4px rgba(255, 193, 7, 0.18);
+}
+
+.prestige-step.streak-kindled.reached,
+.prestige-step.streak-spark.reached,
+.prestige-step.streak-hot.reached,
+.prestige-step.streak-ascendant.reached,
+.prestige-step.streak-eternal.reached,
+.prestige-step.streak-celestial.reached,
+.prestige-step.streak-transcendent.reached {
+    color: var(--streak-ink);
+}
+
+.prestige-step.streak-blaze.reached,
+.prestige-step.streak-comet.reached,
+.prestige-step.streak-forge.reached,
+.prestige-step.streak-mythic.reached,
+.prestige-step.streak-immortal.reached {
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(7, 21, 34, 0.26);
+}
+
+.prestige-step.streak-hot.reached {
+    background:
+        radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.18), transparent 22%),
+        var(--streak-bg) !important;
+}
+
+.prestige-step.streak-blaze.reached {
+    background:
+        radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.18), transparent 20%),
+        var(--streak-bg) !important;
+}
+
+.prestige-step.streak-comet.reached {
+    background:
+        radial-gradient(circle at 18% 22%, rgba(118, 228, 255, 0.24), transparent 18%),
+        var(--streak-bg) !important;
+}
+
+.prestige-step.streak-forge.reached {
+    background:
+        radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.2), transparent 18%),
+        var(--streak-bg) !important;
+}
+
+.prestige-step.streak-mythic.reached {
+    background:
+        radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.28), transparent 16%),
+        radial-gradient(circle at 18% 78%, rgba(255, 255, 255, 0.12), transparent 22%),
+        var(--streak-bg) !important;
+}
+
+.prestige-step.streak-immortal.reached {
+    background:
+        radial-gradient(circle at 82% 18%, rgba(255, 193, 7, 0.22), transparent 18%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 42%),
+        var(--streak-bg) !important;
+}
+
+.prestige-step.streak-ascendant.reached {
+    background:
+        radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.26), transparent 18%),
+        radial-gradient(circle at 18% 78%, rgba(255, 255, 255, 0.16), transparent 24%),
+        var(--streak-bg) !important;
+}
+
+.daily-close-card {
+    background: linear-gradient(135deg, #ffffff, #fff8e6);
+    border-color: rgba(255, 177, 61, 0.34);
+}
+
+.daily-close-achievements li {
+    border: 1px solid rgba(255, 177, 61, 0.18);
+}
+
+body.theme-dark .daily-close-card {
+    color: var(--dark-text-strong);
+    background:
+        linear-gradient(135deg, rgba(255, 209, 102, 0.14), transparent 50%),
+        #141f2c !important;
+    border-color: rgba(255, 209, 102, 0.34);
+    box-shadow: inset 0 -5px 0 rgba(255, 209, 102, 0.08), 0 14px 28px rgba(0, 0, 0, 0.14);
+}
+
+body.theme-dark .daily-close-card h3 {
+    color: var(--dark-text-strong);
+}
+
+body.theme-dark .daily-close-card .section-kicker {
+    color: var(--dark-review);
+}
+
+body.theme-dark .daily-close-card p,
+body.theme-dark .daily-close-card p:last-child {
+    color: var(--dark-text-soft);
+}
+
+body.theme-dark .daily-close-achievements li {
+    color: var(--dark-text-strong);
+    background: #0b1421;
+    border: 1px solid rgba(255, 209, 102, 0.18);
+}
+
+body.theme-dark .streak-pill {
+    box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.2), 0 14px 30px var(--streak-glow);
+}
+
+body.theme-dark .streak-pill.streak-empty {
+    --streak-bg: linear-gradient(135deg, rgba(203, 215, 232, 0.08), transparent 50%), #121d2b;
+    --streak-border: rgba(203, 215, 232, 0.24);
+    --streak-ink: var(--dark-text-soft);
+    --streak-glow: rgba(0, 0, 0, 0.18);
+    color: var(--dark-text-soft);
+}
+
+body.theme-dark .streak-hero-card,
+body.theme-dark .streak-celebration-card {
+    --streak-ink: var(--dark-text-strong);
+    --streak-soft-ink: var(--dark-text-soft);
+    color: var(--streak-ink);
+    background:
+        linear-gradient(135deg, rgba(5, 12, 22, 0.68), rgba(5, 12, 22, 0.82)),
+        var(--streak-bg);
+    border-color: color-mix(in srgb, var(--streak-accent) 54%, rgba(255, 255, 255, 0.16));
+    box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.24), 0 16px 34px var(--streak-glow);
+}
+
+body.theme-dark .streak-hero-card :where(
+    .streak-hero-copy h3,
+    .streak-hero-tier,
+    .streak-next-heading strong,
+    .streak-next-heading > span,
+    .streak-next-level small
+) {
+    color: var(--streak-ink);
+}
+
+body.theme-dark .streak-hero-card :where(
+    .section-kicker,
+    .streak-hero-copy > p:last-child,
+    .streak-next-heading div span,
+    .streak-next-level > p
+) {
+    color: var(--streak-soft-ink);
+}
+
+body.theme-dark .streak-hero-card.streak-empty,
+body.theme-dark .streak-celebration-card.streak-empty {
+    --streak-bg: linear-gradient(135deg, #172538, #101a29);
+    --streak-accent: #7fa4bd;
+}
+
+body.theme-dark .streak-next-level {
+    background: rgba(6, 14, 25, 0.5);
+    border-color: rgba(219, 230, 244, 0.2);
+}
+
+body.theme-dark :where(.streak-pill, .prestige-step, .next-reward-card, .streak-hero-card, .streak-celebration-card, .compact-progress-streak).streak-kindled {
+    --streak-accent: #32e0a6;
+}
+
+body.theme-dark :where(.streak-pill, .prestige-step, .next-reward-card, .streak-hero-card, .streak-celebration-card, .compact-progress-streak).streak-spark {
+    --streak-accent: #16b7c8;
+}
+
+body.theme-dark :where(.streak-pill, .prestige-step, .next-reward-card, .streak-hero-card, .streak-celebration-card, .compact-progress-streak).streak-hot {
+    --streak-accent: #76e4ff;
+}
+
+body.theme-dark :where(.streak-pill, .prestige-step, .next-reward-card, .streak-hero-card, .streak-celebration-card, .compact-progress-streak).streak-blaze {
+    --streak-accent: #3aa4ff;
+}
+
+body.theme-dark :where(.streak-pill, .prestige-step, .next-reward-card, .streak-hero-card, .streak-celebration-card, .compact-progress-streak).streak-comet {
+    --streak-accent: #7da0ff;
+}
+
+body.theme-dark :where(.streak-pill, .prestige-step, .next-reward-card, .streak-hero-card, .streak-celebration-card, .compact-progress-streak).streak-forge {
+    --streak-accent: #ad94ff;
+}
+
+body.theme-dark :where(.streak-pill, .prestige-step, .next-reward-card, .streak-hero-card, .streak-celebration-card, .compact-progress-streak).streak-mythic {
+    --streak-accent: #e08cff;
+}
+
+body.theme-dark :where(.streak-pill, .prestige-step, .next-reward-card, .streak-hero-card, .streak-celebration-card, .compact-progress-streak).streak-immortal {
+    --streak-accent: #ff8fa0;
+}
+
+body.theme-dark :where(.streak-pill, .prestige-step, .next-reward-card, .streak-hero-card, .streak-celebration-card, .compact-progress-streak).streak-ascendant {
+    --streak-accent: #ffb13d;
+}
+
+body.theme-dark :where(.streak-pill, .prestige-step, .next-reward-card, .streak-hero-card, .streak-celebration-card, .compact-progress-streak).streak-eternal {
+    --streak-accent: #ffc107;
+}
+
+body.theme-dark :where(.streak-pill, .prestige-step, .next-reward-card, .streak-hero-card, .streak-celebration-card, .compact-progress-streak).streak-celestial {
+    --streak-accent: #fff1a0;
+}
+
+body.theme-dark :where(.streak-pill, .prestige-step, .next-reward-card, .streak-hero-card, .streak-celebration-card, .compact-progress-streak).streak-transcendent {
+    --streak-accent: #fff7bd;
+}
+
+body.theme-dark .streak-type-card {
+    color: var(--dark-text-strong);
+    background:
+        radial-gradient(circle at 88% 8%, var(--type-glow, rgba(91, 215, 255, 0.12)), transparent 34%),
+        linear-gradient(135deg, var(--type-dark-surface, #101a29), #0b1421 74%);
+    border-color: var(--type-border, rgba(203, 215, 232, 0.16));
+    box-shadow: inset 0 -3px 0 var(--type-depth, rgba(91, 215, 255, 0.07)), 0 10px 22px rgba(0, 0, 0, 0.13);
+}
+
+body.theme-dark .active-streak-card {
+    --type-border: rgba(46, 227, 155, 0.26);
+    --type-depth: rgba(46, 227, 155, 0.075);
+    --type-glow: rgba(46, 227, 155, 0.12);
+    --type-ink: #86e8bf;
+    --type-dark-surface: #12221e;
+}
+
+body.theme-dark .perfect-streak-card {
+    --type-border: rgba(91, 215, 255, 0.26);
+    --type-depth: rgba(91, 215, 255, 0.075);
+    --type-glow: rgba(91, 215, 255, 0.12);
+    --type-ink: #a3e2ff;
+    --type-dark-surface: #122337;
+}
+
+body.theme-dark .legendary-streak-card {
+    --type-border: rgba(255, 209, 102, 0.28);
+    --type-depth: rgba(255, 209, 102, 0.075);
+    --type-glow: rgba(255, 209, 102, 0.12);
+    --type-ink: #ffe09a;
+    --type-dark-surface: #1e1a13;
+}
+
+body.theme-dark .streak-type-card span {
+    color: var(--type-ink);
+    text-shadow: 0 0 18px var(--type-glow, rgba(91, 215, 255, 0.16));
+}
+
+body.theme-dark .streak-type-card p {
+    color: var(--dark-text-soft);
+}
+
+body.theme-dark .prestige-step {
+    color: var(--dark-text-soft);
+    background:
+        radial-gradient(circle at 86% 10%, var(--streak-glow), transparent 34%),
+        #101a29;
+    border-color: var(--streak-border);
+    box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.18), 0 10px 24px rgba(0, 0, 0, 0.14);
+}
+
+body.theme-dark .prestige-step.locked {
+    --locked-bg: radial-gradient(circle at 88% 10%, rgba(203, 215, 232, 0.1), transparent 34%), linear-gradient(135deg, #121d2b, #0b1421);
+    --locked-border: rgba(203, 215, 232, 0.18);
+    --locked-ink: var(--dark-text-soft);
+    --locked-soft: #c0ccdd;
+    --locked-line: rgba(203, 215, 232, 0.12);
+    --locked-dot: rgba(203, 215, 232, 0.32);
+    --lock-body: linear-gradient(135deg, #33445a, #1d2d40);
+    --lock-shackle: #6f829a;
+    --lock-slot: #cbd7e8;
+    color: var(--locked-ink);
+    background: var(--locked-bg) !important;
+    border-color: var(--locked-border);
+    box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.18), 0 10px 24px rgba(0, 0, 0, 0.14);
+}
+
+body.theme-dark .prestige-step.locked.streak-kindled {
+    --locked-bg: radial-gradient(circle at 88% 10%, rgba(46, 227, 155, 0.15), transparent 34%), linear-gradient(135deg, #10241e, #0b1421);
+    --locked-border: rgba(46, 227, 155, 0.24);
+    --locked-soft: #b6ead8;
+    --locked-line: rgba(46, 227, 155, 0.14);
+    --locked-dot: rgba(46, 227, 155, 0.34);
+    --lock-body: linear-gradient(135deg, #2f6b5e, #183b35);
+    --lock-shackle: #4fa993;
+}
+
+body.theme-dark .prestige-step.locked.streak-spark {
+    --locked-bg: radial-gradient(circle at 88% 10%, rgba(91, 215, 255, 0.15), transparent 34%), linear-gradient(135deg, #10243a, #0b1421);
+    --locked-border: rgba(91, 215, 255, 0.24);
+    --locked-soft: #bbe9f8;
+    --locked-line: rgba(91, 215, 255, 0.14);
+    --locked-dot: rgba(91, 215, 255, 0.34);
+    --lock-body: linear-gradient(135deg, #315f75, #183746);
+    --lock-shackle: #5598b0;
+}
+
+body.theme-dark .prestige-step.locked.streak-hot,
+body.theme-dark .prestige-step.locked.streak-blaze,
+body.theme-dark .prestige-step.locked.streak-comet {
+    --locked-soft: #c5ddff;
+    --locked-line: rgba(125, 160, 255, 0.14);
+    --locked-dot: rgba(125, 160, 255, 0.34);
+    --lock-body: linear-gradient(135deg, #3a557f, #1d2f54);
+    --lock-shackle: #6c8bc4;
+}
+
+body.theme-dark .prestige-step.locked.streak-forge,
+body.theme-dark .prestige-step.locked.streak-mythic {
+    --locked-soft: #dbc9ff;
+    --locked-line: rgba(173, 148, 255, 0.14);
+    --locked-dot: rgba(173, 148, 255, 0.34);
+    --lock-body: linear-gradient(135deg, #5a4a80, #302750);
+    --lock-shackle: #8d7ac4;
+}
+
+body.theme-dark .prestige-step.locked.streak-immortal {
+    --locked-soft: #ffd0d8;
+    --locked-line: rgba(255, 143, 160, 0.14);
+    --locked-dot: rgba(255, 143, 160, 0.34);
+    --lock-body: linear-gradient(135deg, #743743, #421f28);
+    --lock-shackle: #b66a78;
+}
+
+body.theme-dark .prestige-step.locked.streak-ascendant,
+body.theme-dark .prestige-step.locked.streak-eternal,
+body.theme-dark .prestige-step.locked.streak-celestial,
+body.theme-dark .prestige-step.locked.streak-transcendent {
+    --locked-bg: radial-gradient(circle at 88% 10%, rgba(255, 177, 61, 0.14), transparent 34%), linear-gradient(135deg, #211b12, #0b1421);
+    --locked-border: rgba(255, 209, 102, 0.22);
+    --locked-soft: #f3dca4;
+    --locked-line: rgba(255, 209, 102, 0.14);
+    --locked-dot: rgba(255, 209, 102, 0.34);
+    --lock-body: linear-gradient(135deg, #72572a, #3e301d);
+    --lock-shackle: #aa8849;
+}
+
+body.theme-dark .prestige-step.locked strong {
+    color: var(--streak-accent);
+}
+
+body.theme-dark .prestige-lock-icon {
+    filter: drop-shadow(0 5px 12px rgba(0, 0, 0, 0.24));
+}
+
+body.theme-dark .prestige-lock-icon::before {
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.1);
+}
+
+body.theme-dark .prestige-lock-icon::after {
+    background: rgba(0, 0, 0, 0.18);
+}
+
+body.theme-dark .prestige-step.locked em {
+    color: var(--locked-soft);
+}
+
+body.theme-dark .prestige-step.locked.streak-hot {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(118, 228, 255, 0.2), transparent 34%),
+        linear-gradient(135deg, #10243a, #0b1421) !important;
+}
+
+body.theme-dark .prestige-step.locked.streak-blaze {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(58, 164, 255, 0.2), transparent 34%),
+        linear-gradient(135deg, #10213a, #0b1421) !important;
+}
+
+body.theme-dark .prestige-step.locked.streak-comet {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(125, 160, 255, 0.2), transparent 34%),
+        linear-gradient(135deg, #141d3b, #0b1421) !important;
+}
+
+body.theme-dark .prestige-step.locked.streak-forge {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(173, 148, 255, 0.2), transparent 34%),
+        linear-gradient(135deg, #18183a, #0b1421) !important;
+}
+
+body.theme-dark .prestige-step.locked.streak-mythic {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(224, 140, 255, 0.22), transparent 34%),
+        linear-gradient(135deg, #21163b, #0b1421) !important;
+}
+
+body.theme-dark .prestige-step.locked.streak-immortal {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(255, 143, 160, 0.22), transparent 34%),
+        linear-gradient(135deg, #2a1018, #0b1421) !important;
+}
+
+body.theme-dark .prestige-step.locked.streak-ascendant {
+    background:
+        radial-gradient(circle at 86% 10%, rgba(255, 177, 61, 0.2), transparent 34%),
+        linear-gradient(135deg, #211b12, #0b1421) !important;
+}
+
+body.theme-dark .prestige-step.locked.streak-hot em,
+body.theme-dark .prestige-step.locked.streak-blaze em,
+body.theme-dark .prestige-step.locked.streak-comet em,
+body.theme-dark .prestige-step.locked.streak-forge em,
+body.theme-dark .prestige-step.locked.streak-mythic em,
+body.theme-dark .prestige-step.locked.streak-immortal em,
+body.theme-dark .prestige-step.locked.streak-ascendant em {
+    color: var(--locked-soft);
+    text-shadow: none;
+}
+
+body.theme-dark .prestige-step::before {
+    background: rgba(203, 215, 232, 0.12);
+}
+
+body.theme-dark .prestige-step::after {
+    background: var(--streak-accent);
+}
+
+body.theme-dark .prestige-step.reached {
+    color: var(--streak-ink);
+    background: var(--streak-bg) !important;
+    border-color: var(--streak-border);
+    box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.2), 0 16px 34px var(--streak-glow);
+}
+
+body.theme-dark .prestige-step.reached em {
+    color: inherit;
+}
+
+.next-reward-card {
+    background:
+        radial-gradient(circle at 92% 10%, var(--streak-glow), transparent 36%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.82), transparent 58%),
+        #ffffff;
+    border-color: var(--streak-border);
+}
+
+.next-reward-card::before {
+    z-index: 0;
+    background: linear-gradient(90deg, var(--streak-accent), transparent 64%);
+    opacity: 1;
+    inset: auto 16px 12px 16px;
+    height: 6px;
+    border-radius: 999px;
+    pointer-events: none;
+}
+
+.next-reward-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+body.theme-dark .next-reward-card {
+    color: var(--dark-text-strong);
+    background:
+        radial-gradient(circle at 92% 10%, var(--streak-glow), transparent 34%),
+        #101a29;
+    border-color: var(--streak-border);
+}
+
+body.theme-dark .next-reward-card h3 {
+    color: var(--dark-text-strong);
+}
+
+body.theme-dark .next-reward-card p:last-child {
+    color: var(--dark-text-soft);
+}
+
+@keyframes streak-breathe {
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+        box-shadow: inset 0 -5px 0 rgba(23, 32, 42, 0.12), 0 14px 28px var(--streak-glow);
+    }
+
+    50% {
+        transform: translateY(-2px) scale(1.018);
+        box-shadow: inset 0 -5px 0 rgba(23, 32, 42, 0.12), 0 18px 36px var(--streak-glow);
+    }
+}
+
+@keyframes streak-quality-frame {
+    0%,
+    100% {
+        opacity: 0.72;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(0.985);
+    }
+}
+
+/* Achievement cleanup: rarity is expressed by card tone and medal only. */
+.achievement-card,
+.featured-achievement-card {
+    overflow: hidden;
+    animation: achievement-card-enter 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.achievement-card::before,
+.achievement-card::after,
+.featured-achievement-card::before,
+.featured-achievement-card::after,
+.achievement-showcase-card::before,
+.showcase-line {
+    display: none !important;
+    content: none !important;
+    background: none !important;
+    opacity: 0 !important;
+    animation: none !important;
+}
+
+.achievement-medal,
+.featured-medal,
+.showcase-medal {
+    clip-path: none !important;
+    border-radius: 20px !important;
+    transform: none !important;
+}
+
+.achievement-medal::before,
+.achievement-medal::after,
+.featured-medal::before,
+.featured-medal::after,
+.showcase-medal::before,
+.showcase-medal::after {
+    display: none !important;
+    content: none !important;
+    animation: none !important;
+}
+
+.achievement-card.rarity-common,
+.featured-achievement-card.rarity-common,
+body.theme-light .achievement-card.rarity-common,
+body.theme-light .featured-achievement-card.rarity-common {
+    background: linear-gradient(135deg, #ffffff, #f5fafb);
+    border-color: rgba(39, 125, 161, 0.18);
+    box-shadow: inset 0 -4px 0 rgba(39, 125, 161, 0.06);
+}
+
+.achievement-card.rarity-uncommon,
+.featured-achievement-card.rarity-uncommon,
+body.theme-light .achievement-card.rarity-uncommon,
+body.theme-light .featured-achievement-card.rarity-uncommon {
+    background: linear-gradient(135deg, rgba(50, 224, 166, 0.18), transparent 48%), #f3fffb;
+    border-color: rgba(24, 165, 160, 0.34);
+    box-shadow: inset 0 -4px 0 rgba(24, 165, 160, 0.1);
+}
+
+.achievement-card.rarity-rare,
+.featured-achievement-card.rarity-rare,
+body.theme-light .achievement-card.rarity-rare,
+body.theme-light .featured-achievement-card.rarity-rare {
+    background: linear-gradient(135deg, rgba(22, 183, 200, 0.18), transparent 48%), #effbff;
+    border-color: rgba(22, 183, 200, 0.34);
+    box-shadow: inset 0 -4px 0 rgba(22, 183, 200, 0.1);
+}
+
+.achievement-card.rarity-epic,
+.featured-achievement-card.rarity-epic,
+body.theme-light .achievement-card.rarity-epic,
+body.theme-light .featured-achievement-card.rarity-epic {
+    background: linear-gradient(135deg, rgba(143, 92, 255, 0.18), transparent 50%), #fbf7ff;
+    border-color: rgba(143, 92, 255, 0.36);
+    box-shadow: inset 0 -4px 0 rgba(143, 92, 255, 0.1);
+}
+
+.achievement-card.rarity-legendary,
+.featured-achievement-card.rarity-legendary,
+body.theme-light .achievement-card.rarity-legendary,
+body.theme-light .featured-achievement-card.rarity-legendary {
+    background: linear-gradient(135deg, rgba(255, 177, 61, 0.24), transparent 50%), #fffaf0;
+    border-color: rgba(255, 159, 28, 0.5);
+    box-shadow: inset 0 -4px 0 rgba(255, 159, 28, 0.14);
+}
+
+.achievement-card.rarity-mythic,
+.featured-achievement-card.rarity-mythic,
+body.theme-light .achievement-card.rarity-mythic,
+body.theme-light .featured-achievement-card.rarity-mythic {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.24), rgba(255, 116, 93, 0.12) 54%, transparent 82%), #fff8e6;
+    border-color: rgba(255, 177, 61, 0.62);
+    box-shadow: inset 0 -4px 0 rgba(255, 177, 61, 0.18), 0 0 0 3px rgba(255, 177, 61, 0.08);
+}
+
+.achievement-card.rarity-common .achievement-medal,
+.featured-achievement-card.rarity-common .featured-medal,
+.achievement-showcase.rarity-common .showcase-medal {
+    background: linear-gradient(135deg, #7fa4bd, var(--blue));
+}
+
+.achievement-card.rarity-uncommon.collected .achievement-medal,
+.featured-achievement-card.rarity-uncommon.collected .featured-medal,
+.achievement-showcase.rarity-uncommon .showcase-medal {
+    background: linear-gradient(135deg, var(--brand-green), var(--teal));
+}
+
+.achievement-card.rarity-rare.collected .achievement-medal,
+.featured-achievement-card.rarity-rare.collected .featured-medal,
+.achievement-showcase.rarity-rare .showcase-medal {
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--brand-cyan), #2b8cff);
+}
+
+.achievement-card.rarity-epic.collected .achievement-medal,
+.featured-achievement-card.rarity-epic.collected .featured-medal,
+.achievement-showcase.rarity-epic .showcase-medal {
+    color: #ffffff;
+    background: linear-gradient(135deg, #8f5cff, #d196ff);
+}
+
+.achievement-card.rarity-legendary.collected .achievement-medal,
+.featured-achievement-card.rarity-legendary.collected .featured-medal,
+.achievement-showcase.rarity-legendary .showcase-medal {
+    color: var(--bright-ink);
+    background: linear-gradient(135deg, var(--gold), var(--orange));
+}
+
+.achievement-card.rarity-mythic.collected .achievement-medal,
+.featured-achievement-card.rarity-mythic.collected .featured-medal,
+.achievement-showcase.rarity-mythic .showcase-medal {
+    color: var(--bright-ink);
+    background: linear-gradient(135deg, #ffe680, var(--gold), var(--brand-amber), var(--coral-soft));
+}
+
+.rarity-step.rarity-legendary strong,
+.rarity-step.rarity-mythic strong {
+    clip-path: none !important;
+    border-radius: 12px !important;
+}
+
+.rarity-step.rarity-mythic,
+body.theme-light .rarity-step.rarity-mythic {
+    color: var(--ink);
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 116, 93, 0.1) 56%, transparent 82%), #fff8e6;
+    border-color: rgba(255, 177, 61, 0.56);
+}
+
+.rarity-step.rarity-mythic strong,
+body.theme-light .rarity-step.rarity-mythic strong {
+    color: var(--bright-ink);
+    background: linear-gradient(135deg, #ffe680, var(--gold), var(--brand-amber));
+}
+
+.achievement-card.rarity-mythic .achievement-rarity,
+.featured-achievement-card.rarity-mythic .featured-rarity,
+.achievement-showcase.rarity-mythic .showcase-rarity,
+body.theme-light .achievement-card.rarity-mythic .achievement-rarity,
+body.theme-light .featured-achievement-card.rarity-mythic .featured-rarity {
+    color: var(--bright-ink);
+    background: linear-gradient(135deg, var(--gold), var(--brand-amber));
+}
+
+.achievement-card.rarity-rare .achievement-track span {
+    background: linear-gradient(90deg, var(--brand-cyan), #2b8cff);
+}
+
+.achievement-card.rarity-epic .achievement-track span {
+    background: linear-gradient(90deg, #8f5cff, #d196ff);
+}
+
+.achievement-card.rarity-legendary .achievement-track span {
+    background: linear-gradient(90deg, var(--gold), var(--orange));
+}
+
+.achievement-card.rarity-mythic .achievement-track span {
+    background: linear-gradient(90deg, #ffe680, var(--gold), var(--brand-amber), var(--coral-soft));
+}
+
+body.theme-dark .achievement-card.rarity-common,
+body.theme-dark .featured-achievement-card.rarity-common {
+    background: linear-gradient(135deg, rgba(203, 215, 232, 0.08), transparent 54%), #142236;
+    border-color: rgba(203, 215, 232, 0.18);
+    box-shadow: inset 0 -4px 0 rgba(203, 215, 232, 0.06);
+}
+
+body.theme-dark .achievement-card.rarity-uncommon,
+body.theme-dark .featured-achievement-card.rarity-uncommon {
+    background: linear-gradient(135deg, rgba(46, 227, 155, 0.2), transparent 54%), #10241e;
+    border-color: rgba(46, 227, 155, 0.38);
+    box-shadow: inset 0 -4px 0 rgba(46, 227, 155, 0.12);
+}
+
+body.theme-dark .achievement-card.rarity-rare,
+body.theme-dark .featured-achievement-card.rarity-rare {
+    background: linear-gradient(135deg, rgba(91, 215, 255, 0.22), transparent 54%), #10243a;
+    border-color: rgba(91, 215, 255, 0.44);
+    box-shadow: inset 0 -4px 0 rgba(91, 215, 255, 0.12);
+}
+
+body.theme-dark .achievement-card.rarity-epic,
+body.theme-dark .featured-achievement-card.rarity-epic {
+    background: linear-gradient(135deg, rgba(177, 126, 255, 0.26), transparent 54%), #17172f;
+    border-color: rgba(177, 126, 255, 0.5);
+    box-shadow: inset 0 -4px 0 rgba(177, 126, 255, 0.14);
+}
+
+body.theme-dark .achievement-card.rarity-legendary,
+body.theme-dark .featured-achievement-card.rarity-legendary {
+    color: #fff4cf;
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.3), transparent 54%), #211b12;
+    border-color: rgba(255, 209, 102, 0.62);
+    box-shadow: inset 0 -4px 0 rgba(255, 209, 102, 0.16);
+}
+
+body.theme-dark .achievement-card.rarity-mythic,
+body.theme-dark .featured-achievement-card.rarity-mythic {
+    color: #fff4cf;
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.34), rgba(255, 117, 109, 0.16) 54%, transparent 82%), #251c10;
+    border-color: rgba(255, 209, 102, 0.7);
+    box-shadow: inset 0 -4px 0 rgba(255, 209, 102, 0.18), 0 0 0 3px rgba(255, 209, 102, 0.1);
+}
+
+body.theme-dark .achievement-card.rarity-mythic .achievement-rarity,
+body.theme-dark .featured-achievement-card.rarity-mythic .featured-rarity,
+body.theme-dark .achievement-showcase.rarity-mythic .showcase-rarity {
+    color: #071522;
+    background: linear-gradient(135deg, var(--dark-review), var(--dark-warning));
+}
+
+body.theme-dark .rarity-step.rarity-mythic {
+    color: #fff4cf;
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.22), rgba(255, 117, 109, 0.1) 56%, transparent 82%), #251c10;
+    border-color: rgba(255, 209, 102, 0.62);
+}
+
+body.theme-dark .rarity-step.rarity-mythic strong {
+    color: #071522;
+    background: linear-gradient(135deg, var(--dark-review), var(--dark-warning));
+}
+
+body.theme-dark .achievement-card.rarity-mythic .achievement-track span {
+    background: linear-gradient(90deg, var(--dark-review), var(--dark-warning), var(--dark-danger));
+}
+
+.achievement-showcase.show .achievement-showcase-card,
+.achievement-showcase.rarity-uncommon.show .achievement-showcase-card,
+.achievement-showcase.rarity-rare.show .achievement-showcase-card,
+.achievement-showcase.rarity-epic.show .achievement-showcase-card,
+.achievement-showcase.rarity-legendary.show .achievement-showcase-card,
+.achievement-showcase.rarity-mythic.show .achievement-showcase-card {
+    animation: achievement-showcase-soft 2200ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+.achievement-showcase-card {
+    background: #ffffff;
+}
+
+.achievement-showcase.rarity-uncommon .achievement-showcase-card {
+    background: linear-gradient(135deg, #ffffff, #f3fffb);
+    border-color: rgba(24, 165, 160, 0.36);
+}
+
+.achievement-showcase.rarity-rare .achievement-showcase-card {
+    background: linear-gradient(135deg, #ffffff, #effbff);
+    border-color: rgba(22, 183, 200, 0.4);
+}
+
+.achievement-showcase.rarity-epic .achievement-showcase-card {
+    background: linear-gradient(135deg, #ffffff, #fbf7ff);
+    border-color: rgba(143, 92, 255, 0.42);
+}
+
+.achievement-showcase.rarity-legendary .achievement-showcase-card {
+    background: linear-gradient(135deg, #ffffff, #fffaf0);
+    border-color: rgba(255, 159, 28, 0.56);
+}
+
+.achievement-showcase.rarity-mythic .achievement-showcase-card {
+    background: linear-gradient(135deg, #ffffff, #fff8e6);
+    border-color: rgba(255, 177, 61, 0.68);
+}
+
+body.theme-dark .achievement-showcase-card {
+    background: #142236;
+    border-color: rgba(203, 215, 232, 0.2);
+}
+
+body.theme-dark .achievement-showcase.rarity-mythic .achievement-showcase-card {
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.16), transparent 56%), #251c10;
+    border-color: rgba(255, 209, 102, 0.68);
+}
+
+/* Compact progress menu: text and status are enough; decorative icons added noise. */
+.compact-progress-menu .compact-progress-menu-icon {
+    display: none;
+}
+
+.compact-progress-menu .compact-progress-menu-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding-inline: 10px;
+}
+
+/* Stable compact streak emblem. The aura stays inside its own track. */
+.compact-progress-shell .compact-progress-streak .compact-progress-icon {
+    position: relative;
+    display: block;
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    margin-right: 3px;
+    overflow: visible;
+    background: color-mix(in srgb, var(--streak-accent) 12%, var(--surface-panel));
+    border: 1px solid color-mix(in srgb, var(--streak-accent) 52%, transparent);
+    border-radius: 50%;
+    box-shadow: none;
+    filter: none;
+    -webkit-mask: none;
+    mask: none;
+}
+
+.compact-progress-shell .compact-progress-streak .compact-progress-icon::before {
+    position: absolute;
+    inset: 4px 5px 3px;
+    width: auto;
+    height: auto;
+    opacity: 1;
+    background: var(--streak-accent);
+    clip-path: polygon(53% 0, 78% 31%, 74% 48%, 91% 39%, 100% 66%, 88% 91%, 63% 100%, 31% 96%, 7% 76%, 0 51%, 28% 62%, 21% 39%);
+    content: '';
+    filter: none;
+    -webkit-mask: none;
+    mask: none;
+    transform: none;
+}
+
+.compact-progress-shell .compact-progress-streak .compact-progress-icon::after {
+    position: absolute;
+    inset: -3px;
+    border: 1px solid var(--streak-accent);
+    border-radius: 50%;
+    content: '';
+    opacity: 0.16;
+    box-shadow: none;
+    transform: none;
+}
+
+.compact-progress-shell .compact-progress-streak:is(.streak-hot, .streak-blaze, .streak-comet, .streak-forge) .compact-progress-icon::after {
+    opacity: 0.48;
+    box-shadow: 0 0 0 2px var(--streak-glow);
+}
+
+.compact-progress-shell .compact-progress-streak:is(.streak-mythic, .streak-immortal, .streak-ascendant, .streak-eternal, .streak-celestial, .streak-transcendent) .compact-progress-icon {
+    background: color-mix(in srgb, var(--streak-accent) 16%, var(--surface-panel));
+    box-shadow: 0 0 8px var(--streak-glow);
+}
+
+.compact-progress-shell .compact-progress-streak:is(.streak-mythic, .streak-immortal, .streak-ascendant, .streak-eternal, .streak-celestial, .streak-transcendent) .compact-progress-icon::after {
+    inset: -3px;
+    border-width: 2px;
+    opacity: 0.72;
+    box-shadow: 0 0 0 2px var(--streak-glow), 0 0 7px var(--streak-glow);
+    transform: none;
+}
+
+body.theme-dark .compact-progress-shell .compact-progress-streak .compact-progress-icon {
+    background: color-mix(in srgb, var(--streak-accent) 14%, #111d2d);
+}
+
+/* Light streak cards borrow the calm hierarchy of dark mode. */
+body.theme-light .streak-hero-card {
+    --streak-ink: #203247;
+    --streak-soft-ink: #52657a;
+    color: var(--streak-ink);
+    background:
+        radial-gradient(circle at 14% 34%, color-mix(in srgb, var(--streak-accent) 13%, transparent), transparent 30%),
+        linear-gradient(135deg, #fbfdff, #eef3f7);
+    border-color: color-mix(in srgb, var(--streak-accent) 48%, #d9e3eb);
+    box-shadow: inset 0 -5px 0 color-mix(in srgb, var(--streak-accent) 10%, transparent), 0 13px 28px rgba(31, 51, 72, 0.12);
+}
+
+body.theme-light .streak-hero-card::before {
+    background: radial-gradient(circle, color-mix(in srgb, var(--streak-accent) 14%, transparent), transparent 68%);
+}
+
+body.theme-light .streak-hero-card .streak-emblem::after {
+    background: #f4f8fb;
+}
+
+body.theme-light .streak-hero-card .streak-emblem-mark {
+    border-color: color-mix(in srgb, var(--streak-accent) 82%, #ffffff);
+}
+
+body.theme-light .streak-hero-card .streak-hero-tier {
+    color: color-mix(in srgb, var(--streak-accent) 76%, #203247);
+    background: color-mix(in srgb, var(--streak-accent) 11%, #ffffff);
+    border: 1px solid color-mix(in srgb, var(--streak-accent) 24%, #d9e3eb);
+}
+
+body.theme-light .streak-hero-card .streak-next-level {
+    color: var(--streak-ink);
+    background: rgba(255, 255, 255, 0.76);
+    border-color: color-mix(in srgb, var(--streak-accent) 22%, #d9e3eb);
+}
+
+body.theme-light .streak-hero-card :where(
+    .streak-hero-copy h3,
+    .streak-next-heading strong,
+    .streak-next-heading > span,
+    .streak-next-level small
+) {
+    color: var(--streak-ink);
+}
+
+body.theme-light .streak-hero-card :where(
+    .section-kicker,
+    .streak-hero-copy > p:last-child,
+    .streak-next-heading div span,
+    .streak-next-level > p
+) {
+    color: var(--streak-soft-ink);
+}
+
+/* Achievements: quiet discovery in the app, deliberate exploration in the collection. */
+.achievement-new-count {
+    display: inline-grid;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding: 0 0.35rem;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--state-danger, #ff6469);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.achievement-new-count[hidden],
+.compact-achievement-news[hidden] {
+    display: none !important;
+}
+
+.progress-tab {
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.compact-progress-menu-achievement {
+    position: relative;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+}
+
+.compact-progress-menu-achievement::before {
+    position: absolute;
+    inset: 22%;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    content: '';
+}
+
+.compact-progress-menu-achievement::after {
+    position: absolute;
+    right: -0.12rem;
+    top: -0.12rem;
+    width: 0.42rem;
+    height: 0.42rem;
+    border: 2px solid var(--surface-panel, #fff);
+    border-radius: 50%;
+    background: var(--state-danger, #ff6469);
+    content: '';
+}
+
+.achievement-overview {
+    padding: 1rem;
+    border: 1px solid var(--border-soft, #d8e9eb);
+    border-radius: 8px;
+    background: var(--surface-panel, #fff);
+}
+
+.achievement-overview-heading,
+.achievement-journey-heading,
+.collection-section-heading,
+.achievement-milestones-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.achievement-overview-heading h3,
+.achievement-journey-heading h3,
+.collection-section-heading h3,
+.achievement-milestones-heading h4,
+.achievement-journey-block h4 {
+    margin: 0;
+}
+
+.achievement-overview .collection-link {
+    border-color: color-mix(in srgb, var(--brand-primary, #12a9a1) 35%, var(--border-soft, #d8e9eb));
+    background: var(--surface-panel-muted, #f7fbfb);
+    color: var(--brand-primary-strong, #087e79);
+    box-shadow: none;
+}
+
+.achievement-overview .collection-link:hover,
+.achievement-overview .collection-link:focus-visible {
+    background: color-mix(in srgb, var(--brand-primary, #12a9a1) 10%, var(--surface-panel, #fff));
+    transform: translateY(-1px);
+}
+
+.achievement-overview-count {
+    margin: 0.35rem 0 0.85rem;
+    color: var(--text-secondary, #5f7085);
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.achievement-overview-grid,
+.achievement-journey-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.achievement-spotlight {
+    --spotlight-accent: var(--brand-primary, #12a9a1);
+    position: relative;
+    display: grid;
+    min-height: 6.1rem;
+    grid-template-columns: 3.1rem minmax(0, 1fr);
+    gap: 0.8rem;
+    align-items: center;
+    overflow: hidden;
+    padding: 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--spotlight-accent) 30%, var(--border-soft, #d8e9eb));
+    border-left: 4px solid var(--spotlight-accent);
+    border-radius: 8px;
+    background: var(--surface-panel-muted, #f7fbfb);
+    color: var(--text-primary, #1f3042);
+}
+
+.achievement-spotlight.rarity-uncommon { --spotlight-accent: #20a66a; }
+.achievement-spotlight.rarity-rare { --spotlight-accent: #238bd8; }
+.achievement-spotlight.rarity-epic { --spotlight-accent: #8458d8; }
+.achievement-spotlight.rarity-legendary { --spotlight-accent: #d99700; }
+.achievement-spotlight.rarity-mythic { --spotlight-accent: #dc4f50; }
+
+.achievement-spotlight.unseen::after {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.65rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--state-danger, #ff6469);
+    box-shadow: 0 0 0 3px var(--surface-panel, #fff);
+    content: '';
+}
+
+.achievement-spotlight-medal {
+    display: grid;
+    width: 3rem;
+    height: 3rem;
+    place-items: center;
+    border: 2px solid color-mix(in srgb, var(--spotlight-accent) 55%, transparent);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--spotlight-accent) 12%, var(--surface-panel, #fff));
+    color: var(--spotlight-accent);
+    font-size: 1.45rem;
+    font-weight: 900;
+}
+
+.achievement-spotlight-heading {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.achievement-spotlight-kicker,
+.achievement-spotlight-status {
+    overflow: hidden;
+    color: var(--spotlight-accent);
+    font-size: 0.68rem;
+    font-weight: 900;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.achievement-spotlight-status {
+    color: var(--text-secondary, #5f7085);
+    text-transform: none;
+}
+
+.achievement-spotlight h4 {
+    margin: 0.18rem 0 0.12rem;
+    color: inherit;
+    font-size: 1rem;
+}
+
+.achievement-spotlight p {
+    margin: 0;
+    color: var(--text-secondary, #5f7085);
+    font-size: 0.8rem;
+    font-weight: 650;
+}
+
+.achievement-spotlight-track {
+    position: absolute;
+    right: 0.85rem;
+    bottom: 0.55rem;
+    left: 4.75rem;
+    height: 0.28rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--spotlight-accent) 13%, var(--border-soft, #d8e9eb));
+}
+
+.achievement-spotlight-track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--spotlight-accent);
+}
+
+.achievement-spotlight-empty,
+.achievement-milestones-empty {
+    display: grid;
+    min-height: 6.1rem;
+    place-items: center;
+    padding: 1rem;
+    border: 1px dashed var(--border-soft, #d8e9eb);
+    border-radius: 8px;
+    color: var(--text-secondary, #5f7085);
+    background: var(--surface-panel-muted, #f7fbfb);
+    text-align: center;
+}
+
+.achievement-journey {
+    margin-top: 1.1rem;
+    padding: 1rem;
+    border: 1px solid var(--border-soft, #d8e9eb);
+    border-radius: 8px;
+    background: var(--surface-panel-muted, #f7fbfb);
+}
+
+.achievement-journey-grid {
+    margin-top: 0.8rem;
+}
+
+.achievement-journey-block {
+    min-width: 0;
+}
+
+.achievement-journey-block > h4 {
+    margin-bottom: 0.45rem;
+    color: var(--text-secondary, #5f7085);
+    font-size: 0.76rem;
+    text-transform: uppercase;
+}
+
+.achievement-milestones {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-soft, #d8e9eb);
+}
+
+.achievement-milestones-heading span {
+    color: var(--text-secondary, #5f7085);
+    font-size: 0.78rem;
+}
+
+.achievement-milestones-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-top: 0.65rem;
+}
+
+.achievement-milestones-list .achievement-spotlight {
+    min-height: 5.4rem;
+    grid-template-columns: 2.35rem minmax(0, 1fr);
+    padding: 0.7rem;
+}
+
+.achievement-milestones-list .achievement-spotlight-medal {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1rem;
+}
+
+.collection-section-heading {
+    margin: 1.35rem 0 0.65rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-soft, #d8e9eb);
+}
+
+body.theme-dark .achievement-overview,
+body.theme-dark .achievement-journey,
+body.theme-dark .achievement-spotlight,
+body.theme-dark .achievement-spotlight-empty,
+body.theme-dark .achievement-milestones-empty {
+    border-color: var(--border-strong, #33475d);
+    background: var(--surface-panel, #172438);
+    color: var(--text-primary, #f2f7fb);
+}
+
+body.theme-dark .achievement-spotlight-medal {
+    background: color-mix(in srgb, var(--spotlight-accent) 18%, var(--surface-panel, #172438));
+}
+
+@media (max-width: 720px) {
+    .achievement-overview-grid,
+    .achievement-journey-grid,
+    .achievement-milestones-list {
+        grid-template-columns: 1fr;
+    }
+
+    .achievement-milestones-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+}
+
+/* Achievement rarity system: single-use collection with clear visual hierarchy. */
+.achievement-card.repeatable,
+.featured-achievement-card.repeatable {
+    outline: none;
+}
+
+.achievement-repeat {
+    display: none !important;
+}
+
+.achievement-card.rarity-common,
+.featured-achievement-card.rarity-common,
+body.theme-light .achievement-card.rarity-common,
+body.theme-light .featured-achievement-card.rarity-common {
+    background: linear-gradient(135deg, #ffffff, #f5fafb) !important;
+    border-color: rgba(39, 125, 161, 0.2) !important;
+    box-shadow: inset 0 -4px 0 rgba(39, 125, 161, 0.06);
+}
+
+.achievement-card.rarity-uncommon,
+.featured-achievement-card.rarity-uncommon,
+body.theme-light .achievement-card.rarity-uncommon,
+body.theme-light .featured-achievement-card.rarity-uncommon {
+    background: linear-gradient(135deg, rgba(50, 224, 166, 0.2), transparent 52%), #f1fff8 !important;
+    border-color: rgba(11, 185, 135, 0.34) !important;
+    box-shadow: inset 0 -4px 0 rgba(11, 185, 135, 0.1), 0 10px 22px rgba(11, 185, 135, 0.08);
+}
+
+.achievement-card.rarity-rare,
+.featured-achievement-card.rarity-rare,
+body.theme-light .achievement-card.rarity-rare,
+body.theme-light .featured-achievement-card.rarity-rare {
+    background: linear-gradient(135deg, rgba(91, 215, 255, 0.22), transparent 52%), #eff9ff !important;
+    border-color: rgba(21, 110, 207, 0.36) !important;
+    box-shadow: inset 0 -4px 0 rgba(21, 110, 207, 0.1), 0 10px 22px rgba(21, 110, 207, 0.08);
+}
+
+.achievement-card.rarity-epic,
+.featured-achievement-card.rarity-epic,
+body.theme-light .achievement-card.rarity-epic,
+body.theme-light .featured-achievement-card.rarity-epic {
+    background: linear-gradient(135deg, rgba(143, 92, 255, 0.22), transparent 54%), #faf4ff !important;
+    border-color: rgba(143, 92, 255, 0.42) !important;
+    box-shadow: inset 0 -4px 0 rgba(143, 92, 255, 0.12), 0 12px 26px rgba(143, 92, 255, 0.1);
+}
+
+.achievement-card.rarity-legendary,
+.featured-achievement-card.rarity-legendary,
+body.theme-light .achievement-card.rarity-legendary,
+body.theme-light .featured-achievement-card.rarity-legendary {
+    color: var(--ink);
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.28), rgba(255, 159, 28, 0.14) 54%, transparent 82%), #fff8e6 !important;
+    border-color: rgba(216, 145, 0, 0.58) !important;
+    box-shadow: inset 0 -4px 0 rgba(216, 145, 0, 0.14), 0 14px 30px rgba(216, 145, 0, 0.12);
+}
+
+.achievement-card.rarity-mythic,
+.featured-achievement-card.rarity-mythic,
+body.theme-light .achievement-card.rarity-mythic,
+body.theme-light .featured-achievement-card.rarity-mythic {
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 92% 8%, rgba(255, 193, 7, 0.24), transparent 30%),
+        linear-gradient(135deg, rgba(255, 79, 104, 0.3), rgba(255, 126, 126, 0.18) 48%, rgba(143, 92, 255, 0.14) 78%),
+        #fff1ef !important;
+    border-color: rgba(249, 89, 89, 0.7) !important;
+    box-shadow: inset 0 -5px 0 rgba(249, 89, 89, 0.16), 0 16px 36px rgba(249, 89, 89, 0.18), 0 0 0 3px rgba(255, 193, 7, 0.1);
+}
+
+.achievement-card.rarity-legendary .achievement-rarity,
+.featured-achievement-card.rarity-legendary .featured-rarity,
+body.theme-light .achievement-card.rarity-legendary .achievement-rarity,
+body.theme-light .featured-achievement-card.rarity-legendary .featured-rarity {
+    color: var(--bright-ink);
+    background: linear-gradient(135deg, #ffe680, var(--gold), var(--orange));
+}
+
+.achievement-card.rarity-mythic .achievement-rarity,
+.featured-achievement-card.rarity-mythic .featured-rarity,
+.achievement-showcase.rarity-mythic .showcase-rarity,
+body.theme-light .achievement-card.rarity-mythic .achievement-rarity,
+body.theme-light .featured-achievement-card.rarity-mythic .featured-rarity {
+    color: #ffffff;
+    background: linear-gradient(135deg, #ff4f68, #ff7e7e 58%, #8f5cff);
+    box-shadow: 0 6px 14px rgba(249, 89, 89, 0.18);
+}
+
+.achievement-card.rarity-legendary.collected .achievement-medal,
+.featured-achievement-card.rarity-legendary.collected .featured-medal,
+.achievement-showcase.rarity-legendary .showcase-medal {
+    color: var(--bright-ink);
+    background: linear-gradient(135deg, #ffe680, var(--gold), var(--orange));
+}
+
+.achievement-card.rarity-mythic.collected .achievement-medal,
+.featured-achievement-card.rarity-mythic.collected .featured-medal,
+.achievement-showcase.rarity-mythic .showcase-medal,
+body.theme-light .achievement-card.rarity-mythic.collected .achievement-medal,
+body.theme-light .featured-achievement-card.rarity-mythic.collected .featured-medal {
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(87, 16, 34, 0.34);
+    background: linear-gradient(135deg, #ff4f68, #ff7e7e 48%, #ffb13d 100%);
+    box-shadow: inset 0 -5px 0 rgba(87, 16, 34, 0.18), 0 12px 28px rgba(249, 89, 89, 0.22);
+}
+
+.achievement-card.rarity-legendary .achievement-track span {
+    background: linear-gradient(90deg, #ffe680, var(--gold), var(--orange));
+}
+
+.achievement-card.rarity-mythic .achievement-track span {
+    background: linear-gradient(90deg, #ff4f68, #ff7e7e, #ffb13d);
+}
+
+.achievement-showcase.rarity-common .achievement-showcase-card {
+    background: linear-gradient(135deg, #ffffff, #f5fafb) !important;
+    border-color: rgba(39, 125, 161, 0.2) !important;
+}
+
+.achievement-showcase.rarity-uncommon .achievement-showcase-card {
+    background: linear-gradient(135deg, #ffffff, #f1fff8) !important;
+    border-color: rgba(11, 185, 135, 0.34) !important;
+}
+
+.achievement-showcase.rarity-rare .achievement-showcase-card {
+    background: linear-gradient(135deg, #ffffff, #eff9ff) !important;
+    border-color: rgba(21, 110, 207, 0.36) !important;
+}
+
+.achievement-showcase.rarity-epic .achievement-showcase-card {
+    background: linear-gradient(135deg, #ffffff, #faf4ff) !important;
+    border-color: rgba(143, 92, 255, 0.42) !important;
+}
+
+.achievement-showcase.rarity-legendary .achievement-showcase-card {
+    background: linear-gradient(135deg, #ffffff, #fff8e6) !important;
+    border-color: rgba(216, 145, 0, 0.58) !important;
+}
+
+.achievement-showcase.rarity-mythic .achievement-showcase-card {
+    background:
+        radial-gradient(circle at 92% 8%, rgba(255, 193, 7, 0.24), transparent 30%),
+        linear-gradient(135deg, #ffffff, #fff1ef) !important;
+    border-color: rgba(249, 89, 89, 0.7) !important;
+}
+
+body.theme-dark .achievement-card,
+body.theme-dark .featured-achievement-card {
+    color: var(--dark-text-strong);
+}
+
+body.theme-dark .achievement-card h4,
+body.theme-dark .featured-achievement-card h4 {
+    color: var(--dark-text-strong);
+}
+
+body.theme-dark .achievement-card p,
+body.theme-dark .featured-achievement-card p {
+    color: var(--dark-text-soft);
+}
+
+body.theme-dark .achievement-card.rarity-common,
+body.theme-dark .featured-achievement-card.rarity-common {
+    background: linear-gradient(135deg, rgba(203, 215, 232, 0.08), transparent 56%), #142236 !important;
+    border-color: rgba(203, 215, 232, 0.2) !important;
+    box-shadow: inset 0 -4px 0 rgba(203, 215, 232, 0.06);
+}
+
+body.theme-dark .achievement-card.rarity-uncommon,
+body.theme-dark .featured-achievement-card.rarity-uncommon {
+    background: linear-gradient(135deg, rgba(46, 227, 155, 0.2), transparent 56%), #10241e !important;
+    border-color: rgba(46, 227, 155, 0.38) !important;
+    box-shadow: inset 0 -4px 0 rgba(46, 227, 155, 0.1), 0 12px 28px rgba(0, 0, 0, 0.14);
+}
+
+body.theme-dark .achievement-card.rarity-rare,
+body.theme-dark .featured-achievement-card.rarity-rare {
+    background: linear-gradient(135deg, rgba(91, 215, 255, 0.22), transparent 56%), #10243a !important;
+    border-color: rgba(91, 215, 255, 0.44) !important;
+    box-shadow: inset 0 -4px 0 rgba(91, 215, 255, 0.12), 0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+body.theme-dark .achievement-card.rarity-epic,
+body.theme-dark .featured-achievement-card.rarity-epic {
+    background: linear-gradient(135deg, rgba(177, 126, 255, 0.26), transparent 56%), #17172f !important;
+    border-color: rgba(177, 126, 255, 0.5) !important;
+    box-shadow: inset 0 -4px 0 rgba(177, 126, 255, 0.14), 0 14px 30px rgba(0, 0, 0, 0.18);
+}
+
+body.theme-dark .achievement-card.rarity-legendary,
+body.theme-dark .featured-achievement-card.rarity-legendary {
+    color: #fff4cf;
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.28), transparent 56%), #211b12 !important;
+    border-color: rgba(255, 209, 102, 0.62) !important;
+    box-shadow: inset 0 -4px 0 rgba(255, 209, 102, 0.16), 0 16px 34px rgba(0, 0, 0, 0.2);
+}
+
+body.theme-dark .achievement-card.rarity-mythic,
+body.theme-dark .featured-achievement-card.rarity-mythic {
+    color: #ffe6ea;
+    background:
+        radial-gradient(circle at 92% 8%, rgba(255, 209, 102, 0.18), transparent 30%),
+        linear-gradient(135deg, rgba(255, 79, 104, 0.34), rgba(143, 92, 255, 0.16) 54%, transparent 82%),
+        #2a1018 !important;
+    border-color: rgba(255, 117, 109, 0.74) !important;
+    box-shadow: inset 0 -5px 0 rgba(255, 117, 109, 0.16), 0 18px 40px rgba(255, 79, 104, 0.2), 0 0 0 3px rgba(255, 209, 102, 0.08);
+}
+
+body.theme-dark .achievement-card.rarity-legendary .achievement-rarity,
+body.theme-dark .featured-achievement-card.rarity-legendary .featured-rarity {
+    color: #071522;
+    background: linear-gradient(135deg, var(--dark-review), var(--dark-warning));
+}
+
+body.theme-dark .achievement-card.rarity-mythic .achievement-rarity,
+body.theme-dark .featured-achievement-card.rarity-mythic .featured-rarity,
+body.theme-dark .achievement-showcase.rarity-mythic .showcase-rarity {
+    color: #ffffff;
+    background: linear-gradient(135deg, #ff4f68, var(--dark-danger), #b17eff);
+    box-shadow: 0 8px 18px rgba(255, 79, 104, 0.22);
+}
+
+body.theme-dark .achievement-card.rarity-mythic.collected .achievement-medal,
+body.theme-dark .featured-achievement-card.rarity-mythic.collected .featured-medal,
+body.theme-dark .achievement-showcase.rarity-mythic .showcase-medal {
+    color: #ffffff;
+    background: linear-gradient(135deg, #ff4f68, var(--dark-danger), var(--dark-warning));
+    box-shadow: inset 0 -5px 0 rgba(87, 16, 34, 0.28), 0 14px 34px rgba(255, 79, 104, 0.22);
+}
+
+body.theme-dark .achievement-card.rarity-mythic .achievement-track span {
+    background: linear-gradient(90deg, #ff4f68, var(--dark-danger), var(--dark-warning));
+}
+
+body.theme-dark .achievement-showcase.rarity-common .achievement-showcase-card {
+    background: linear-gradient(135deg, rgba(203, 215, 232, 0.08), transparent 56%), #142236 !important;
+    border-color: rgba(203, 215, 232, 0.2) !important;
+}
+
+body.theme-dark .achievement-showcase.rarity-uncommon .achievement-showcase-card {
+    background: linear-gradient(135deg, rgba(46, 227, 155, 0.18), transparent 56%), #10241e !important;
+    border-color: rgba(46, 227, 155, 0.38) !important;
+}
+
+body.theme-dark .achievement-showcase.rarity-rare .achievement-showcase-card {
+    background: linear-gradient(135deg, rgba(91, 215, 255, 0.2), transparent 56%), #10243a !important;
+    border-color: rgba(91, 215, 255, 0.44) !important;
+}
+
+body.theme-dark .achievement-showcase.rarity-epic .achievement-showcase-card {
+    background: linear-gradient(135deg, rgba(177, 126, 255, 0.24), transparent 56%), #17172f !important;
+    border-color: rgba(177, 126, 255, 0.5) !important;
+}
+
+body.theme-dark .achievement-showcase.rarity-legendary .achievement-showcase-card {
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.24), transparent 56%), #211b12 !important;
+    border-color: rgba(255, 209, 102, 0.62) !important;
+}
+
+body.theme-dark .achievement-showcase.rarity-mythic .achievement-showcase-card {
+    background:
+        radial-gradient(circle at 92% 8%, rgba(255, 209, 102, 0.18), transparent 30%),
+        linear-gradient(135deg, rgba(255, 79, 104, 0.32), rgba(143, 92, 255, 0.14) 54%, transparent 82%),
+        #2a1018 !important;
+    border-color: rgba(255, 117, 109, 0.74) !important;
+}
+
+.rarity-step.rarity-common,
+body.theme-light .rarity-step.rarity-common {
+    background: linear-gradient(135deg, #ffffff, #f5fafb) !important;
+    border-color: rgba(39, 125, 161, 0.2) !important;
+}
+
+.rarity-step.rarity-uncommon,
+body.theme-light .rarity-step.rarity-uncommon {
+    background: linear-gradient(135deg, rgba(50, 224, 166, 0.2), transparent 52%), #f1fff8 !important;
+    border-color: rgba(11, 185, 135, 0.34) !important;
+}
+
+.rarity-step.rarity-rare,
+body.theme-light .rarity-step.rarity-rare {
+    background: linear-gradient(135deg, rgba(91, 215, 255, 0.22), transparent 52%), #eff9ff !important;
+    border-color: rgba(21, 110, 207, 0.36) !important;
+}
+
+.rarity-step.rarity-epic,
+body.theme-light .rarity-step.rarity-epic {
+    background: linear-gradient(135deg, rgba(143, 92, 255, 0.22), transparent 54%), #faf4ff !important;
+    border-color: rgba(143, 92, 255, 0.42) !important;
+}
+
+.rarity-step.rarity-legendary,
+body.theme-light .rarity-step.rarity-legendary {
+    color: var(--ink);
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.28), rgba(255, 159, 28, 0.14) 54%, transparent 82%), #fff8e6 !important;
+    border-color: rgba(216, 145, 0, 0.58) !important;
+    box-shadow: inset 0 -4px 0 rgba(216, 145, 0, 0.14), 0 12px 26px rgba(216, 145, 0, 0.1);
+}
+
+.rarity-step.rarity-mythic,
+body.theme-light .rarity-step.rarity-mythic {
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 92% 8%, rgba(255, 193, 7, 0.24), transparent 30%),
+        linear-gradient(135deg, rgba(255, 79, 104, 0.3), rgba(255, 126, 126, 0.18) 48%, rgba(143, 92, 255, 0.14) 78%),
+        #fff1ef !important;
+    border-color: rgba(249, 89, 89, 0.7) !important;
+    box-shadow: inset 0 -5px 0 rgba(249, 89, 89, 0.16), 0 16px 34px rgba(249, 89, 89, 0.16), 0 0 0 3px rgba(255, 193, 7, 0.08);
+}
+
+.rarity-step.rarity-common strong,
+body.theme-light .rarity-step.rarity-common strong {
+    color: var(--muted);
+    background: #eef4f8 !important;
+}
+
+.rarity-step.rarity-uncommon strong,
+body.theme-light .rarity-step.rarity-uncommon strong {
+    color: #063f36;
+    background: linear-gradient(135deg, #a8ffc9, #32e0a6) !important;
+}
+
+.rarity-step.rarity-rare strong,
+body.theme-light .rarity-step.rarity-rare strong {
+    color: #071522;
+    background: linear-gradient(135deg, #5bd7ff, #2b8cff) !important;
+}
+
+.rarity-step.rarity-epic strong,
+body.theme-light .rarity-step.rarity-epic strong {
+    color: #ffffff;
+    background: linear-gradient(135deg, #8f5cff, #d196ff) !important;
+}
+
+.rarity-step.rarity-legendary strong,
+body.theme-light .rarity-step.rarity-legendary strong {
+    color: var(--bright-ink);
+    background: linear-gradient(135deg, #ffe680, var(--gold), var(--orange)) !important;
+}
+
+.rarity-step.rarity-mythic strong,
+body.theme-light .rarity-step.rarity-mythic strong {
+    color: #ffffff;
+    background: linear-gradient(135deg, #ff4f68, #ff7e7e 58%, #8f5cff) !important;
+    box-shadow: 0 8px 18px rgba(249, 89, 89, 0.22);
+}
+
+body.theme-dark .rarity-step.rarity-common {
+    color: var(--dark-text-strong);
+    background: linear-gradient(135deg, rgba(203, 215, 232, 0.08), transparent 56%), #142236 !important;
+    border-color: rgba(203, 215, 232, 0.2) !important;
+}
+
+body.theme-dark .rarity-step.rarity-uncommon {
+    color: var(--dark-text-strong);
+    background: linear-gradient(135deg, rgba(46, 227, 155, 0.2), transparent 56%), #10241e !important;
+    border-color: rgba(46, 227, 155, 0.38) !important;
+}
+
+body.theme-dark .rarity-step.rarity-rare {
+    color: var(--dark-text-strong);
+    background: linear-gradient(135deg, rgba(91, 215, 255, 0.22), transparent 56%), #10243a !important;
+    border-color: rgba(91, 215, 255, 0.44) !important;
+}
+
+body.theme-dark .rarity-step.rarity-epic {
+    color: var(--dark-text-strong);
+    background: linear-gradient(135deg, rgba(177, 126, 255, 0.26), transparent 56%), #17172f !important;
+    border-color: rgba(177, 126, 255, 0.5) !important;
+}
+
+body.theme-dark .rarity-step.rarity-legendary {
+    color: #fff4cf;
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.28), transparent 56%), #211b12 !important;
+    border-color: rgba(255, 209, 102, 0.62) !important;
+}
+
+body.theme-dark .rarity-step.rarity-mythic {
+    color: #ffe6ea;
+    background:
+        radial-gradient(circle at 92% 8%, rgba(255, 209, 102, 0.18), transparent 30%),
+        linear-gradient(135deg, rgba(255, 79, 104, 0.34), rgba(143, 92, 255, 0.16) 54%, transparent 82%),
+        #2a1018 !important;
+    border-color: rgba(255, 117, 109, 0.74) !important;
+    box-shadow: inset 0 -5px 0 rgba(255, 117, 109, 0.16), 0 18px 40px rgba(255, 79, 104, 0.18), 0 0 0 3px rgba(255, 209, 102, 0.08);
+}
+
+body.theme-dark .rarity-step.rarity-mythic strong {
+    color: #ffffff;
+    background: linear-gradient(135deg, #ff4f68, var(--dark-danger), #b17eff) !important;
+    box-shadow: 0 8px 18px rgba(255, 79, 104, 0.24);
+}
+
+@keyframes achievement-card-enter {
+    0% {
+        opacity: 0;
+        transform: translateY(8px) scale(0.985);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes achievement-showcase-soft {
+    0% {
+        opacity: 0;
+        transform: translateY(22px) scale(0.92);
+    }
+
+    16% {
+        opacity: 1;
+        transform: translateY(-3px) scale(1.035);
+    }
+
+    34%,
+    78% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.985);
+    }
+}
+
+/* Prestige route: the current milestone leads; completed levels become a quieter trail. */
+.streak-route-disclosure .streak-prestige-road {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 2px 12px 14px;
+}
+
+.prestige-chapter {
+    display: grid;
+    gap: 9px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-soft);
+}
+
+.prestige-chapter:first-child {
+    padding-top: 2px;
+    border-top: 0;
+}
+
+.prestige-chapter-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding-inline: 2px;
+}
+
+.prestige-chapter-heading h4,
+.prestige-chapter-heading small {
+    margin: 0;
+}
+
+.prestige-chapter-heading h4 {
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    font-weight: 1000;
+}
+
+.prestige-chapter-heading small {
+    color: var(--text-secondary);
+    font-size: 0.64rem;
+    font-weight: 850;
+}
+
+.prestige-chapter-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.prestige-chapter .prestige-step {
+    display: grid;
+    grid-template-rows: 50px minmax(30px, auto);
+    align-content: center;
+    justify-items: center;
+    gap: 6px;
+    min-width: 0;
+    min-height: 98px;
+    padding: 9px 7px;
+    overflow: visible;
+    color: var(--text-primary);
+    text-align: center;
+    background: var(--surface-panel) !important;
+    border: 1px solid color-mix(in srgb, var(--streak-accent) 30%, var(--border-soft));
+    border-radius: 9px;
+    box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--streak-accent) 8%, transparent);
+    opacity: 1;
+    transition: transform 160ms ease, opacity 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.prestige-chapter .prestige-step::before,
+.prestige-chapter .prestige-step::after {
+    display: none;
+}
+
+.prestige-step-copy {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    min-width: 0;
+    width: 100%;
+}
+
+.prestige-chapter .prestige-step strong {
+    color: var(--streak-accent);
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+.prestige-chapter .prestige-step em {
+    color: var(--text-primary);
+    font-size: 0.58rem;
+    font-weight: 950;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+.prestige-chapter .prestige-step.is-past {
+    opacity: 1;
+    filter: none;
+}
+
+.prestige-chapter .prestige-step.is-past .prestige-mini-emblem {
+    opacity: 0.76;
+    filter: saturate(0.76) drop-shadow(0 4px 7px var(--streak-glow));
+}
+
+.prestige-chapter .prestige-step.is-past:hover {
+    transform: translateY(-1px);
+}
+
+.prestige-chapter .prestige-step.is-current {
+    color: var(--text-primary);
+    background:
+        radial-gradient(circle at 50% 24%, var(--streak-glow), transparent 42%),
+        var(--surface-panel) !important;
+    border: 2px solid var(--streak-accent);
+    box-shadow: inset 0 -4px 0 color-mix(in srgb, var(--streak-accent) 14%, transparent), 0 8px 22px var(--streak-glow);
+}
+
+.prestige-chapter .prestige-step.is-current em {
+    color: var(--text-primary);
+}
+
+.prestige-current-label {
+    position: absolute;
+    top: -57px;
+    right: -2px;
+    padding: 3px 5px;
+    color: var(--text-primary);
+    font-size: 0.5rem;
+    font-weight: 1000;
+    line-height: 1;
+    text-transform: uppercase;
+    background: var(--surface-panel);
+    border: 1px solid var(--streak-accent);
+    border-radius: 999px;
+}
+
+.prestige-chapter .prestige-step.is-next {
+    border-style: solid;
+    border-color: color-mix(in srgb, var(--streak-accent) 48%, var(--border-soft));
+    opacity: 1;
+}
+
+.prestige-chapter .prestige-step.is-next .prestige-lock-icon {
+    transform: scale(0.82);
+    filter: drop-shadow(0 4px 10px var(--streak-glow));
+}
+
+.prestige-chapter .prestige-step.is-locked {
+    opacity: 0.82;
+    filter: saturate(0.7);
+}
+
+body.theme-light .prestige-chapter .prestige-step.reached.is-past {
+    color: var(--text-primary);
+    background: #ffffff !important;
+    border-color: color-mix(in srgb, var(--streak-accent) 34%, var(--border-soft));
+    box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--streak-accent) 8%, transparent);
+    text-shadow: none;
+}
+
+body.theme-light .prestige-chapter .prestige-step.reached.is-current {
+    color: var(--text-primary);
+    background:
+        radial-gradient(circle at 50% 24%, var(--streak-glow), transparent 44%),
+        #ffffff !important;
+    border-color: var(--streak-accent);
+}
+
+body.theme-light .prestige-chapter .prestige-step.reached :is(strong, em) {
+    color: var(--text-primary);
+    text-shadow: none;
+}
+
+body.theme-light .prestige-chapter .prestige-step.reached strong {
+    color: color-mix(in srgb, var(--streak-accent) 78%, #17324a);
+}
+
+.prestige-mini-emblem {
+    position: relative;
+    display: grid;
+    width: 43px;
+    height: 48px;
+    place-items: center;
+    filter: drop-shadow(0 5px 8px var(--streak-glow));
+}
+
+.prestige-mini-emblem::before,
+.prestige-mini-emblem::after {
+    position: absolute;
+    content: "";
+    clip-path: polygon(50% 0, 91% 16%, 86% 68%, 50% 100%, 14% 68%, 9% 16%);
+}
+
+.prestige-mini-emblem::before {
+    inset: 0;
+    background: var(--streak-accent);
+}
+
+.prestige-mini-emblem::after {
+    inset: 4px;
+    background: var(--surface-panel);
+}
+
+.prestige-mini-emblem-core {
+    position: relative;
+    z-index: 2;
+    width: 18px;
+    height: 25px;
+    background: var(--streak-accent);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 48 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23000' d='M26 2c6 10 4 18 1 24 5-3 8-8 9-14 7 7 11 15 11 25 0 14-10 25-23 25S1 51 1 37c0-10 5-19 14-25-1 8 1 14 6 18-1-11 1-20 5-28Zm-2 35c-5 5-7 9-7 14 0 5 3 9 7 9s8-4 8-9c0-5-3-9-8-14Z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 48 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23000' d='M26 2c6 10 4 18 1 24 5-3 8-8 9-14 7 7 11 15 11 25 0 14-10 25-23 25S1 51 1 37c0-10 5-19 14-25-1 8 1 14 6 18-1-11 1-20 5-28Zm-2 35c-5 5-7 9-7 14 0 5 3 9 7 9s8-4 8-9c0-5-3-9-8-14Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.prestige-mini-emblem-ring {
+    position: absolute;
+    z-index: 1;
+    width: 29px;
+    height: 29px;
+    border: 2px solid var(--streak-accent);
+    border-radius: 50%;
+    opacity: 0;
+}
+
+.prestige-mini-emblem.quality-2 .prestige-mini-emblem-ring {
+    opacity: 0.36;
+}
+
+.prestige-mini-emblem.quality-3 .prestige-mini-emblem-ring {
+    width: 32px;
+    height: 32px;
+    opacity: 0.62;
+    box-shadow: 0 0 0 3px var(--streak-glow);
+}
+
+.prestige-mini-emblem.quality-4 {
+    width: 46px;
+    height: 51px;
+}
+
+.prestige-mini-emblem.quality-4 .prestige-mini-emblem-ring {
+    width: 34px;
+    height: 34px;
+    border-width: 3px;
+    opacity: 0.76;
+    box-shadow: 0 0 0 4px var(--streak-glow);
+}
+
+.prestige-mini-emblem.quality-5,
+.prestige-mini-emblem.quality-6 {
+    width: 49px;
+    height: 54px;
+}
+
+.prestige-mini-emblem.quality-5 .prestige-mini-emblem-ring,
+.prestige-mini-emblem.quality-6 .prestige-mini-emblem-ring {
+    width: 37px;
+    height: 37px;
+    border-width: 3px;
+    opacity: 0.9;
+    box-shadow: 0 0 0 4px var(--streak-glow), 0 0 14px var(--streak-glow);
+}
+
+.prestige-mini-emblem.quality-6::before {
+    filter: drop-shadow(0 0 7px var(--streak-accent));
+}
+
+body.theme-dark .prestige-chapter {
+    border-top-color: rgba(203, 215, 232, 0.12);
+}
+
+body.theme-dark .prestige-chapter-heading h4 {
+    color: var(--dark-text-strong);
+}
+
+body.theme-dark .prestige-chapter-heading small,
+body.theme-dark .prestige-chapter .prestige-step.locked em {
+    color: var(--dark-text-soft);
+}
+
+body.theme-dark .prestige-chapter .prestige-step.reached em {
+    color: var(--dark-text-strong);
+}
+
+body.theme-dark .prestige-chapter .prestige-step.reached strong {
+    color: color-mix(in srgb, var(--streak-accent) 76%, #ffffff);
+}
+
+body.theme-dark .prestige-chapter .prestige-step,
+body.theme-dark .prestige-chapter .prestige-step.reached,
+body.theme-dark .prestige-chapter .prestige-step.locked {
+    color: var(--dark-text-strong);
+    background: #121e2f !important;
+    border-color: color-mix(in srgb, var(--streak-accent) 38%, rgba(203, 215, 232, 0.15));
+    box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--streak-accent) 10%, transparent);
+    text-shadow: none;
+}
+
+body.theme-dark .prestige-chapter .prestige-step.is-current {
+    background:
+        radial-gradient(circle at 50% 24%, var(--streak-glow), transparent 46%),
+        #142236 !important;
+    border-color: var(--streak-accent);
+    box-shadow: inset 0 -4px 0 color-mix(in srgb, var(--streak-accent) 16%, transparent), 0 8px 24px var(--streak-glow);
+}
+
+body.theme-dark .prestige-chapter .prestige-step.is-current em,
+body.theme-dark .prestige-current-label {
+    color: var(--dark-text-strong);
+}
+
+body.theme-dark .prestige-current-label,
+body.theme-dark .prestige-mini-emblem::after {
+    background: #142236;
+}
+
+/* Compact streak identity: progression comes from structure, not color alone. */
+.compact-progress-streak :is(.compact-progress-icon, .compact-progress-menu-streak) {
+    position: relative;
+    overflow: visible;
+    background: transparent;
+    border-radius: 50%;
+    -webkit-mask: none;
+    mask: none;
+    filter: none;
+}
+
+.compact-progress-streak :is(.compact-progress-icon, .compact-progress-menu-streak)::before,
+.compact-progress-streak :is(.compact-progress-icon, .compact-progress-menu-streak)::after {
+    position: absolute;
+    content: "";
+}
+
+.compact-progress-streak :is(.compact-progress-icon, .compact-progress-menu-streak)::before {
+    inset: 1px 3px;
+    z-index: 2;
+    background: var(--streak-accent);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23000' d='M12.4 2.8c1.6 2.8 1.2 4.6.4 6.1 1.1-.6 1.8-1.7 2.1-3.1 2.4 1.9 4.1 4.8 4.1 8A7 7 0 0 1 12 21a7 7 0 0 1-7-7.1c0-2.8 1.5-5.1 3.8-6.8.1 1.6.7 2.8 1.8 3.6-.1-2.9.5-5.4 1.8-7.9Z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23000' d='M12.4 2.8c1.6 2.8 1.2 4.6.4 6.1 1.1-.6 1.8-1.7 2.1-3.1 2.4 1.9 4.1 4.8 4.1 8A7 7 0 0 1 12 21a7 7 0 0 1-7-7.1c0-2.8 1.5-5.1 3.8-6.8.1 1.6.7 2.8 1.8 3.6-.1-2.9.5-5.4 1.8-7.9Z'/%3E%3C/svg%3E") center / contain no-repeat;
+    transition: inset 160ms ease, filter 160ms ease, transform 160ms ease;
+}
+
+.compact-progress-streak :is(.compact-progress-icon, .compact-progress-menu-streak)::after {
+    inset: 0;
+    z-index: 1;
+    border: 1px solid var(--streak-accent);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.compact-progress-streak.streak-empty :is(.compact-progress-icon, .compact-progress-menu-streak)::before {
+    opacity: 0.48;
+    transform: scale(0.72);
+}
+
+.compact-progress-streak:is(.streak-kindled, .streak-spark) :is(.compact-progress-icon, .compact-progress-menu-streak)::before {
+    transform: scale(0.82);
+}
+
+.compact-progress-streak:is(.streak-hot, .streak-blaze) :is(.compact-progress-icon, .compact-progress-menu-streak)::after {
+    opacity: 0.42;
+    transform: scale(0.92);
+}
+
+.compact-progress-streak:is(.streak-comet, .streak-forge) :is(.compact-progress-icon, .compact-progress-menu-streak)::before {
+    filter: drop-shadow(0 0 3px var(--streak-glow));
+}
+
+.compact-progress-streak:is(.streak-comet, .streak-forge) :is(.compact-progress-icon, .compact-progress-menu-streak)::after {
+    opacity: 0.68;
+    box-shadow: 0 0 0 2px var(--streak-glow);
+}
+
+.compact-progress-streak:is(.streak-mythic, .streak-immortal) :is(.compact-progress-icon, .compact-progress-menu-streak)::before {
+    inset: 0 3px;
+    filter: drop-shadow(0 0 4px var(--streak-glow));
+}
+
+.compact-progress-streak:is(.streak-mythic, .streak-immortal) :is(.compact-progress-icon, .compact-progress-menu-streak)::after {
+    inset: -1px;
+    opacity: 0.84;
+    border-width: 2px;
+    box-shadow: 0 0 0 2px var(--streak-glow), 0 0 7px var(--streak-glow);
+    transform: rotate(45deg) scale(0.78);
+}
+
+.compact-progress-streak:is(.streak-ascendant, .streak-eternal, .streak-celestial, .streak-transcendent) :is(.compact-progress-icon, .compact-progress-menu-streak)::before {
+    inset: -1px 2px;
+    filter: drop-shadow(0 0 5px var(--streak-accent));
+}
+
+.compact-progress-streak:is(.streak-ascendant, .streak-eternal, .streak-celestial, .streak-transcendent) :is(.compact-progress-icon, .compact-progress-menu-streak)::after {
+    inset: -2px;
+    opacity: 1;
+    border-width: 2px;
+    box-shadow: 0 0 0 3px var(--streak-glow), 0 0 9px var(--streak-glow);
+}
+
+.compact-progress-streak.streak-transcendent :is(.compact-progress-icon, .compact-progress-menu-streak)::after {
+    box-shadow: 0 0 0 3px var(--streak-glow), 0 0 12px var(--streak-accent);
+}
+
+/* The compact streak uses a CSS flame that remains legible at menu size. */
+.compact-progress-streak :is(.compact-progress-icon, .compact-progress-menu-streak)::before,
+.compact-progress-streak.streak-empty :is(.compact-progress-icon, .compact-progress-menu-streak)::before,
+.compact-progress-streak:is(.streak-kindled, .streak-spark, .streak-hot, .streak-blaze, .streak-comet, .streak-forge, .streak-mythic, .streak-immortal, .streak-ascendant, .streak-eternal, .streak-celestial, .streak-transcendent) :is(.compact-progress-icon, .compact-progress-menu-streak)::before {
+    top: 1px;
+    right: 3px;
+    bottom: 1px;
+    left: 3px;
+    width: auto;
+    height: auto;
+    opacity: 1;
+    background: var(--streak-accent);
+    clip-path: polygon(53% 0, 78% 31%, 74% 48%, 91% 39%, 100% 66%, 88% 91%, 63% 100%, 31% 96%, 7% 76%, 0 51%, 28% 62%, 21% 39%);
+    filter: none;
+    -webkit-mask: none;
+    mask: none;
+    transform: none;
+}
+
+.compact-progress-streak.streak-empty :is(.compact-progress-icon, .compact-progress-menu-streak)::before {
+    opacity: 0.58;
+    transform: scale(0.86);
+}
+
+.compact-progress-streak.streak-just-protected {
+    animation: compact-streak-ignite 560ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes compact-streak-ignite {
+    0% {
+        transform: scale(1);
+    }
+
+    44% {
+        transform: scale(1.08);
+        filter: drop-shadow(0 0 7px var(--streak-glow));
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Final compact-shell guard: advanced auras never collapse into the count. */
+.compact-progress-shell .compact-progress-streak .compact-progress-icon,
+.compact-progress-shell .compact-progress-streak:is(.streak-mythic, .streak-immortal, .streak-ascendant, .streak-eternal, .streak-celestial, .streak-transcendent) .compact-progress-icon {
+    position: relative;
+    display: block;
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    margin-right: 4px;
+    overflow: visible;
+    background: color-mix(in srgb, var(--streak-accent) 14%, var(--surface-panel));
+    border: 1px solid color-mix(in srgb, var(--streak-accent) 55%, transparent);
+    border-radius: 50%;
+    filter: none;
+    -webkit-mask: none;
+    mask: none;
+}
+
+.compact-progress-shell .compact-progress-streak .compact-progress-icon::before,
+.compact-progress-shell .compact-progress-streak:is(.streak-kindled, .streak-spark, .streak-hot, .streak-blaze, .streak-comet, .streak-forge, .streak-mythic, .streak-immortal, .streak-ascendant, .streak-eternal, .streak-celestial, .streak-transcendent) .compact-progress-icon::before {
+    inset: 4px 5px 3px;
+    opacity: 1;
+    background: var(--streak-accent);
+    clip-path: polygon(53% 0, 78% 31%, 74% 48%, 91% 39%, 100% 66%, 88% 91%, 63% 100%, 31% 96%, 7% 76%, 0 51%, 28% 62%, 21% 39%);
+    filter: none;
+    -webkit-mask: none;
+    mask: none;
+    transform: none;
+}
+
+.compact-progress-shell .compact-progress-streak .compact-progress-icon::after,
+.compact-progress-shell .compact-progress-streak:is(.streak-mythic, .streak-immortal, .streak-ascendant, .streak-eternal, .streak-celestial, .streak-transcendent) .compact-progress-icon::after {
+    inset: -3px;
+    border: 1px solid var(--streak-accent);
+    border-radius: 50%;
+    opacity: 0.18;
+    box-shadow: none;
+    transform: none;
+}
+
+.compact-progress-shell .compact-progress-streak:is(.streak-hot, .streak-blaze, .streak-comet, .streak-forge) .compact-progress-icon::after {
+    opacity: 0.48;
+    box-shadow: 0 0 0 2px var(--streak-glow);
+}
+
+.compact-progress-shell .compact-progress-streak:is(.streak-mythic, .streak-immortal, .streak-ascendant, .streak-eternal, .streak-celestial, .streak-transcendent) .compact-progress-icon::after {
+    border-width: 2px;
+    opacity: 0.74;
+    box-shadow: 0 0 0 2px var(--streak-glow), 0 0 8px var(--streak-glow);
+}
