@@ -101,12 +101,14 @@
                 signOut();
             } else {
                 signIn().then(() => {
-                    // Si el login fue exitoso desde onboarding, cerramos el overlay
                     const overlay = document.getElementById('onboarding-overlay');
-                    if (overlay) {
+                    if (overlay && !overlay.hidden) {
                         localStorage.setItem('tasklyzen-login-strategy', 'google');
                         overlay.style.opacity = '0';
-                        setTimeout(() => overlay.hidden = true, 300);
+                        setTimeout(() => {
+                            overlay.hidden = true;
+                            if (window.__TLZ_startApp) window.__TLZ_startApp();
+                        }, 300);
                     }
                 });
             }

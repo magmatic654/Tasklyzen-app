@@ -32,12 +32,29 @@
         const docRef = db.collection('users').doc(currentUser.uid);
         
         docRef.get().then(docSnap => {
-            const hasCloudData = docSnap.exists && Object.keys(docSnap.data()).length > 0;
+            const cloudData = docSnap.exists ? docSnap.data() : {};
+            const hasCloudData = docSnap.exists && Object.keys(cloudData).length > 0;
             const todos = localStorage.getItem('tasklyzen-todos');
             const hasLocalData = todos && todos !== '[]' && todos !== 'null';
-
+            
+            let isDifferent = false;
             if (hasLocalData && hasCloudData) {
-                pendingCloudData = docSnap.data();
+                const cloudTodos = cloudData['tasklyzen-todos'];
+                if (cloudTodos && cloudTodos !== todos) {
+                    try {
+                        const parsedCloud = JSON.parse(cloudTodos);
+                        const parsedLocal = JSON.parse(todos);
+                        if (JSON.stringify(parsedCloud) !== JSON.stringify(parsedLocal)) {
+                            isDifferent = true;
+                        }
+                    } catch (e) {
+                        isDifferent = cloudTodos !== todos;
+                    }
+                }
+            }
+
+            if (hasLocalData && hasCloudData && isDifferent) {
+                pendingCloudData = cloudData;
                 const conflictDialog = document.getElementById('data-conflict-dialog');
                 if (conflictDialog && typeof conflictDialog.showModal === 'function') {
                     conflictDialog.showModal();
@@ -64,13 +81,18 @@
                     // Fallback if dialog not supported, default to cloud
                     resolveConflict('cloud');
                 }
-            } else if (!hasCloudData && hasLocalData) {
-                uploadLocalToCloud(docRef);
-                startListener(docRef);
+            } else if (hasCloudData) {
+                pendingCloudData = cloudData;
+                resolveConflict('cloud');
+            } else if (hasLocalData) {
+                resolveConflict('local');
             } else {
                 startListener(docRef);
             }
-        }).catch(console.error);
+        }).catch(err => {
+            console.error("Error al iniciar sincronización:", err);
+            startListener(docRef); // Fallback a local
+        });
     }
 
     function uploadLocalToCloud(docRef) {

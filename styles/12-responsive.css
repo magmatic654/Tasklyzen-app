@@ -1185,6 +1185,7 @@
 
     .compact-progress-widget {
         padding: 9px 12px 10px;
+        margin-bottom: 24px;
     }
 
     .compact-progress-shell {

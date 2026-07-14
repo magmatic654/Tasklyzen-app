@@ -54,7 +54,7 @@ const TASKLYZEN_OVERDUE_REVIEW = window.TasklyzenOverdueReview || {
         getAutoDeleteTasks: () => []
     })
 };
-const TASKLYZEN_QUICK_CREATE = window.TasklyzenQuickCreate;
+
 const TASKLYZEN_ANALYTICS_PROGRESS = window.TasklyzenAnalyticsProgress;
 const TASKLYZEN_ACHIEVEMENTS = window.TasklyzenAchievements;
 const TASKLYZEN_GAMIFICATION = window.TasklyzenGamification;
@@ -473,21 +473,7 @@ const overdueReviewController = TASKLYZEN_OVERDUE_REVIEW.createOverdueReviewCont
     })
 });
 window.TasklyzenRuntime.overdueReviewController = overdueReviewController;
-const quickCreateController = TASKLYZEN_QUICK_CREATE.createQuickCreateController({
-    dom: TASKLYZEN_DOM,
-    documentRef: document,
-    onCreate: text => createTodoFromInput(text, {
-        priority: 'normal',
-        habit: false,
-        dueDate: null,
-        focusOnError: false
-    }),
-    isTaskEditing: () => Boolean(taskUiController.getEditingTodoId()),
-    hasExternalBlocker: () => Boolean((settingsPanel && settingsPanel.hidden === false)
-        || (deleteDataDialog && deleteDataDialog.open)
-        || (overdueReviewDialog && overdueReviewDialog.open))
-});
-window.TasklyzenRuntime.quickCreateController = quickCreateController;
+
 const gamificationController = TASKLYZEN_GAMIFICATION.createGamificationController({
     definitions: ACHIEVEMENT_DEFINITIONS,
     rarities: ACHIEVEMENT_RARITIES,
@@ -2950,7 +2936,7 @@ function addTodoItem(text, priority, options) {
         scheduledFor: todo.snoozedUntil || todo.createdOn
     });
     if (!config.silent) {
-        showToast(config.habit ? 'Hábito agregado correctamente.' : 'Tarea agregada correctamente.', 'success');
+        // showToast(config.habit ? 'Hábito agregado correctamente.' : 'Tarea agregada correctamente.', 'success');
     }
     processOverdueRetention(true);
     renderCurrentPage();
@@ -4109,6 +4095,34 @@ if (compactProgressWidget) {
 document.addEventListener('click', handleCompactProgressDocumentClick);
 document.addEventListener('keydown', handleProgressPanelKeydown);
 document.addEventListener('keydown', handleCompactProgressKeydown);
+
+function handleGlobalKeydownForTaskInput(event) {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    const isEditingTask = Boolean(taskUiController.getEditingTodoId());
+    const hasExternalBlocker = Boolean((settingsPanel && settingsPanel.hidden === false)
+        || (deleteDataDialog && deleteDataDialog.open)
+        || (overdueReviewDialog && overdueReviewDialog.open)
+        || (typeof onboardingOverlay !== 'undefined' && onboardingOverlay && onboardingOverlay.hidden === false)
+        || document.activeElement.tagName === 'INPUT'
+        || document.activeElement.tagName === 'TEXTAREA');
+
+    if (isEditingTask || hasExternalBlocker) return;
+    
+    if (event.key.length === 1 || event.key === 'Enter') {
+        const todoInput = document.getElementById('todo-input');
+        if (todoInput) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+            }
+            if (typeof setTaskCreationOpen === 'function') {
+                setTaskCreationOpen(true, { focus: false });
+            }
+            todoInput.focus();
+        }
+    }
+}
+document.addEventListener('keydown', handleGlobalKeydownForTaskInput);
+
 document.addEventListener('pointerdown', handleAppLayerPointerDown, true);
 
 if (progressPanel) {
@@ -4152,7 +4166,7 @@ if (achievementSortInput) {
     achievementSortInput.addEventListener('change', handleAchievementSortChange);
 }
 
-quickCreateController.init();
+
 setProgressPanelExpanded(false, false);
 
 let resizeTimer;
@@ -4187,21 +4201,32 @@ const loginStrategy = localStorage.getItem('tasklyzen-login-strategy');
 const onboardingOverlay = document.getElementById('onboarding-overlay');
 const onboardingSkipBtn = document.getElementById('onboarding-skip-btn');
 
+let appStarted = false;
+function startApp() {
+    if (appStarted) return;
+    appStarted = true;
+    installDeveloperModeCommand();
+    featureRegistry.init();
+    renderCurrentPage();
+    scheduleDeferredStartupWork();
+}
+window.__TLZ_startApp = startApp;
+
 if (!loginStrategy && onboardingOverlay) {
     onboardingOverlay.hidden = false;
-} else if (onboardingOverlay) {
-    onboardingOverlay.hidden = true;
+} else {
+    if (onboardingOverlay) onboardingOverlay.hidden = true;
+    startApp();
 }
 
 if (onboardingSkipBtn) {
     onboardingSkipBtn.addEventListener('click', () => {
         localStorage.setItem('tasklyzen-login-strategy', 'local');
         onboardingOverlay.style.opacity = '0';
-        setTimeout(() => onboardingOverlay.hidden = true, 300);
+        setTimeout(() => {
+            onboardingOverlay.hidden = true;
+            startApp();
+        }, 300);
     });
 }
 
-installDeveloperModeCommand();
-featureRegistry.init();
-renderCurrentPage();
-scheduleDeferredStartupWork();
