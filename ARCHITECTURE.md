@@ -120,8 +120,10 @@ reglas de modo oscuro, `body.reduced-animations` y
 - Experiencia inicial: `tasklyzen-experience.js` se ofrece despues del acceso y
   de la resolucion local/nube. Una Carrera reanudable tiene prioridad. El estado
   `completed` evita repeticiones; `deferred` omite la version actual; Ajustes
-  permite abrirla manualmente. Para presentar un recorrido renovado, aumentar
-  `WALKTHROUGH_VERSION` sin cambiar las claves persistidas.
+  permite abrirla manualmente. La version 2 explica tareas e hitos, Modo Carrera,
+  progreso y racha antes de recoger preferencias y metas. Para presentar un
+  recorrido renovado, aumentar `WALKTHROUGH_VERSION` sin cambiar las claves
+  persistidas.
 - Modo Carrera y futuras funciones locales: `tasklyzen-features.js`. La carrera
   conserva un reloj continuo de sesión y acumulados independientes por tarea,
   además de la tarea activa y el conjunto de tareas elegido para la sesión.

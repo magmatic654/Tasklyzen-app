@@ -12,8 +12,8 @@
 (function exposeTasklyzenExperience(global) {
     const SCHEMA_VERSION = 1;
     const PROFILE_VERSION = 1;
-    const WALKTHROUGH_VERSION = 1;
-    const STEP_COUNT = 4;
+    const WALKTHROUGH_VERSION = 2;
+    const STEP_COUNT = 5;
     const VALID_STATUSES = ['pending', 'completed', 'deferred'];
     const VALID_SOURCES = ['new', 'migration', 'manual', 'reset'];
 
@@ -114,18 +114,18 @@
         function getSourceCopy() {
             if (source === 'migration') {
                 return {
-                    kicker: 'Una nueva etapa',
-                    title: 'Tasklyzen ha cambiado contigo',
-                    message: 'Revisa el nuevo flujo y ajusta la experiencia a tu forma actual de estudiar.',
-                    secondary: 'Ahora no'
+                    kicker: 'Guía esencial',
+                    title: 'Conoce Tasklyzen de principio a fin',
+                    message: 'Repasa las herramientas principales y descubre cómo se conectan para ayudarte a estudiar con menos fricción.',
+                    secondary: 'Ver después'
                 };
             }
 
             if (source === 'manual') {
                 return {
-                    kicker: 'Tu experiencia',
-                    title: 'Ajusta Tasklyzen a tu ritmo',
-                    message: 'Puedes revisar el recorrido sin perder tus preferencias actuales.',
+                    kicker: 'Guía esencial',
+                    title: 'Cómo funciona Tasklyzen',
+                    message: 'Repasa el flujo completo sin perder tus tareas ni tus preferencias actuales.',
                     secondary: 'Cerrar'
                 };
             }
@@ -133,8 +133,8 @@
             if (source === 'reset') {
                 return {
                     kicker: 'Empezar de nuevo',
-                    title: 'Prepara tu nueva experiencia',
-                    message: 'Tus datos se eliminaron. Puedes configurar Tasklyzen otra vez o usar los valores iniciales.',
+                    title: 'Prepara tu centro de estudio',
+                    message: 'Conoce cada herramienta importante y vuelve a elegir cómo quieres medir tu avance.',
                     secondary: 'Usar valores iniciales'
                 };
             }
@@ -142,22 +142,75 @@
             return {
                 kicker: 'Tu primer recorrido',
                 title: 'Conoce tu centro de estudio',
-                message: 'Cuatro pasos breves bastan para dejar Tasklyzen listo para ti.',
+                message: 'Aprende el flujo principal en cinco pasos breves y deja Tasklyzen listo para ti.',
                 secondary: 'Usar valores iniciales'
             };
         }
 
-        function renderOverview() {
+        function renderTasksGuide() {
             const copy = getSourceCopy();
 
             return [
                 '<div class="experience-intro">',
                 '<p>' + copy.message + '</p>',
-                '<div class="experience-flow" aria-label="Flujo principal de Tasklyzen">',
-                '<div><span class="experience-flow-icon is-task" aria-hidden="true"></span><strong>Organiza</strong><small>Crea tareas simples o hitos.</small></div>',
-                '<div><span class="experience-flow-icon is-race" aria-hidden="true"></span><strong>Concéntrate</strong><small>Usa Modo Carrera cuando necesites un bloque de trabajo.</small></div>',
-                '<div><span class="experience-flow-icon is-progress" aria-hidden="true"></span><strong>Comprende</strong><small>Consulta tu avance sin perder de vista las tareas.</small></div>',
+                '<div class="experience-showcase experience-showcase--tasks" role="img" aria-label="Ejemplo de una tarea simple y un hito en Tasklyzen">',
+                '<div class="experience-mini-create"><i aria-hidden="true"></i><strong>Escribe para crear una tarea</strong></div>',
+                '<div class="experience-mini-task">',
+                '<i class="experience-mini-check" aria-hidden="true"></i>',
+                '<span><strong>Leer capítulo de historia</strong><small>Tarea simple · Hoy</small></span>',
+                '<em>Normal</em><i class="experience-mini-chevron" aria-hidden="true"></i>',
                 '</div>',
+                '<div class="experience-mini-task is-milestone">',
+                '<i class="experience-mini-check" aria-hidden="true"></i>',
+                '<span><strong>Preparar exposición</strong><small>Hito · 2 de 4 subtareas</small><b class="experience-mini-progress"><i></i></b></span>',
+                '<em>Importante</em><i class="experience-mini-chevron" aria-hidden="true"></i>',
+                '</div>',
+                '</div>',
+                '<div class="experience-caption-grid">',
+                '<p><strong>Completa</strong><span>Usa únicamente el control circular.</span></p>',
+                '<p><strong>Consulta</strong><span>Toca la tarjeta para desplegar detalles.</span></p>',
+                '<p><strong>Divide</strong><span>Convierte proyectos grandes en hitos.</span></p>',
+                '</div>'
+            ].join('');
+        }
+
+        function renderRaceGuide() {
+            return [
+                '<div class="experience-intro">',
+                '<p>Modo Carrera reúne las tareas elegidas en una sesión y conserva el contador aunque vuelvas a la lista.</p>',
+                '<div class="experience-showcase experience-showcase--race" role="img" aria-label="Ejemplo del cronómetro y la cola de tareas de Modo Carrera">',
+                '<div class="experience-mini-modes"><span>Ritmo libre</span><span class="is-active">Pomodoro</span><span>Contra reloj</span></div>',
+                '<div class="experience-mini-race-layout">',
+                '<div class="experience-mini-clock"><i aria-hidden="true"></i><strong>24:36</strong><small>Trabajo · ciclo 2 de 4</small></div>',
+                '<div class="experience-mini-queue"><small>Ahora</small><strong>Resolver ejercicios</strong><b><i></i></b><span>3 tareas en esta Carrera</span></div>',
+                '</div>',
+                '</div>',
+                '<div class="experience-caption-grid experience-caption-grid--race">',
+                '<p><strong>Elige</strong><span>Todas tus tareas o una selección.</span></p>',
+                '<p><strong>Continúa</strong><span>El tiempo de sesión no se reinicia.</span></p>',
+                '<p><strong>Comprende</strong><span>Al cerrar verás el tiempo por tarea.</span></p>',
+                '</div>'
+            ].join('');
+        }
+
+        function renderProgressGuide() {
+            return [
+                '<div class="experience-intro">',
+                '<p>La barra superior resume lo esencial. Al tocar un indicador se abre su contexto dentro de Progreso.</p>',
+                '<div class="experience-showcase experience-showcase--progress" role="img" aria-label="Ejemplo de la barra compacta y el panel de Progreso">',
+                '<div class="experience-mini-summary">',
+                '<strong>Hoy 2/3</strong><b><i></i></b><span class="experience-mini-flame" aria-hidden="true"></span><strong>4</strong><span>Semana <strong>67%</strong></span>',
+                '</div>',
+                '<div class="experience-mini-panel">',
+                '<nav><span class="is-active">Hoy</span><span>Tendencia</span><span>Racha</span></nav>',
+                '<div class="experience-mini-chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>',
+                '<p><strong>Tu mejor ritmo: viernes</strong><span>Reserva ahí tu tarea más importante.</span></p>',
+                '</div>',
+                '</div>',
+                '<div class="experience-caption-grid experience-caption-grid--progress">',
+                '<p><strong>Hoy</strong><span>Tu meta y avance diario.</span></p>',
+                '<p><strong>Semana</strong><span>Tu constancia reciente.</span></p>',
+                '<p><strong>Racha</strong><span>Días con progreso significativo.</span></p>',
                 '</div>'
             ].join('');
         }
@@ -174,14 +227,22 @@
                 '<div class="experience-switch-list">',
                 renderSwitch('sound', 'Sonidos de apoyo', 'Avisos de Carrera y cierre de tareas.', draftSettings.sound),
                 renderSwitch('animations', 'Movimiento amable', 'Microanimaciones breves al interactuar.', draftSettings.animations),
+                renderSwitch('backgroundTimer', 'Carrera en segundo plano', 'El reloj continúa mientras estudias en otra ventana.', draftSettings.backgroundTimer),
+                renderSwitch('notifications', 'Recordatorios del navegador', 'El permiso se solicita después desde Ajustes, solo si lo deseas.', draftSettings.notifications),
                 '</div>'
             ].join('');
         }
 
-        function renderProgress() {
+        function renderGoals() {
             const mode = draftSettings.progressMode || 'tasks';
             const taskGoalVisible = mode !== 'focus';
             const focusGoalVisible = mode !== 'tasks';
+            const modeLabel = mode === 'focus' ? 'Enfoque' : mode === 'balanced' ? 'Equilibrado' : 'Avances';
+            const goalLabel = mode === 'focus'
+                ? draftSettings.dailyFocusGoalMinutes + ' min'
+                : mode === 'balanced'
+                    ? draftDailyGoal + ' tareas + ' + draftSettings.dailyFocusGoalMinutes + ' min'
+                    : draftDailyGoal + ' tareas';
 
             return [
                 '<fieldset class="experience-fieldset">',
@@ -195,28 +256,6 @@
                 '<div class="experience-goals">',
                 taskGoalVisible ? renderNumberField('dailyGoal', 'Tareas por día', draftDailyGoal, 1, 20, 1) : '',
                 focusGoalVisible ? renderNumberField('dailyFocusGoalMinutes', 'Minutos de enfoque', draftSettings.dailyFocusGoalMinutes, 15, 240, 5) : '',
-                '</div>'
-            ].join('');
-        }
-
-        function renderRace() {
-            const modeLabel = draftSettings.progressMode === 'focus'
-                ? 'Enfoque'
-                : draftSettings.progressMode === 'balanced' ? 'Equilibrado' : 'Avances';
-            const goalLabel = draftSettings.progressMode === 'focus'
-                ? draftSettings.dailyFocusGoalMinutes + ' min'
-                : draftSettings.progressMode === 'balanced'
-                    ? draftDailyGoal + ' tareas + ' + draftSettings.dailyFocusGoalMinutes + ' min'
-                    : draftDailyGoal + ' tareas';
-
-            return [
-                '<div class="experience-race-note">',
-                '<span class="experience-race-mark" aria-hidden="true"></span>',
-                '<div><strong>Modo Carrera es opcional</strong><p>Úsalo para trabajar una selección de tareas con ritmo libre, contra reloj o Pomodoro.</p></div>',
-                '</div>',
-                '<div class="experience-switch-list">',
-                renderSwitch('backgroundTimer', 'Continuar en segundo plano', 'El reloj sigue mientras trabajas en otras ventanas.', draftSettings.backgroundTimer),
-                renderSwitch('notifications', 'Recordatorios', 'Podrás conceder permiso desde Ajustes cuando lo necesites.', draftSettings.notifications),
                 '</div>',
                 '<div class="experience-summary" aria-label="Resumen de personalización">',
                 '<span><small>Progreso</small><strong>' + modeLabel + '</strong></span>',
@@ -255,10 +294,11 @@
 
             const sourceCopy = getSourceCopy();
             const steps = [
-                { kicker: sourceCopy.kicker, title: sourceCopy.title, render: renderOverview },
-                { kicker: 'Paso 2 de 4', title: 'Hazla cómoda para ti', render: renderComfort },
-                { kicker: 'Paso 3 de 4', title: 'Define tu forma de avanzar', render: renderProgress },
-                { kicker: 'Paso 4 de 4', title: 'Todo listo para tu próxima Carrera', render: renderRace }
+                { kicker: sourceCopy.kicker, title: sourceCopy.title, render: renderTasksGuide },
+                { kicker: 'Paso 2 de 5', title: 'Trabaja con Modo Carrera', render: renderRaceGuide },
+                { kicker: 'Paso 3 de 5', title: 'Entiende tu progreso', render: renderProgressGuide },
+                { kicker: 'Paso 4 de 5', title: 'Hazla cómoda para ti', render: renderComfort },
+                { kicker: 'Paso 5 de 5', title: 'Define qué significa avanzar', render: renderGoals }
             ];
             const current = steps[step];
 
