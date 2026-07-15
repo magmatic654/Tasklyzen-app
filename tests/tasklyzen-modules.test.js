@@ -94,6 +94,7 @@ loadBrowserModule(context, 'components/tasklyzen-ui-components.js');
 loadBrowserModule(context, 'tasklyzen-overdue-review.js');
 loadBrowserModule(context, 'components/tasklyzen-task-creation-ui.js');
 loadBrowserModule(context, 'tasklyzen-settings.js');
+loadBrowserModule(context, 'tasklyzen-experience.js');
 loadBrowserModule(context, 'tasklyzen-audio.js');
 loadBrowserModule(context, 'tasklyzen-notifications.js');
 loadBrowserModule(context, 'tasklyzen-task-ui.js');
@@ -113,6 +114,7 @@ const overdueReview = context.TasklyzenOverdueReview;
 const taskCreationUi = context.TasklyzenTaskCreationUi;
 const storage = context.TasklyzenStorage;
 const settings = context.TasklyzenSettings;
+const experience = context.TasklyzenExperience;
 const audio = context.TasklyzenAudio;
 const notifications = context.TasklyzenNotifications;
 const taskUi = context.TasklyzenTaskUi;
@@ -124,6 +126,133 @@ const features = context.TasklyzenFeatures;
 const developer = context.TasklyzenDeveloper;
 const oop = context.TasklyzenOOP;
 const { TaskState, TaskManager, AnalyticsEngine, UIController } = oop;
+
+assert.strictEqual((await storage.whenReady()).source, 'local');
+storage.writeText('remove-many-a', '1');
+storage.writeText('remove-many-b', '2');
+await storage.removeMany(['remove-many-a', 'remove-many-b']);
+assert.strictEqual(storage.readText('remove-many-a', null), null);
+assert.strictEqual(storage.readText('remove-many-b', null), null);
+
+assert.strictEqual(experience.shouldOfferExperience(null), true);
+assert.strictEqual(experience.shouldOfferExperience({
+    status: 'completed',
+    profileVersion: experience.constants.profileVersion,
+    walkthroughVersion: experience.constants.walkthroughVersion
+}), false);
+assert.strictEqual(experience.shouldOfferExperience({
+    status: 'completed',
+    profileVersion: 0,
+    walkthroughVersion: 0
+}), true);
+assert.strictEqual(experience.shouldOfferExperience({
+    status: 'deferred',
+    lastOfferedVersion: experience.constants.walkthroughVersion
+}), false);
+
+function createExperienceDom() {
+    const listeners = {};
+    const node = () => ({
+        textContent: '',
+        innerHTML: '',
+        hidden: false,
+        setAttribute() {},
+        focus() {}
+    });
+    const dialog = {
+        open: false,
+        addEventListener(type, listener) {
+            listeners[type] = listener;
+        },
+        showModal() {
+            this.open = true;
+        },
+        close() {
+            this.open = false;
+        },
+        setAttribute() {
+            this.open = true;
+        },
+        removeAttribute() {
+            this.open = false;
+        }
+    };
+
+    return {
+        dialog,
+        body: node(),
+        kicker: node(),
+        title: node(),
+        progress: node(),
+        back: node(),
+        next: node(),
+        secondary: node(),
+        listeners
+    };
+}
+
+const experienceKey = 'experience-controller-test';
+context.localStorage.removeItem(experienceKey);
+const experienceDom = createExperienceDom();
+const experienceBodyClasses = new Set();
+let appliedExperienceSettings = null;
+let appliedExperienceGoal = null;
+const experienceController = experience.createExperienceController({
+    storage,
+    storageKey: experienceKey,
+    dom: experienceDom,
+    documentRef: {
+        body: {
+            classList: {
+                add: value => experienceBodyClasses.add(value),
+                remove: value => experienceBodyClasses.delete(value)
+            }
+        }
+    },
+    normalizeSettings: settings.normalizeAppSettings,
+    defaultSettings: settings.defaultSettings,
+    defaultDailyGoal: 2,
+    getSettings: () => settings.normalizeAppSettings({ theme: 'dark', progressMode: 'balanced' }),
+    applySettings: value => {
+        appliedExperienceSettings = value;
+    },
+    getDailyGoal: () => 4,
+    applyDailyGoal: value => {
+        appliedExperienceGoal = value;
+    },
+    getNowTimestamp: () => '2026-07-14T12:00:00.000Z'
+});
+experienceController.init();
+assert.strictEqual(experienceController.maybeOpen({ hasExistingData: false }).opened, true);
+assert.strictEqual(experienceController.isOpen(), true);
+assert.strictEqual(experienceBodyClasses.has('experience-active'), true);
+experienceDom.listeners.click({ target: experienceDom.dialog });
+assert.strictEqual(experienceController.isOpen(), true);
+experienceController.complete(false);
+assert.strictEqual(experienceController.getState().status, 'completed');
+assert.strictEqual(appliedExperienceSettings.theme, 'dark');
+assert.strictEqual(appliedExperienceGoal, 4);
+assert.strictEqual(experienceController.shouldOffer(), false);
+assert.strictEqual(experienceController.isOpen(), false);
+experienceController.openManual();
+experienceController.defer();
+assert.strictEqual(experienceController.getState().status, 'completed');
+
+const migrationExperienceKey = 'experience-migration-test';
+context.localStorage.removeItem(migrationExperienceKey);
+const migrationController = experience.createExperienceController({
+    storage,
+    storageKey: migrationExperienceKey,
+    dom: createExperienceDom(),
+    documentRef: { body: { classList: { add() {}, remove() {} } } },
+    normalizeSettings: settings.normalizeAppSettings,
+    defaultSettings: settings.defaultSettings
+});
+migrationController.init();
+assert.strictEqual(migrationController.maybeOpen({ hasExistingData: true }).source, 'migration');
+migrationController.defer();
+assert.strictEqual(migrationController.getState().status, 'deferred');
+assert.strictEqual(migrationController.shouldOffer(), false);
 
 const lostCloudSession = await getAuthEntryState('google');
 assert.strictEqual(lostCloudSession.canEnter, false);
@@ -1149,6 +1278,7 @@ context.document.querySelectorAll = selector => {
 };
 loadBrowserModule(context, 'tasklyzen-dom.js');
 assert.strictEqual(context.TasklyzenDom.settings.settingsButton, sharedSettingsButton);
+assert.strictEqual(context.TasklyzenDom.settingsButton, sharedSettingsButton);
 assert.strictEqual(context.TasklyzenDom.tasks.todoForm, sharedTodoForm);
 assert.strictEqual(context.TasklyzenDom.todoForm, context.TasklyzenDom.tasks.todoForm);
 assert.strictEqual(context.TasklyzenDom.analytics.analyticsCompletionRate, sharedAnalyticsCompletionRate);

@@ -21,6 +21,7 @@
         sustainableProgress: 'tasklyzen-sustainable-progress',
         features: 'tasklyzen-local-features',
         settings: 'tasklyzen-settings',
+        experience: 'tasklyzen-experience-state',
         overdueReview: 'tasklyzen-overdue-review'
     };
 

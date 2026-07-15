@@ -362,16 +362,27 @@
             dom.confirmDeleteData.disabled = dom.deleteConfirmInput.value !== deleteConfirmationCode;
         }
 
-        function deleteAllData() {
+        async function deleteAllData() {
             if (!dom.deleteConfirmInput || dom.deleteConfirmInput.value !== deleteConfirmationCode) {
                 closeDeleteDataDialog();
                 showToast('El texto no coincidió. Eliminación cancelada.', 'error');
                 return;
             }
 
-            getStorageKeys().forEach(key => storage.remove(key));
-            closeDeleteDataDialog();
-            onAfterDelete();
+            const keys = getStorageKeys();
+
+            try {
+                if (typeof storage.removeMany === 'function') {
+                    await storage.removeMany(keys);
+                } else {
+                    keys.forEach(key => storage.remove(key));
+                }
+                closeDeleteDataDialog();
+                onAfterDelete();
+            } catch (_error) {
+                showToast('No se pudieron eliminar todos los datos. Intenta de nuevo.', 'error');
+                return;
+            }
             showToast('Todos los datos fueron eliminados.', 'info');
         }
 

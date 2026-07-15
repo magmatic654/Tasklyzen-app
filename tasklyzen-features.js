@@ -103,6 +103,7 @@
         const evaluateSession = fn(config.evaluateSession, record => record);
         const onStateChange = fn(config.onStateChange, noop);
         const onTimerCue = fn(config.onTimerCue, noop);
+        const onResumePromptClosed = fn(config.onResumePromptClosed, noop);
         const unlockAudio = fn(config.unlockAudio, noop);
         const shouldRunInBackground = fn(config.shouldRunInBackground, () => true);
         const analyticsDom = config.analyticsDom || {};
@@ -855,7 +856,8 @@
             setupShell = null;
         }
 
-        function removeResumeShell() {
+        function removeResumeShell(reason) {
+            const hadShell = Boolean(resumeShell);
             if (resumeShell && resumeShell.remove) {
                 resumeShell.remove();
             } else if (resumeShell && resumeShell.parentNode) {
@@ -867,6 +869,9 @@
             }
 
             resumeShell = null;
+            if (hadShell && reason) {
+                onResumePromptClosed(reason);
+            }
         }
 
         function removeSummaryShell() {
@@ -964,7 +969,7 @@
             const todo = getStoredSelectedTodo(state);
 
             if (!state.active || !state.suspended || !todo) {
-                removeResumeShell();
+                removeResumeShell('new');
                 return openSetup();
             }
 
@@ -988,7 +993,7 @@
                 pomodoroPhaseStartedAt: pomodoro.enabled ? startedAt : null
             }, { notify: false });
 
-            removeResumeShell();
+            removeResumeShell('continue');
             render();
             return nextState;
         }
@@ -999,7 +1004,7 @@
 
             stopTimer();
             updateState(getIdleState(state), { notify: false });
-            removeResumeShell();
+            removeResumeShell('new');
             removeShell();
             return openSetup(todoId);
         }
@@ -1056,7 +1061,7 @@
 
             resumeShell.addEventListener('click', event => {
                 if (event.target === resumeShell) {
-                    removeResumeShell();
+                    removeResumeShell('defer');
                     return;
                 }
 
@@ -1071,13 +1076,13 @@
                 } else if (action.dataset.focusResumeAction === 'new') {
                     startNewSession();
                 } else {
-                    removeResumeShell();
+                    removeResumeShell('defer');
                 }
             });
             resumeShell.addEventListener('keydown', event => {
                 if (event.key === 'Escape') {
                     event.preventDefault();
-                    removeResumeShell();
+                    removeResumeShell('defer');
                 }
             });
             documentRef.body.appendChild(resumeShell);

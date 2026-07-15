@@ -21,6 +21,7 @@ const FEATURES_KEY = TASKLYZEN_CONFIG.storageKeys.features;
 const SETTINGS_KEY = TASKLYZEN_CONFIG.storageKeys.settings;
 const OVERDUE_REVIEW_KEY = TASKLYZEN_CONFIG.storageKeys.overdueReview;
 const SUSTAINABLE_PROGRESS_KEY = TASKLYZEN_CONFIG.storageKeys.sustainableProgress;
+const EXPERIENCE_KEY = TASKLYZEN_CONFIG.storageKeys.experience;
 const DEFAULT_DAILY_GOAL = TASKLYZEN_CONFIG.defaults.dailyGoal;
 const TASK_EXPIRATION_DAYS = TASKLYZEN_CONFIG.defaults.taskExpirationDays;
 const TASK_TIME_LIMIT_DEFAULT_DAYS = TASKLYZEN_CONFIG.defaults.taskTimeLimitDefaultDays;
@@ -33,6 +34,7 @@ const TASKLYZEN_STORAGE = window.TasklyzenStorage;
 const TASKLYZEN_UI_COMPONENTS = window.TasklyzenUiComponents;
 const TASKLYZEN_TASK_CREATION_UI = window.TasklyzenTaskCreationUi;
 const TASKLYZEN_SETTINGS = window.TasklyzenSettings;
+const TASKLYZEN_EXPERIENCE = window.TasklyzenExperience;
 const TASKLYZEN_AUDIO = window.TasklyzenAudio;
 const TASKLYZEN_NOTIFICATIONS = window.TasklyzenNotifications;
 const TASKLYZEN_TASK_UI = window.TasklyzenTaskUi;
@@ -87,6 +89,7 @@ const {
     settingsExportData,
     settingsImportData,
     settingsImportFile,
+    settingsExperienceButton,
     settingsDeleteData,
     deleteDataDialog,
     deleteConfirmCode,
@@ -331,6 +334,7 @@ const audioController = TASKLYZEN_AUDIO.createAudioController({
     getSettings: () => appSettings
 });
 let dailyGoal = loadDailyGoal();
+let experienceController = null;
 let activeProgressView = loadProgressView();
 let activeFlowPeriod = loadAnalyticsFlowPeriod();
 let celebrationTimer;
@@ -582,6 +586,11 @@ const betaFeatureControllers = TASKLYZEN_FEATURES.createBetaFeatureControllers({
     onSessionComplete: handleFocusSessionComplete,
     evaluateSession: record => sustainableProgressController.evaluateSession(record),
     onStateChange: renderRaceModeButton,
+    onResumePromptClosed: reason => {
+        if (reason === 'defer') {
+            scheduleStartupExperience();
+        }
+    },
     onTimerCue: type => audioController.playRaceCue(type),
     unlockAudio: () => audioController.unlock(),
     shouldRunInBackground: () => appSettings.backgroundTimer !== false,
@@ -594,6 +603,35 @@ const betaFeatureControllers = TASKLYZEN_FEATURES.createBetaFeatureControllers({
     alwaysEnabled: true
 });
 window.TasklyzenRuntime.beta = betaFeatureControllers;
+experienceController = TASKLYZEN_EXPERIENCE.createExperienceController({
+    storage: TASKLYZEN_STORAGE,
+    storageKey: EXPERIENCE_KEY,
+    dom: TASKLYZEN_DOM.experience,
+    documentRef: document,
+    normalizeSettings: TASKLYZEN_SETTINGS.normalizeAppSettings,
+    defaultSettings: TASKLYZEN_SETTINGS.defaultSettings,
+    defaultDailyGoal: DEFAULT_DAILY_GOAL,
+    getSettings: () => appSettings,
+    applySettings: settings => {
+        appSettings = settingsController.update(settings, null, {
+            render: false
+        });
+    },
+    getDailyGoal: () => dailyGoal,
+    applyDailyGoal: value => updateDailyGoal(value, false),
+    getNowTimestamp,
+    onOpen: () => {
+        settingsController.setPanelOpen(false);
+        if (progressPanelExpanded) {
+            setProgressPanelExpanded(false, false);
+        }
+        syncAppLayerState();
+    },
+    onClose: syncAppLayerState,
+    onComplete: renderCurrentPage
+});
+experienceController.init();
+window.TasklyzenRuntime.experienceController = experienceController;
 let developerController = null;
 
 function getDeveloperController() {
@@ -811,6 +849,9 @@ function restoreRuntimeFromStorage() {
     settingsController.syncControls();
     sustainableProgressController.reload();
     featureRegistry.reload();
+    if (experienceController) {
+        experienceController.reload();
+    }
     syncRaceHistoryIntoSustainableProgress();
     normalizeGamification();
     overdueReviewController.reload({ refresh: false });
@@ -836,8 +877,14 @@ function resetRuntimeAfterDataDeletion() {
     settingsController.syncControls();
     sustainableProgressController.reload();
     featureRegistry.reload();
+    if (experienceController) {
+        experienceController.reload();
+    }
     overdueReviewController.reload({ refresh: false });
     renderCurrentPage();
+    if (experienceController) {
+        experienceController.openAfterReset();
+    }
 }
 
 function createEmptyDailyStat(dateKey) {
@@ -2203,7 +2250,9 @@ function syncAppLayerState() {
         return;
     }
 
-    const hasOpenLayer = progressPanelExpanded || isSettingsPanelOpen();
+    const hasOpenLayer = progressPanelExpanded
+        || isSettingsPanelOpen()
+        || Boolean(experienceController && experienceController.isOpen());
 
     document.body.classList.toggle('settings-panel-open', isSettingsPanelOpen());
     document.body.classList.remove('modal-panel-open');
@@ -4110,6 +4159,13 @@ if (settingsImportFile) {
     settingsImportFile.addEventListener('change', settingsController.handleImportFileChange);
 }
 
+if (settingsExperienceButton) {
+    settingsExperienceButton.addEventListener('click', () => {
+        settingsController.setPanelOpen(false);
+        experienceController.openManual();
+    });
+}
+
 if (settingsDeleteData) {
     settingsDeleteData.addEventListener('click', settingsController.openDeleteDataDialog);
 }
@@ -4258,22 +4314,86 @@ const onboardingSkipBtn = document.getElementById('onboarding-skip-btn');
 
 let appStarted = false;
 let startupRacePromptHandled = false;
+let startupExperienceHandled = false;
+let startupDataCoordinatorStarted = false;
+let startupExperienceTimer = null;
+
+function hasExistingExperienceData() {
+    return todos.length > 0
+        || analyticsEvents.length > 0
+        || Object.keys(completionHistory || {}).length > 0
+        || Boolean(TASKLYZEN_STORAGE.readText(SETTINGS_KEY, null))
+        || Boolean(TASKLYZEN_STORAGE.readText(SUSTAINABLE_PROGRESS_KEY, null));
+}
+
+function hasBlockingStartupLayer() {
+    if (onboardingOverlay && !onboardingOverlay.hidden) {
+        return true;
+    }
+
+    const openDialog = document.querySelector('dialog[open]:not(#experience-dialog)');
+    const focusLayer = document.querySelector('.beta-focus-shell, .beta-focus-setup-shell, .beta-focus-resume-shell');
+    return Boolean(openDialog || focusLayer || progressPanelExpanded || isSettingsPanelOpen());
+}
+
+function scheduleStartupExperience() {
+    if (!appStarted || startupExperienceHandled || !experienceController) {
+        return;
+    }
+
+    window.clearTimeout(startupExperienceTimer);
+    startupExperienceTimer = window.setTimeout(() => {
+        startupExperienceTimer = null;
+
+        if (hasBlockingStartupLayer()) {
+            scheduleStartupExperience();
+            return;
+        }
+
+        const result = experienceController.maybeOpen({
+            hasExistingData: hasExistingExperienceData()
+        });
+        startupExperienceHandled = true;
+        if (result.opened) {
+            syncAppLayerState();
+        }
+    }, 220);
+}
 
 function openStartupRacePrompt() {
     if (!appStarted || startupRacePromptHandled || (onboardingOverlay && !onboardingOverlay.hidden)) {
-        return;
+        return false;
     }
 
     const launchState = betaFeatureControllers.focus.getLaunchState();
 
     if (!launchState.resumable) {
-        return;
+        return false;
     }
 
     startupRacePromptHandled = true;
-    window.setTimeout(() => {
-        betaFeatureControllers.focus.openResumePrompt();
-    }, 0);
+    betaFeatureControllers.focus.openResumePrompt();
+    return true;
+}
+
+async function coordinateStartupExperience() {
+    if (startupDataCoordinatorStarted) {
+        return;
+    }
+    startupDataCoordinatorStarted = true;
+
+    if (TASKLYZEN_STORAGE && typeof TASKLYZEN_STORAGE.whenReady === 'function') {
+        await TASKLYZEN_STORAGE.whenReady();
+    }
+
+    if (!appStarted) {
+        return;
+    }
+
+    restoreRuntimeFromStorage();
+    if (!openStartupRacePrompt()) {
+        scheduleStartupExperience();
+    }
 }
 
 if (dailyFocusGoalInput) {
@@ -4291,7 +4411,7 @@ function startApp() {
     betaFeatureControllers.focus.prepareForEntry();
     renderCurrentPage();
     scheduleDeferredStartupWork();
-    openStartupRacePrompt();
+    coordinateStartupExperience();
 }
 window.__TLZ_startApp = startApp;
 

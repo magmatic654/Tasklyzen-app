@@ -17,7 +17,7 @@ diferida. Los modulos de dominio no deben leer variables internas de `main.js`.
 5. Utilidades y dominio de tareas: `tasklyzen-utils.js`,
    `tasklyzen-composite-tasks.js`, `tasklyzen-tasks.js`.
 6. UI y controladores: componentes, revision de vencidas, creacion, ajustes,
-   audio, notificaciones y lista de tareas.
+   experiencia inicial, audio, notificaciones y lista de tareas.
 7. Progreso sostenible, analítica, rachas, features locales, modo
    desarrollador, referencias DOM y capa POO.
 8. `main.js` al final.
@@ -38,6 +38,8 @@ toda la cadena de carga.
 - `tasklyzen-overdue-review.js`: revision y retencion de tareas vencidas.
 - `tasklyzen-settings.js`: preferencias, temas, sonido, estrategia de progreso,
   meta de enfoque, respaldo y borrado.
+- `tasklyzen-experience.js`: recorrido versionado y personalizacion inicial;
+  recibe ajustes y meta por inyeccion, sin leer estado interno del runtime.
 - `tasklyzen-audio.js`: sintetiza senales breves y respeta sonido/volumen.
 - `tasklyzen-notifications.js`: toast interno y recordatorios del navegador.
 - `tasklyzen-task-ui.js`: lista, filtros, contadores y acciones de tarea.
@@ -62,6 +64,7 @@ Las claves se concentran en `TasklyzenConfig.storageKeys`:
 - `gamification`: solo rachas, escudos y protecciones de racha.
 - `dailyStats`, `analyticsEvents`, `analyticsFlowPeriod`, `progressView`.
 - `settings`, `features`, `overdueReview`, `developerSnapshot`.
+- `experience`: version, estado y ultimo paso del recorrido de bienvenida.
 - `sustainableProgress`: avance diario y clasificación de sesiones de Carrera.
 
 `tasklyzen-data-migration.js` se ejecuta al cargar almacenamiento y antes de
@@ -83,13 +86,17 @@ Reglas de seguridad:
 3. Normalizar datos antiguos antes de interpretarlos.
 4. Mantener respaldo/importacion y borrado total alineados con las claves.
 5. No renombrar IDs de tareas o campos persistidos sin una migracion explicita.
+6. Esperar `TasklyzenStorage.whenReady()` antes de decidir experiencias de
+   entrada; el estado local y el sincronizado no deben competir.
+7. El borrado total usa `removeMany` para retirar todas las claves locales y
+   remotas juntas. Al desaparecer `experience`, la guia vuelve a comenzar.
 
 ## Estilos
 
 `styles.css` es el unico punto de entrada de estilos de `index.html`. Mantiene
 la cascada por capas: tokens, temas, ajustes/notificaciones, layout, creacion y
 progreso, analitica, rachas, tareas, feedback, overrides, desarrollo,
-responsive, movimiento, features y controles de identidad.
+responsive, movimiento, features, controles de identidad y experiencia.
 
 Usar tokens semanticos para superficies, texto, bordes, estados y rachas. Las
 reglas de modo oscuro, `body.reduced-animations` y
@@ -110,6 +117,11 @@ reglas de modo oscuro, `body.reduced-animations` y
 - Acceso inicial: `tasklyzen-auth.js` espera el primer estado real de Firebase
   y emite `tasklyzen:entry-ready`. La estrategia `google` vuelve a pedir acceso
   si se pierde la sesión; `local` mantiene la entrada sin conexión elegida.
+- Experiencia inicial: `tasklyzen-experience.js` se ofrece despues del acceso y
+  de la resolucion local/nube. Una Carrera reanudable tiene prioridad. El estado
+  `completed` evita repeticiones; `deferred` omite la version actual; Ajustes
+  permite abrirla manualmente. Para presentar un recorrido renovado, aumentar
+  `WALKTHROUGH_VERSION` sin cambiar las claves persistidas.
 - Modo Carrera y futuras funciones locales: `tasklyzen-features.js`. La carrera
   conserva un reloj continuo de sesión y acumulados independientes por tarea,
   además de la tarea activa y el conjunto de tareas elegido para la sesión.

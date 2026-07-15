@@ -161,6 +161,14 @@
             </label>
         </section>
 
+        <section class="settings-section settings-experience" aria-labelledby="settings-experience-title">
+            <h3 id="settings-experience-title">Guía de Tasklyzen</h3>
+            <p class="settings-help-text">Repasa el recorrido y ajusta cómo quieres organizar tu avance.</p>
+            <button type="button" id="settings-experience-button" class="settings-secondary-button">
+                Personalizar mi experiencia
+            </button>
+        </section>
+
         <section class="settings-section settings-security" aria-labelledby="settings-security-title">
             <h3 id="settings-security-title">Seguridad</h3>
             <div class="settings-actions">
@@ -186,6 +194,32 @@
                 <button type="button" id="confirm-delete-data" class="settings-danger-button" disabled>Eliminar definitivamente</button>
             </div>
         </div>
+    </dialog>
+
+    <dialog id="experience-dialog" class="experience-dialog" aria-labelledby="experience-title" aria-describedby="experience-body">
+        <section class="experience-shell">
+            <header class="experience-header">
+                <div class="experience-brand">
+                    <img src="assets/tasklyzen-icon.svg" alt="" aria-hidden="true">
+                    <div>
+                        <p id="experience-kicker" class="section-kicker">Tu espacio, a tu ritmo</p>
+                        <h2 id="experience-title" tabindex="-1">Bienvenido a Tasklyzen</h2>
+                    </div>
+                </div>
+                <button type="button" class="experience-close" data-experience-action="secondary" aria-label="Cerrar guía">
+                    <span aria-hidden="true"></span>
+                </button>
+            </header>
+
+            <div id="experience-progress" class="experience-progress" aria-label="Progreso de la guía"></div>
+            <div id="experience-body" class="experience-body"></div>
+
+            <footer class="experience-actions">
+                <button type="button" id="experience-back" class="experience-action experience-action--back" data-experience-action="back">Atrás</button>
+                <button type="button" id="experience-secondary" class="experience-action experience-action--secondary" data-experience-action="secondary">Ahora no</button>
+                <button type="button" id="experience-next" class="experience-action experience-action--primary" data-experience-action="next">Continuar</button>
+            </footer>
+        </section>
     </dialog>
 
     <dialog id="data-conflict-dialog" class="conflict-dialog-modal" aria-labelledby="data-conflict-title" aria-modal="true">
@@ -751,6 +785,7 @@
     <script src="tasklyzen-overdue-review.js"></script>
     <script src="components/tasklyzen-task-creation-ui.js"></script>
     <script src="tasklyzen-settings.js"></script>
+    <script src="tasklyzen-experience.js"></script>
     <script src="tasklyzen-audio.js"></script>
     <script src="tasklyzen-notifications.js"></script>
     <script src="tasklyzen-task-ui.js"></script>

@@ -30,6 +30,7 @@
         settingsExportData: byId('settings-export-data'),
         settingsImportData: byId('settings-import-data'),
         settingsImportFile: byId('settings-import-file'),
+        settingsExperienceButton: byId('settings-experience-button'),
         settingsDeleteData: byId('settings-delete-data'),
         deleteDataDialog: byId('delete-data-dialog'),
         deleteConfirmCode: byId('delete-confirm-code'),
@@ -241,6 +242,17 @@
         focusModeButton: byId('focus-mode-button')
     };
 
+    const experience = {
+        dialog: byId('experience-dialog'),
+        body: byId('experience-body'),
+        kicker: byId('experience-kicker'),
+        title: byId('experience-title'),
+        progress: byId('experience-progress'),
+        back: byId('experience-back'),
+        next: byId('experience-next'),
+        secondary: byId('experience-secondary')
+    };
+
     const dev = {
         panelSelector: '.developer-panel',
         fieldSelector: '[data-dev-field]',
@@ -257,6 +269,7 @@
         analytics,
         gamification,
         features,
+        experience,
         dev
-    }, settings, notifications, tasks, feedback, overdueReview, progress, analytics, gamification, features);
+    }, settings, notifications, tasks, feedback, overdueReview, progress, analytics, gamification, features, experience);
 })(window);

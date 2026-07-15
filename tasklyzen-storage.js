@@ -13,7 +13,48 @@
     let pendingCloudData = null;
     // Bloquea el listener durante la ventana de resolución de conflicto
     let conflictPending = false;
+    let authConnectionInitialized = false;
+    let connectedUserId = null;
+    let dataReady = false;
+    let dataReadyDetail = null;
+    let resolveDataReady = null;
+    let dataReadyPromise = null;
     const dataMigration = global.TasklyzenDataMigration || null;
+
+    function resetDataReady() {
+        dataReady = false;
+        dataReadyDetail = null;
+        dataReadyPromise = new Promise(resolve => {
+            resolveDataReady = resolve;
+        });
+    }
+
+    function markDataReady(source) {
+        if (dataReady) {
+            return dataReadyDetail;
+        }
+
+        dataReady = true;
+        dataReadyDetail = {
+            source: source || 'local',
+            authenticated: Boolean(currentUser)
+        };
+        if (resolveDataReady) {
+            resolveDataReady(dataReadyDetail);
+        }
+        if (typeof global.dispatchEvent === 'function' && typeof global.CustomEvent === 'function') {
+            global.dispatchEvent(new CustomEvent('tasklyzen:data-ready', {
+                detail: dataReadyDetail
+            }));
+        }
+        return dataReadyDetail;
+    }
+
+    function whenReady() {
+        return dataReady ? Promise.resolve(dataReadyDetail) : dataReadyPromise;
+    }
+
+    resetDataReady();
 
     function sanitizeStorageEntry(key, value) {
         if (!dataMigration || typeof dataMigration.sanitizeStorageEntry !== 'function') {
@@ -113,14 +154,25 @@
 
     // Se invoca desde tasklyzen-auth.js cuando el estado cambia
     function onAuthChange(user, firestoreDb) {
+        const nextUserId = user && user.uid ? String(user.uid) : null;
+
+        if (authConnectionInitialized && connectedUserId === nextUserId && db === firestoreDb) {
+            return whenReady();
+        }
+
+        authConnectionInitialized = true;
+        connectedUserId = nextUserId;
         currentUser = user;
         db = firestoreDb;
+        resetDataReady();
         migrateLegacyData();
 
         if (user && db) {
-            startSync();
+            return startSync();
         } else {
             stopSync();
+            markDataReady('local');
+            return whenReady();
         }
     }
 
@@ -134,7 +186,7 @@
 
         const docRef = db.collection('users').doc(currentUser.uid);
 
-        docRef.get().then(docSnap => {
+        return docRef.get().then(docSnap => {
             const cloudMigration = sanitizeCloudData(docSnap.exists ? docSnap.data() : {});
             const cloudData = cloudMigration.data;
 
@@ -180,24 +232,79 @@
 
             } else if (hasLocalTodos && !hasCloudTodos) {
                 // Solo local tiene datos → subir a la nube sin preguntar
-                uploadLocalToCloud(docRef).then(() => {
+                return uploadLocalToCloud(docRef).then(() => {
                     startListener(docRef);
+                    markDataReady('local-uploaded');
                 });
 
             } else if (!hasLocalTodos && hasCloudTodos) {
                 // Solo la nube tiene datos → aplicar localmente sin preguntar
                 applyCloudToLocal(cloudData, docRef);
                 startListener(docRef);
+                markDataReady('cloud-restored');
 
             } else {
                 // Sin datos en ningún lado, o datos idénticos → solo escuchar
+                reconcileExperienceState(cloudData, docRef);
                 startListener(docRef);
+                markDataReady('synced');
             }
 
         }).catch(err => {
             console.error('Error al iniciar sincronización:', err);
             startListener(db.collection('users').doc(currentUser.uid));
+            markDataReady('sync-error');
         });
+    }
+
+    function getExperienceStateScore(serializedValue) {
+        try {
+            const value = JSON.parse(serializedValue);
+            const statusScore = value.status === 'completed' ? 3 : value.status === 'deferred' ? 2 : 1;
+            const versionScore = (Number(value.profileVersion) || 0) + (Number(value.walkthroughVersion) || 0);
+            const timestamp = Date.parse(value.completedAt || value.deferredAt || '') || 0;
+            return [versionScore, statusScore, timestamp];
+        } catch (_error) {
+            return [0, 0, 0];
+        }
+    }
+
+    function compareExperienceState(left, right) {
+        const leftScore = getExperienceStateScore(left);
+        const rightScore = getExperienceStateScore(right);
+
+        for (let index = 0; index < leftScore.length; index += 1) {
+            if (leftScore[index] !== rightScore[index]) {
+                return leftScore[index] - rightScore[index];
+            }
+        }
+        return 0;
+    }
+
+    function reconcileExperienceState(cloudData, docRef) {
+        const storageKeys = global.TasklyzenConfig && global.TasklyzenConfig.storageKeys;
+        const experienceKey = storageKeys && storageKeys.experience;
+        if (!experienceKey) {
+            return;
+        }
+
+        const localValue = localStorage.getItem(experienceKey);
+        const cloudValue = cloudData[experienceKey];
+        if (!localValue && !cloudValue) {
+            return;
+        }
+
+        if (cloudValue && (!localValue || compareExperienceState(cloudValue, localValue) > 0)) {
+            localStorage.setItem(experienceKey, cloudValue);
+            global.dispatchEvent(new StorageEvent('storage', { key: experienceKey, newValue: cloudValue }));
+            return;
+        }
+
+        if (localValue && localValue !== cloudValue) {
+            docRef.set({ [experienceKey]: localValue }, { merge: true }).catch(error => {
+                console.error('Error sincronizando la experiencia inicial:', error);
+            });
+        }
     }
 
     // ── Muestra el diálogo y espera la decisión del usuario ────────────────
@@ -206,7 +313,10 @@
         if (!conflictDialog || typeof conflictDialog.showModal !== 'function') {
             // Fallback: preferir local (datos más frescos en este dispositivo)
             conflictPending = false;
-            uploadLocalToCloud(docRef).then(() => startListener(docRef));
+            uploadLocalToCloud(docRef).then(() => {
+                startListener(docRef);
+                markDataReady('local-conflict-fallback');
+            });
             return;
         }
 
@@ -247,10 +357,14 @@
             if (choice === 'cloud') {
                 applyCloudToLocal(cloudData, docRef);
                 startListener(docRef);
+                markDataReady('cloud-selected');
             } else {
                 // Subir local a la nube y ESPERAR antes de arrancar el listener
                 // para evitar que el snapshot inmediato sobreescriba local con datos viejos
-                uploadLocalToCloud(docRef).then(() => startListener(docRef));
+                uploadLocalToCloud(docRef).then(() => {
+                    startListener(docRef);
+                    markDataReady('local-selected');
+                });
             }
         };
 
@@ -383,6 +497,34 @@
         }
     }
 
+    function removeMany(keys) {
+        const uniqueKeys = Array.from(new Set((keys || []).filter(Boolean)));
+
+        if (!currentUser || !db || isApplyingRemoteChange || !global.firebase) {
+            uniqueKeys.forEach(key => localStorage.removeItem(key));
+            return Promise.resolve();
+        }
+
+        const deleteField = global.firebase.firestore.FieldValue.delete();
+        const updates = {};
+        uniqueKeys.forEach(key => {
+            updates[key] = deleteField;
+        });
+
+        if (!Object.keys(updates).length) {
+            return Promise.resolve();
+        }
+
+        return db.collection('users').doc(currentUser.uid).set(updates, { merge: true })
+            .then(() => {
+                uniqueKeys.forEach(key => localStorage.removeItem(key));
+            })
+            .catch(error => {
+                console.error('Error eliminando datos sincronizados:', error);
+                throw error;
+            });
+    }
+
     function subscribe(keys, callback) {
         const watchedKeys = new Set(keys || []);
         window.addEventListener('storage', event => {
@@ -398,10 +540,23 @@
         readText,
         writeText,
         remove,
+        removeMany,
         subscribe,
         onAuthChange,
+        whenReady,
+        getDataReadyState: () => ({
+            ready: dataReady,
+            detail: dataReadyDetail
+        }),
         migrateLegacyData
     };
 
     migrateLegacyData();
+    if (global.TasklyzenAuth && typeof global.TasklyzenAuth.whenReady === 'function') {
+        global.TasklyzenAuth.whenReady().then(entryState => {
+            onAuthChange(entryState.user, global.TasklyzenAuth.db);
+        });
+    } else {
+        markDataReady('local');
+    }
 })(window);
