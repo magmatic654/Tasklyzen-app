@@ -500,9 +500,31 @@ visibilityNow = '2026-07-12T12:02:00.000Z';
 visibilityController.focus.handleVisibilityChange(true);
 visibilityNow = '2026-07-12T12:12:00.000Z';
 visibilityController.focus.handleVisibilityChange(false);
-assert.strictEqual(visibilityController.focus.getState().sessionAccumulatedMs, 2 * 60 * 1000);
-assert.strictEqual(visibilityController.focus.getState().sessionAwayMs, 10 * 60 * 1000);
+assert.strictEqual(visibilityController.focus.getTimerSnapshot().timer.sessionElapsedMs, 12 * 60 * 1000);
+assert.strictEqual(visibilityController.focus.getState().sessionBackgroundMs, 10 * 60 * 1000);
+assert.strictEqual(visibilityController.focus.getState().sessionAwayMs, 0);
 assert.strictEqual(visibilityController.focus.getState().status, 'running');
+
+let pausedVisibilityNow = '2026-07-12T13:00:00.000Z';
+const pausedVisibilityRegistry = features.createFeatureRegistry({
+    storage,
+    storageKey: 'visibility-paused-test',
+    definitions: features.plannedLocalFeatures
+});
+const pausedVisibilityController = features.createBetaFeatureControllers({
+    registry: pausedVisibilityRegistry,
+    getTodos: () => [visibilityTodo],
+    getTopPriorityTodo: () => visibilityTodo,
+    getNowTimestamp: () => pausedVisibilityNow,
+    shouldRunInBackground: () => false
+});
+pausedVisibilityController.focus.start(visibilityTodo.id, { mode: 'free' });
+pausedVisibilityNow = '2026-07-12T13:02:00.000Z';
+pausedVisibilityController.focus.handleVisibilityChange(true);
+pausedVisibilityNow = '2026-07-12T13:12:00.000Z';
+pausedVisibilityController.focus.handleVisibilityChange(false);
+assert.strictEqual(pausedVisibilityController.focus.getState().sessionAccumulatedMs, 2 * 60 * 1000);
+assert.strictEqual(pausedVisibilityController.focus.getState().sessionAwayMs, 10 * 60 * 1000);
 
 const focusHito = {
     id: 'focus-hito',
@@ -799,7 +821,12 @@ const normalizedSettings = settings.normalizeAppSettings({
 assert.strictEqual(normalizedSettings.theme, 'light');
 assert.strictEqual(normalizedSettings.sound, true);
 assert.strictEqual(normalizedSettings.soundVolume, 1);
+assert.strictEqual(normalizedSettings.progressMode, 'tasks');
+assert.strictEqual(normalizedSettings.dailyFocusGoalMinutes, 50);
+assert.strictEqual(normalizedSettings.backgroundTimer, true);
 assert.strictEqual(settings.normalizeAppSettings({ theme: 'dark' }).theme, 'dark');
+assert.strictEqual(settings.normalizeAppSettings({ progressMode: 'balanced', dailyFocusGoalMinutes: 500 }).progressMode, 'balanced');
+assert.strictEqual(settings.normalizeAppSettings({ progressMode: 'balanced', dailyFocusGoalMinutes: 500 }).dailyFocusGoalMinutes, 240);
 assert.strictEqual(settings.normalizeSettingsVolume(-1), 0);
 
 function createClassList() {
@@ -1638,7 +1665,20 @@ const analyticsProgressController = analyticsProgress.createAnalyticsProgressCon
     getTotalCompletedTasks: () => 1,
     getCompletedPriorityCount: priority => priority === 'urgent' ? 1 : 0,
     getTodoDeadlineState: () => null,
-    isTodoAvailableToday: () => false
+    isTodoAvailableToday: () => false,
+    getSustainableRangeSummary: () => ({
+        days: [{
+            dateKey: analyticsTodayKey,
+            focusMs: 30 * 60 * 1000,
+            rewardedFocusMs: 25 * 60 * 1000,
+            focusGoalMinutes: 25
+        }],
+        focusMs: 30 * 60 * 1000,
+        rewardedFocusMs: 25 * 60 * 1000,
+        sustainableSessions: 1
+    }),
+    getProgressMode: () => 'focus',
+    getDailyFocusGoalMinutes: () => 25
 });
 assert.strictEqual(analyticsProgress.normalizeFlowPeriod('unknown'), 'weekly');
 assert.strictEqual(analyticsProgressController.getPercent(1, 2), 50);
@@ -1656,6 +1696,11 @@ assert.strictEqual(analyticsProgressController.getMonthlyAnalytics(0).completedP
 assert.strictEqual(analyticsProgressController.getMonthlyAnalytics(0).tasksCreated, 1);
 assert.strictEqual(analyticsProgressController.getMonthlyAnalytics(0).totalActivities, 1);
 assert.strictEqual(analyticsProgressController.getMonthlyAnalytics(0).notCompletedPercent, 0);
+assert.strictEqual(analyticsProgressController.getFocusPeriodAnalytics('weekly').focusMs, 30 * 60 * 1000);
+assert.strictEqual(analyticsProgressController.getFocusPeriodAnalytics('weekly').goalPercent > 0, true);
+assert.strictEqual(analyticsProgressController.getProgressGoalRecommendation().mode, 'focus');
+assert.strictEqual(analyticsProgressController.getProgressGoalRecommendation().focusGoal, 25);
+assert.strictEqual(analyticsProgressController.getProgressGoalRecommendation().message.includes('min'), true);
 assert.strictEqual(Array.isArray(analyticsProgressController.getMonthlyAnalytics(0).habitDayEntries), true);
 assert.strictEqual(analyticsProgressController.getAnalyticsSnapshot().analisisMensual.completedPercent, 100);
 const dailyMissionSnapshot = analyticsProgressController.getDailyMissionSnapshot();
@@ -1664,6 +1709,7 @@ assert.strictEqual(typeof dailyMissionSnapshot.title, 'string');
 assert.strictEqual(typeof dailyMissionSnapshot.current, 'number');
 assert.strictEqual(typeof dailyMissionSnapshot.target, 'number');
 assert.strictEqual(typeof dailyMissionSnapshot.complete, 'boolean');
+assert.strictEqual(typeof dailyMissionSnapshot.statusText, 'string');
 
 const sustainableController = sustainableProgress.createSustainableProgressController({
     storage,
@@ -1682,6 +1728,7 @@ let sustainableDay = sustainableController.recordSession({
 });
 assert.strictEqual(sustainableDay.sessions[0].meaningful, false);
 assert.strictEqual(sustainableDay.sessions[0].sustainable, false);
+assert.strictEqual(sustainableDay.sessions[0].confirmedFocusMs, 0);
 sustainableDay = sustainableController.recordSession({
     id: 'long-without-break',
     startedAt: '2026-07-14T09:00:00.000Z',
@@ -1719,6 +1766,7 @@ sustainableDay = sustainableController.recordSession({
 assert.strictEqual(sustainableDay.sessions.find(session => session.id === 'mostly-away').meaningful, false);
 assert.strictEqual(sustainableDay.active, true);
 assert.strictEqual(sustainableController.getMissionSnapshot('2026-07-14').target, 1);
+assert.strictEqual(sustainableController.getMissionSnapshot('2026-07-14').statusText.includes('avance'), true);
 sustainableController.revokeTaskCompletion('long-task', '2026-07-14');
 assert.strictEqual(sustainableController.getDaySnapshot('2026-07-14').sessions.find(session => session.id === 'long-without-break').meaningful, false);
 sustainableController.recordTaskCompletion({ id: 'revocable-task' }, { dateKey: '2026-07-15' });
@@ -1767,12 +1815,53 @@ const sustainableGamification = gamification.createGamificationController({
 });
 assert.strictEqual(sustainableGamification.hasActiveCredit('2026-07-10'), true);
 assert.strictEqual(sustainableGamification.hasActiveCredit('2026-07-15'), false);
-assert.strictEqual(sustainableGamification.hasPerfectCredit('2026-07-14'), true);
+assert.strictEqual(sustainableGamification.hasPerfectCredit('2026-07-14'), false);
 assert.strictEqual(sustainableGamification.hasLegendaryCredit('2026-07-14'), false);
 sustainableController.recordTaskCompletion({ id: 'legendary-1' }, { dateKey: '2026-07-14' });
 sustainableController.recordTaskCompletion({ id: 'legendary-2' }, { dateKey: '2026-07-14' });
 sustainableController.recordTaskCompletion({ id: 'legendary-3' }, { dateKey: '2026-07-14' });
+assert.strictEqual(sustainableGamification.hasPerfectCredit('2026-07-14'), true);
 assert.strictEqual(sustainableGamification.hasLegendaryCredit('2026-07-14'), true);
+
+let focusProgressMode = 'focus';
+const focusGoalController = sustainableProgress.createSustainableProgressController({
+    storage,
+    storageKey: 'sustainable-focus-goal-test',
+    getTodayKey: () => '2026-07-14',
+    getProgressMode: () => focusProgressMode,
+    getDailyGoal: () => 2,
+    getDailyFocusGoalMinutes: () => 30
+});
+focusGoalController.recordSession({
+    id: 'confirmed-advance',
+    startedAt: '2026-07-14T08:00:00.000Z',
+    completedAt: '2026-07-14T08:30:00.000Z',
+    selectedCount: 1,
+    focusMs: 30 * 60 * 1000,
+    outcome: 'advanced',
+    result: 'manual'
+});
+assert.strictEqual(focusGoalController.getDaySnapshot('2026-07-14').focusGoalReached, true);
+assert.strictEqual(focusGoalController.getDaySnapshot('2026-07-14').goalReached, true);
+assert.strictEqual(focusGoalController.getMissionSnapshot('2026-07-14').statusText.includes('min'), true);
+focusProgressMode = 'balanced';
+assert.strictEqual(focusGoalController.getDaySnapshot('2026-07-14').goalReached, false);
+assert.strictEqual(focusGoalController.getMissionSnapshot('2026-07-14').statusText.includes('avances'), true);
+assert.strictEqual(focusGoalController.getMissionSnapshot('2026-07-14').statusText.includes('min'), true);
+focusGoalController.recordTaskCompletion({ id: 'balanced-a' }, { dateKey: '2026-07-14' });
+focusGoalController.recordTaskCompletion({ id: 'balanced-b' }, { dateKey: '2026-07-14' });
+assert.strictEqual(focusGoalController.getDaySnapshot('2026-07-14').goalReached, true);
+focusGoalController.recordSession({
+    id: 'blocked-session',
+    startedAt: '2026-07-14T09:00:00.000Z',
+    completedAt: '2026-07-14T09:20:00.000Z',
+    selectedCount: 1,
+    focusMs: 20 * 60 * 1000,
+    outcome: 'blocked',
+    result: 'manual'
+});
+assert.strictEqual(focusGoalController.getRangeSummary('2026-07-14', '2026-07-14').focusMs, 50 * 60 * 1000);
+assert.strictEqual(focusGoalController.getDaySnapshot('2026-07-14').sessions.find(session => session.id === 'blocked-session').meaningful, false);
 
 const toggledClasses = new Set();
 const fakeElement = {

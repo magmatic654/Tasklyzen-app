@@ -53,6 +53,10 @@
         grid-template-columns: 1fr;
     }
 
+    .settings-progress-modes {
+        grid-template-columns: 1fr;
+    }
+
     .settings-header,
     .delete-data-actions {
         align-items: stretch;
@@ -930,9 +934,11 @@
 
     .performance-overview,
     .performance-trend,
-    .performance-balance {
+    .performance-balance,
+    .performance-focus {
         padding: 13px;
     }
+
 
     .performance-section-heading {
         align-items: flex-start;

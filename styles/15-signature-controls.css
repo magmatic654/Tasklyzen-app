@@ -243,6 +243,72 @@ body.focus-summary-active {
     opacity: 0.82;
 }
 
+.beta-focus-outcome {
+    padding: 12px;
+    margin: 0 0 14px;
+    text-align: left;
+    background: linear-gradient(135deg, rgba(228, 251, 247, 0.92), rgba(255, 247, 240, 0.9));
+    border: 2px solid rgba(22, 183, 170, 0.2);
+    border-bottom-width: 4px;
+    border-radius: 10px;
+}
+
+.beta-focus-outcome h3 {
+    margin: 0 0 3px;
+    color: var(--text-primary);
+    font-size: 0.92rem;
+}
+
+.beta-focus-outcome p {
+    margin: 0 0 10px !important;
+    color: var(--text-secondary) !important;
+    font-size: 0.76rem !important;
+    line-height: 1.35 !important;
+}
+
+.beta-focus-outcome-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.beta-focus-outcome-actions button {
+    min-height: 38px;
+    padding: 7px 9px;
+    color: #176d69;
+    font: inherit;
+    font-size: 0.74rem;
+    font-weight: 1000;
+    background: #ffffff;
+    border: 2px solid rgba(20, 165, 160, 0.3);
+    border-bottom-width: 4px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 130ms ease, background-color 130ms ease, border-color 130ms ease;
+}
+
+.beta-focus-outcome-actions button:hover,
+.beta-focus-outcome-actions button:focus-visible {
+    color: #ffffff;
+    background: #18aaa2;
+    border-color: #11817b;
+    transform: translateY(-1px);
+}
+
+.beta-focus-outcome-actions button[data-focus-summary-outcome-value="blocked"]:hover,
+.beta-focus-outcome-actions button[data-focus-summary-outcome-value="blocked"]:focus-visible {
+    color: #61420b;
+    background: #ffd06f;
+    border-color: #e3a93b;
+}
+
+.beta-focus-outcome-actions button[data-focus-summary-outcome-value="not-worked"]:hover,
+.beta-focus-outcome-actions button[data-focus-summary-outcome-value="not-worked"]:focus-visible {
+    color: #7d3030;
+    background: #ffd9d6;
+    border-color: #ee9a95;
+}
+
 .beta-focus-summary-card .beta-focus-summary-closing {
     padding: 10px 12px;
     margin-bottom: 16px !important;
@@ -296,6 +362,23 @@ body.theme-dark .beta-focus-pomodoro-long-break {
 body.theme-dark .beta-focus-summary-tasks li {
     background: rgba(17, 44, 52, 0.82);
     border-color: rgba(98, 242, 228, 0.16);
+}
+
+body.theme-dark .beta-focus-outcome {
+    background: linear-gradient(135deg, #17333b, #26283b);
+    border-color: #315f68;
+}
+
+body.theme-dark .beta-focus-outcome-actions button {
+    color: #dff9f6;
+    background: #17283b;
+    border-color: #36556d;
+}
+
+@media (max-width: 520px) {
+    .beta-focus-outcome-actions {
+        grid-template-columns: 1fr;
+    }
 }
 
 body.theme-dark .beta-focus-summary-tasks li strong,

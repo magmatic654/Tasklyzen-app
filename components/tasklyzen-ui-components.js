@@ -811,6 +811,53 @@
         return chart;
     }
 
+    function createFocusFlowChart(options) {
+        const config = options || {};
+        const documentRef = getDocumentRef(config.documentRef);
+        const entries = Array.isArray(config.entries) ? config.entries : [];
+        const maximumMinutes = Math.max(
+            Number(config.goalMinutes) || 1,
+            ...entries.map(entry => Number(entry.minutes) || 0)
+        );
+        const chart = createElement('div', {
+            documentRef,
+            className: 'focus-flow-chart',
+            attributes: {
+                role: 'img',
+                'aria-label': config.ariaLabel || 'Minutos de enfoque confirmados por día'
+            }
+        });
+
+        entries.forEach(entry => {
+            const minutes = Math.max(Math.round(Number(entry.minutes) || 0), 0);
+            const item = createElement('span', {
+                documentRef,
+                className: entry.goalHit ? 'focus-flow-day goal-hit' : 'focus-flow-day',
+                attributes: {
+                    title: (entry.label || entry.dateKey || '') + ': ' + minutes + ' min'
+                }
+            });
+            const bar = createElement('i', {
+                documentRef,
+                className: 'focus-flow-bar',
+                attributes: { 'aria-hidden': 'true' }
+            });
+
+            bar.style.setProperty('--focus-bar-height', Math.max((minutes / maximumMinutes) * 100, minutes ? 8 : 3) + '%');
+            item.append(
+                bar,
+                createElement('small', { documentRef, text: entry.label || '' })
+            );
+            chart.appendChild(item);
+        });
+
+        if (!entries.some(entry => Number(entry.minutes) > 0)) {
+            chart.dataset.empty = 'true';
+        }
+
+        return chart;
+    }
+
     function createPrestigeStep(options) {
         const config = options || {};
         const level = config.level || {};
@@ -986,6 +1033,7 @@
         createMonthlyCompletionDonut,
         renderMonthlyCompletionDonut,
         createWeeklyFlowChart,
+        createFocusFlowChart,
         createPrestigeStep,
         createPrestigeChapter,
         createContributionDay,

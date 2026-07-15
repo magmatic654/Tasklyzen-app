@@ -272,6 +272,76 @@ body.settings-panel-open .settings-button {
     accent-color: var(--teal);
 }
 
+.settings-progress-modes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0;
+    margin: 10px 0 0;
+    border: 0;
+}
+
+.settings-progress-modes label {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.settings-progress-modes input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.settings-progress-modes span {
+    display: grid;
+    gap: 3px;
+    min-height: 58px;
+    padding: 10px;
+    color: var(--ink);
+    background: var(--surface-panel);
+    border: 2px solid var(--border-soft);
+    border-bottom-width: 4px;
+    border-radius: 8px;
+    transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+
+.settings-progress-modes small {
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 850;
+    line-height: 1.2;
+}
+
+.settings-progress-modes label:hover span,
+.settings-progress-modes input:focus-visible + span {
+    transform: translateY(-1px);
+    border-color: var(--teal);
+}
+
+.settings-progress-modes input:checked + span {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--teal) 14%, var(--surface-panel));
+    border-color: var(--teal);
+    box-shadow: 0 2px 0 color-mix(in srgb, var(--teal) 42%, transparent);
+}
+
+body.theme-dark .settings-progress-modes span {
+    background: #15263b;
+    border-color: #30475f;
+}
+
+body.theme-dark .settings-progress-modes input:checked + span {
+    color: #f5fbff;
+    background: #173b42;
+    border-color: #31d5c2;
+}
+
+body.theme-dark .settings-progress-modes small {
+    color: #b9c9db;
+}
+
 .notification-status-card {
     margin-top: 8px;
     padding: 10px 12px;
@@ -735,5 +805,4 @@ body.theme-dark .conflict-footnote {
         gap: 12px;
     }
 }
-
 

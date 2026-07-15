@@ -36,13 +36,15 @@ toda la cadena de carga.
 - `tasklyzen-tasks.js`: fabrica y reglas de tarea.
 - `tasklyzen-composite-tasks.js`: subtareas, hitos y estado derivado.
 - `tasklyzen-overdue-review.js`: revision y retencion de tareas vencidas.
-- `tasklyzen-settings.js`: preferencias, temas, sonido, respaldo y borrado.
+- `tasklyzen-settings.js`: preferencias, temas, sonido, estrategia de progreso,
+  meta de enfoque, respaldo y borrado.
 - `tasklyzen-audio.js`: sintetiza senales breves y respeta sonido/volumen.
 - `tasklyzen-notifications.js`: toast interno y recordatorios del navegador.
 - `tasklyzen-task-ui.js`: lista, filtros, contadores y acciones de tarea.
 - `tasklyzen-sustainable-progress.js`: ledger diario de avance significativo,
-  sesiones intencionales, pausas y ritmo sostenible.
-- `tasklyzen-analytics-progress.js`: calculo y render de analitica/progreso.
+  tiempo confirmado, sesiones intencionales, pausas y ritmo sostenible.
+- `tasklyzen-analytics-progress.js`: calculo y render de analitica/progreso por
+  tareas y tiempo.
 - `tasklyzen-gamification.js`: rachas, escudos y niveles de prestigio.
 - `tasklyzen-gamification-ui.js`: tarjeta, ruta y cuadricula de racha.
 - `tasklyzen-developer.js`: controles y simulaciones para desarrollo.
@@ -119,18 +121,28 @@ reglas de modo oscuro, `body.reduced-animations` y
   larga de 20 minutos a mitad de las sesiones extendidas; el aro principal
   representa el bloque activo de la sesión. En contrarreloj se
   configura por ciclos y calcula su duración total. El cierre guarda tiempo,
-  ciclos, enfoque, descanso, pausa, tiempo fuera de la app, tiempo por tarea y
+  ciclos, enfoque, descanso, pausa, tiempo en segundo plano, tiempo por tarea y
   una instantánea de las tareas visitadas para el resumen final, incluso cuando
-  el usuario termina antes. Cambiar de pestaña congela el reloj y excluye ese
-  intervalo del enfoque. `prepareForEntry` transforma una
+  el usuario termina antes. Con la preferencia predeterminada, cambiar de
+  pestaña no pausa el reloj: los acumulados usan timestamps y el intervalo queda
+  marcado como segundo plano. El usuario puede desactivar esa conducta; salir
+  explícitamente a Tareas siempre suspende la sesión. `prepareForEntry` transforma una
   carrera interrumpida en una sesión reanudable antes del primer render.
 - Crédito sostenible: el tiempo se conserva para analítica, pero una sesión
-  solo cuenta como avance gamificado si cierra una tarea o paso clave. Las
+  solo cuenta como avance gamificado si cierra una tarea o paso clave, o si el
+  usuario confirma avance tras al menos 15 minutos. Un bloqueo se conserva para
+  análisis, pero no genera recompensa; una sesión no confirmada o marcada como
+  no trabajada no suma enfoque. Las estrategias `tasks`, `focus` y `balanced`
+  determinan la meta diaria y se fijan por fecha para no reescribir el pasado. Las
   sesiones de 50 minutos o más requieren al menos 5 minutos de pausa para
   clasificarse como sostenibles. Tiempo fuera de la app, solapamientos y
   relojes incoherentes no generan recompensas. La velocidad por sí sola nunca
   aumenta rachas ni misiones. El historial anterior sigue como respaldo hasta
   que una acción actual marca el día como autoritativo.
+- Metas y misiones: `Impulso de hoy` edita tareas en `tasks`, minutos en
+  `focus` y ambos valores en `balanced`. Las sugerencias usan el historial del
+  mismo tipo de progreso. Cada misión expone su unidad (`avances`, `min` o las
+  dos) y nunca mezcla requisitos de otro modo.
 - Demos de Carrera: `tasklyzen-developer.js` invoca las APIs públicas
   `previewForDeveloper` y `TasklyzenAudio.playRaceCue`; no replica el render ni
   accede al estado interno del motor de audio.
@@ -148,10 +160,15 @@ Checklist manual despues de cambios de arquitectura:
 - Crear, editar, completar, reactivar y eliminar una tarea.
 - Crear un hito, actualizar subtareas y finalizarlo.
 - Cambiar tema y abrir/cerrar Ajustes y Progreso.
+- Cambiar entre progreso por avances, enfoque y equilibrado; modificar la meta
+  de minutos y comprobar el resumen compacto.
 - Consultar Analitica y Racha; confirmar que la racha conserva escudos e
   historial.
 - Probar Modo Carrera libre y contra reloj, Pomodoro, salida suspendida y las
   opciones de continuar, dejar para después, empezar una carrera nueva y
-  terminar anticipadamente con resumen.
+  terminar anticipadamente con resumen. Cambiar de pestaña debe conservar el
+  reloj si segundo plano está activo y pausarlo si la preferencia está apagada.
+- Cerrar una Carrera sin tareas y confirmar `Avancé`, `Quedé bloqueado` y
+  `No trabajé`; revisar el resultado en Analítica.
 - Iniciar sesion y confirmar que tareas, racha y preferencias sincronizan.
 - Probar importacion/exportacion y el modo desarrollador.

@@ -79,6 +79,10 @@ const {
     settingsSoundVolumeValue,
     settingsAnimations,
     settingsSimplifiedAnalytics,
+    settingsProgressModeInputs,
+    settingsFocusGoal,
+    settingsFocusGoalValue,
+    settingsBackgroundTimer,
     focusModeButton,
     settingsExportData,
     settingsImportData,
@@ -168,6 +172,7 @@ const {
     dailyGoalCount,
     dailyGoalBar,
     dailyGoalInput,
+    dailyFocusGoalInput,
     dailyMissionCard,
     dailyMissionTitle,
     dailyMissionMessage,
@@ -443,7 +448,9 @@ const sustainableProgressController = TASKLYZEN_SUSTAINABLE_PROGRESS.createSusta
     getNowTimestamp,
     getTodayKey,
     getDateKeyFromTimestamp,
-    getDailyGoal: () => dailyGoal
+    getDailyGoal: () => dailyGoal,
+    getProgressMode: () => appSettings.progressMode,
+    getDailyFocusGoalMinutes: () => appSettings.dailyFocusGoalMinutes
 });
 window.TasklyzenRuntime.sustainableProgressController = sustainableProgressController;
 
@@ -528,6 +535,15 @@ const analyticsProgressController = TASKLYZEN_ANALYTICS_PROGRESS.createAnalytics
     getTodayCompletedPriorityCount,
     getTodayCompletedHabitCount,
     getSustainableMissionSnapshot: dateKey => sustainableProgressController.getMissionSnapshot(dateKey),
+    getSustainableDaySnapshot: dateKey => sustainableProgressController.getDaySnapshot(dateKey),
+    getSustainableRangeSummary: (startKey, endKey) => sustainableProgressController.getRangeSummary(startKey, endKey),
+    getProgressMode: () => appSettings.progressMode,
+    getDailyFocusGoalMinutes: () => appSettings.dailyFocusGoalMinutes,
+    setDailyFocusGoalMinutes: value => settingsController.update({
+        dailyFocusGoalMinutes: value
+    }, null, {
+        apply: false
+    }),
     getTodoDeadlineState,
     isTodoAvailableToday,
     isProtectedDate,
@@ -568,6 +584,7 @@ const betaFeatureControllers = TASKLYZEN_FEATURES.createBetaFeatureControllers({
     onStateChange: renderRaceModeButton,
     onTimerCue: type => audioController.playRaceCue(type),
     unlockAudio: () => audioController.unlock(),
+    shouldRunInBackground: () => appSettings.backgroundTimer !== false,
     analyticsDom: {
         card: TASKLYZEN_DOM.analytics.raceAnalyticsSummary,
         minutes: TASKLYZEN_DOM.analytics.raceAnalyticsMinutes,
@@ -1934,23 +1951,39 @@ function renderCompactProgressWidget() {
         return;
     }
 
-    const todayCount = getHistoryCount(getTodayKey());
+    const todayKey = getTodayKey();
+    const todayProgress = sustainableProgressController.getDaySnapshot(todayKey);
+    const todayCount = todayProgress.meaningfulActions;
     const safeDailyGoal = Math.max(Number(dailyGoal) || DEFAULT_DAILY_GOAL, 1);
     const streak = getCurrentStreak();
     const streakLevel = getStreakPrestigeLevel(streak);
-    const todayKey = getTodayKey();
-    const streakProtectedToday = getHistoryCount(todayKey) > 0 || isProtectedDate(todayKey);
+    const streakProtectedToday = todayProgress.active || isProtectedDate(todayKey);
     const streakRescueState = getRescueState();
     const weekDateKeys = getWeekDateKeysForCompactProgress();
-    const weekCompleted = weekDateKeys.reduce((total, dateKey) => total + getHistoryCount(dateKey), 0);
-    const weekTarget = Math.max(safeDailyGoal * 7, 1);
-    const weekPercent = Math.min(Math.round((weekCompleted / weekTarget) * 100), 100);
-    const todayPercent = Math.min(Math.round((todayCount / safeDailyGoal) * 100), 100);
+    const weekDays = weekDateKeys.map(dateKey => sustainableProgressController.getDaySnapshot(dateKey));
+    const weekCompleted = weekDays.reduce((total, day) => total + day.meaningfulActions, 0);
+    const weekFocusMinutes = Math.floor(weekDays.reduce((total, day) => total + day.rewardedFocusMs, 0) / 60000);
+    const weekTaskTarget = Math.max(safeDailyGoal * 7, 1);
+    const weekFocusTarget = Math.max(todayProgress.focusGoalMinutes * 7, 1);
+    const weekTaskPercent = Math.min(Math.round((weekCompleted / weekTaskTarget) * 100), 100);
+    const weekFocusPercent = Math.min(Math.round((weekFocusMinutes / weekFocusTarget) * 100), 100);
+    const weekPercent = todayProgress.progressMode === 'focus'
+        ? weekFocusPercent
+        : todayProgress.progressMode === 'balanced'
+            ? Math.round((weekTaskPercent + weekFocusPercent) / 2)
+            : weekTaskPercent;
+    const todayPercent = todayProgress.goalPercent;
     const missionSnapshot = analyticsProgressController.getDailyMissionSnapshot();
     const streakTodayState = streakProtectedToday ? 'protected' : streak > 0 ? 'pending' : 'empty';
+    const focusMinutes = Math.floor(todayProgress.rewardedFocusMs / 60000);
+    const todayComplete = todayProgress.goalReached;
 
     if (compactProgressToday) {
-        compactProgressToday.textContent = 'Hoy ' + todayCount + '/' + safeDailyGoal;
+        compactProgressToday.textContent = todayProgress.progressMode === 'focus'
+            ? 'Hoy ' + focusMinutes + '/' + todayProgress.focusGoalMinutes + 'm'
+            : todayProgress.progressMode === 'balanced'
+                ? 'Hoy ' + todayPercent + '%'
+                : 'Hoy ' + todayCount + '/' + safeDailyGoal;
     }
 
     if (compactProgressTodayBar) {
@@ -1958,19 +1991,27 @@ function renderCompactProgressWidget() {
     }
 
     if (compactProgressTodayNote) {
-        compactProgressTodayNote.textContent = todayCount === 0
-            ? 'Empieza con 1 tarea'
-            : todayCount >= safeDailyGoal ? 'Meta completa de hoy' : 'Faltan ' + (safeDailyGoal - todayCount) + ' para cerrar Hoy';
+        compactProgressTodayNote.textContent = todayProgress.progressMode === 'focus'
+            ? (todayComplete ? 'Meta de enfoque completa' : focusMinutes + ' de ' + todayProgress.focusGoalMinutes + ' min confirmados')
+            : todayProgress.progressMode === 'balanced'
+                ? todayCount + '/' + safeDailyGoal + ' avances · ' + focusMinutes + '/' + todayProgress.focusGoalMinutes + ' min'
+                : todayCount === 0
+                    ? 'Empieza con 1 tarea'
+                    : todayComplete ? 'Meta completa de hoy' : 'Faltan ' + (safeDailyGoal - todayCount) + ' para cerrar Hoy';
     }
 
     if (compactProgressTodayStatus) {
-        compactProgressTodayStatus.textContent = todayCount >= safeDailyGoal
+        compactProgressTodayStatus.textContent = todayComplete
             ? 'Cumplida'
-            : Math.min(todayCount, safeDailyGoal) + '/' + safeDailyGoal;
+            : todayProgress.progressMode === 'focus'
+                ? focusMinutes + '/' + todayProgress.focusGoalMinutes + ' min'
+                : todayProgress.progressMode === 'balanced'
+                    ? todayPercent + '%'
+                    : Math.min(todayCount, safeDailyGoal) + '/' + safeDailyGoal;
     }
 
     if (compactProgressTodayItem) {
-        compactProgressTodayItem.classList.toggle('is-complete', todayCount >= safeDailyGoal);
+        compactProgressTodayItem.classList.toggle('is-complete', todayComplete);
     }
 
     if (compactProgressMissionTitle) {
@@ -1986,7 +2027,7 @@ function renderCompactProgressWidget() {
     if (compactProgressMissionStatus) {
         compactProgressMissionStatus.textContent = missionSnapshot.complete
             ? 'Cumplida'
-            : Math.min(missionSnapshot.current, missionSnapshot.target) + '/' + missionSnapshot.target;
+            : missionSnapshot.statusText;
     }
 
     if (compactProgressMissionItem) {
@@ -1998,7 +2039,7 @@ function renderCompactProgressWidget() {
         compactProgressMissionItem.classList.toggle('is-complete', missionSnapshot.complete);
         compactProgressMissionItem.dataset.missionState = missionSnapshot.complete ? 'complete' : 'pending';
         compactProgressMissionItem.setAttribute('aria-label', 'Misión diaria: ' + missionSnapshot.title + '. '
-            + (missionSnapshot.complete ? 'Cumplida.' : missionSnapshot.current + ' de ' + missionSnapshot.target + '.'));
+            + (missionSnapshot.complete ? 'Cumplida.' : missionSnapshot.statusText + '.'));
 
         if (missionAdvanced) {
             replayCompactFeedback(compactProgressMissionItem, 'mission-progressed');
@@ -2053,19 +2094,27 @@ function renderCompactProgressWidget() {
     }
 
     if (compactProgressWeekNote) {
-        compactProgressWeekNote.textContent = weekCompleted >= weekTarget
+        compactProgressWeekNote.textContent = weekPercent >= 100
             ? 'Objetivo semanal completado'
-            : weekCompleted > 0 ? 'Sigue construyendo tu ritmo' : 'Completa una tarea para empezar';
+            : todayProgress.progressMode === 'focus'
+                ? weekFocusMinutes + ' de ' + weekFocusTarget + ' min de enfoque'
+                : todayProgress.progressMode === 'balanced'
+                    ? weekCompleted + ' avances · ' + weekFocusMinutes + ' min'
+                    : weekCompleted > 0 ? 'Sigue construyendo tu ritmo' : 'Completa una tarea para empezar';
     }
 
     if (compactProgressWeekStatus) {
-        compactProgressWeekStatus.textContent = weekCompleted >= weekTarget
+        compactProgressWeekStatus.textContent = weekPercent >= 100
             ? 'Cumplida'
-            : weekCompleted + '/' + weekTarget;
+            : todayProgress.progressMode === 'focus'
+                ? weekFocusMinutes + '/' + weekFocusTarget + ' min'
+                : todayProgress.progressMode === 'balanced'
+                    ? weekPercent + '%'
+                    : weekCompleted + '/' + weekTaskTarget;
     }
 
     if (compactProgressWeekItem) {
-        compactProgressWeekItem.classList.toggle('is-complete', weekCompleted >= weekTarget);
+        compactProgressWeekItem.classList.toggle('is-complete', weekPercent >= 100);
     }
 
     if (compactProgressButtons) {
@@ -2594,11 +2643,16 @@ function syncRaceHistoryIntoSustainableProgress() {
 }
 
 function simulateSustainableSessionForDev(type) {
-    const simulationType = ['meaningful', 'sustainable', 'suspicious'].includes(type) ? type : 'meaningful';
+    const simulationType = ['meaningful', 'sustainable', 'suspicious', 'advanced', 'blocked', 'background'].includes(type)
+        ? type
+        : 'meaningful';
     const existingCount = sustainableProgressController.getDaySnapshot(getTodayKey()).sessions.length;
     const completedAtMs = Date.now() - ((existingCount + 1) * 2 * 60 * 60 * 1000);
     const sustainable = simulationType === 'sustainable';
     const suspicious = simulationType === 'suspicious';
+    const advanced = simulationType === 'advanced';
+    const blocked = simulationType === 'blocked';
+    const background = simulationType === 'background';
     const focusMs = sustainable ? 50 * 60 * 1000 : suspicious ? 60 * 60 * 1000 : 25 * 60 * 1000;
     const breakMs = sustainable ? 5 * 60 * 1000 : 0;
     const record = {
@@ -2608,17 +2662,19 @@ function simulateSustainableSessionForDev(type) {
         mode: 'free',
         result: 'manual',
         selectedCount: 1,
-        completedCount: suspicious ? 0 : 1,
+        completedCount: suspicious || advanced || blocked ? 0 : 1,
         completedSubtaskCount: 0,
         focusMs,
         breakMs,
         pausedMs: 0,
         awayMs: suspicious ? 55 * 60 * 1000 : 0,
+        backgroundMs: background ? 20 * 60 * 1000 : 0,
         confirmedAwayMs: suspicious ? 55 * 60 * 1000 : 0,
         completedBreaks: sustainable ? 1 : 0,
         longBreaks: 0,
         pomodoroEnabled: sustainable,
-        integrityFlags: []
+        integrityFlags: [],
+        outcome: advanced ? 'advanced' : blocked ? 'blocked' : undefined
     };
     const day = sustainableProgressController.recordSession(record);
 
@@ -3823,8 +3879,35 @@ function handleDailyGoalInput(event) {
     updateDailyGoal(event.target.value, false);
 }
 
+function handleFocusGoalChange(event) {
+    if (event.target.value === '') {
+        dailyFocusGoalInput.value = appSettings.dailyFocusGoalMinutes;
+        return;
+    }
+
+    analyticsProgressController.updateFocusGoal(event.target.value, true);
+}
+
+function handleFocusGoalInput(event) {
+    analyticsProgressController.updateFocusGoal(event.target.value, false);
+}
+
 function handleRecommendedGoalClick() {
-    updateDailyGoal(applyRecommendedGoalButton.dataset.goal, true);
+    const mode = applyRecommendedGoalButton.dataset.mode || 'tasks';
+
+    if (mode === 'tasks') {
+        updateDailyGoal(applyRecommendedGoalButton.dataset.taskGoal, true);
+        return;
+    }
+
+    if (mode === 'focus') {
+        analyticsProgressController.updateFocusGoal(applyRecommendedGoalButton.dataset.focusGoal, true);
+        return;
+    }
+
+    updateDailyGoal(applyRecommendedGoalButton.dataset.taskGoal, false);
+    analyticsProgressController.updateFocusGoal(applyRecommendedGoalButton.dataset.focusGoal, false);
+    showToast('Meta equilibrada actualizada.', 'info');
 }
 
 function handleProgressTabClick(event) {
@@ -3995,6 +4078,20 @@ if (settingsAnimations) {
 
 if (settingsSimplifiedAnalytics) {
     settingsSimplifiedAnalytics.addEventListener('change', settingsController.handleSimplifiedAnalyticsChange);
+}
+
+if (settingsProgressModeInputs) {
+    settingsProgressModeInputs.forEach(input => {
+        input.addEventListener('change', settingsController.handleProgressModeChange);
+    });
+}
+
+if (settingsFocusGoal) {
+    settingsFocusGoal.addEventListener('input', settingsController.handleFocusGoalInput);
+}
+
+if (settingsBackgroundTimer) {
+    settingsBackgroundTimer.addEventListener('change', settingsController.handleBackgroundTimerChange);
 }
 
 if (focusModeButton) {
@@ -4177,6 +4274,11 @@ function openStartupRacePrompt() {
     window.setTimeout(() => {
         betaFeatureControllers.focus.openResumePrompt();
     }, 0);
+}
+
+if (dailyFocusGoalInput) {
+    dailyFocusGoalInput.addEventListener('change', handleFocusGoalChange);
+    dailyFocusGoalInput.addEventListener('input', handleFocusGoalInput);
 }
 
 function startApp() {

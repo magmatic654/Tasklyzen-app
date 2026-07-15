@@ -38,6 +38,8 @@
                 sessionConfirmedAwayMs: 0,
                 sessionAwayStartedAt: null,
                 sessionAwayWasRunning: false,
+                sessionBackgroundMs: 0,
+                sessionBackgroundStartedAt: null,
                 sessionCompletedTodoIds: [],
                 sessionCompletedSubtaskKeys: [],
                 sessionTodoSnapshot: [],
@@ -102,6 +104,7 @@
         const onStateChange = fn(config.onStateChange, noop);
         const onTimerCue = fn(config.onTimerCue, noop);
         const unlockAudio = fn(config.unlockAudio, noop);
+        const shouldRunInBackground = fn(config.shouldRunInBackground, () => true);
         const analyticsDom = config.analyticsDom || {};
         let shell = null;
         let setupShell = null;
@@ -179,6 +182,15 @@
             const awayStartedAt = parseMs(state && state.sessionAwayStartedAt);
 
             return awayStartedAt === null ? stored : stored + Math.max(getNowMs() - awayStartedAt, 0);
+        }
+
+        function getCurrentBackgroundMs(state) {
+            const stored = Math.max(Number(state && state.sessionBackgroundMs) || 0, 0);
+            const backgroundStartedAt = parseMs(state && state.sessionBackgroundStartedAt);
+
+            return backgroundStartedAt === null
+                ? stored
+                : stored + Math.max(getNowMs() - backgroundStartedAt, 0);
         }
 
         function getPendingTodos() {
@@ -1872,6 +1884,7 @@
                 breakMs: timeBreakdown.breakMs,
                 pausedMs: getCurrentPauseMs(state),
                 awayMs: getCurrentAwayMs(state),
+                backgroundMs: getCurrentBackgroundMs(state),
                 confirmedAwayMs: Math.max(Number(state.sessionConfirmedAwayMs) || 0, 0),
                 completedBreaks: timeBreakdown.completedBreaks,
                 longBreaks: timeBreakdown.longBreaks,
@@ -1885,6 +1898,7 @@
                 sessionTodoIds: getSessionTodoIds(state),
                 selectedCount: getSessionTodoIds(state).length,
                 result: result || 'exited',
+                outcome: completedTodoIds.length || completedSubtaskKeys.length ? 'completed' : 'unconfirmed',
                 targetReached: Boolean(targetMs && sessionElapsedMs >= targetMs),
                 pomodoroEnabled: pomodoro.enabled,
                 pomodoroWorkMs: pomodoro.enabled ? pomodoro.workMs : 0,
@@ -1919,6 +1933,8 @@
                 sessionConfirmedAwayMs: 0,
                 sessionAwayStartedAt: null,
                 sessionAwayWasRunning: false,
+                sessionBackgroundMs: 0,
+                sessionBackgroundStartedAt: null,
                 sessionCompletedTodoIds: [],
                 sessionCompletedSubtaskKeys: [],
                 sessionTodoSnapshot: [],
@@ -1959,7 +1975,7 @@
             return {
                 sessions: sessions.length,
                 elapsedMs: sessions.reduce((total, session) => total + Math.max(Number(session.elapsedMs) || 0, 0), 0),
-                focusMs: sessions.reduce((total, session) => total + Math.max(Number(session.focusMs) || 0, 0), 0),
+                focusMs: sessions.reduce((total, session) => total + Math.max(Number(session.confirmedFocusMs) || 0, 0), 0),
                 completedCount: sessions.reduce((total, session) => total + Math.max(Number(session.completedCount) || 0, 0), 0),
                 meaningfulSessions: sessions.filter(session => session.meaningful).length,
                 sustainableSessions: sessions.filter(session => session.sustainable).length,
@@ -2027,19 +2043,34 @@
                 ? record.taskBreakdown
                 : completedTodos.map(todo => ({ ...todo, elapsedMs: 0, completed: true }));
             const performance = getSessionPerformanceCopy(record);
+            const displayedFocusMs = record.outcome === 'unconfirmed'
+                ? record.focusMs
+                : record.confirmedFocusMs;
+            const focusMetricLabel = record.outcome === 'unconfirmed'
+                ? 'tiempo registrado'
+                : 'tiempo confirmado';
             summaryShell.innerHTML = [
                 '<section class="beta-focus-summary-card">',
                 '<p class="section-kicker">Carrera cerrada</p>',
                 '<h2>' + performance.title + '</h2>',
                 '<p>' + performance.message + '</p>',
                 '<div class="beta-focus-summary-metrics">',
-                '<span><strong>' + formatElapsed(record.focusMs) + '</strong><small>tiempo enfocado</small></span>',
+                '<span><strong>' + formatElapsed(displayedFocusMs) + '</strong><small>' + focusMetricLabel + '</small></span>',
                 '<span><strong>' + record.completedCount + '</strong><small>tareas cerradas</small></span>',
-                '<span><strong>' + (record.sustainable ? 'Sostenible' : record.meaningful ? 'Avance real' : 'Registro') + '</strong><small>lectura de la sesión</small></span>',
+                '<span><strong>' + (record.sustainable ? 'Sostenible' : record.meaningful ? 'Avance real' : 'Por confirmar') + '</strong><small>lectura de la sesión</small></span>',
                 '</div>',
                 '<div class="beta-focus-summary-tasks">',
                 '<h3>' + (taskBreakdown.length ? 'Tiempo por tarea' : 'Tu siguiente oportunidad') + '</h3>',
                 '<ul data-focus-summary-tasks></ul>',
+                '</div>',
+                '<div class="beta-focus-outcome" data-focus-summary-outcome' + (record.outcome === 'unconfirmed' ? '' : ' hidden') + '>',
+                '<h3>¿Cómo terminó esta carrera?</h3>',
+                '<p>Tu respuesta nos ayuda a mostrar un resumen más fiel de la sesión.</p>',
+                '<div class="beta-focus-outcome-actions">',
+                '<button type="button" data-focus-summary-outcome-value="advanced">Avancé</button>',
+                '<button type="button" data-focus-summary-outcome-value="blocked">Quedé bloqueado</button>',
+                '<button type="button" data-focus-summary-outcome-value="not-worked">No trabajé</button>',
+                '</div>',
                 '</div>',
                 '<p class="beta-focus-summary-closing">' + performance.closing + '</p>',
                 '<button type="button" data-focus-summary-action="close">Volver a tareas</button>',
@@ -2066,11 +2097,20 @@
                 } else {
                     const item = documentRef.createElement('li');
                     item.className = 'is-empty';
-                    item.textContent = 'No cerraste tareas esta vez. El tiempo invertido también te ayuda a ajustar tu próxima carrera.';
+                    item.textContent = 'No cerraste tareas en esta sesión. Indica abajo si avanzaste, te bloqueaste o no llegaste a empezar.';
                     taskList.appendChild(item);
                 }
             }
             summaryShell.addEventListener('click', event => {
+                const outcomeButton = event.target.closest
+                    ? event.target.closest('[data-focus-summary-outcome-value]')
+                    : null;
+
+                if (outcomeButton) {
+                    confirmSessionOutcome(record, outcomeButton.dataset.focusSummaryOutcomeValue);
+                    return;
+                }
+
                 if (event.target === summaryShell || (event.target.closest && event.target.closest('[data-focus-summary-action="close"]'))) {
                     removeSummaryShell();
                 }
@@ -2096,11 +2136,27 @@
             const completed = Math.max(Number(record && record.completedCount) || 0, 0);
             const completedSteps = Math.max(Number(record && record.completedSubtaskCount) || 0, 0);
 
+            if (record && record.outcome === 'blocked') {
+                return {
+                    title: 'Encontraste un bloqueo',
+                    message: 'Anotamos esta sesión para que puedas reconocer dónde hizo falta ajustar el plan.',
+                    closing: 'Divide la tarea, cambia el enfoque o pide ayuda antes de retomarla.'
+                };
+            }
+
+            if (record && record.outcome === 'not-worked') {
+                return {
+                    title: 'Sesión cerrada',
+                    message: 'La Carrera terminó antes de que pudieras empezar a trabajar.',
+                    closing: 'Cuando estés listo, puedes iniciar una sesión nueva.'
+                };
+            }
+
             if (!record || !record.meaningful) {
                 return {
-                    title: 'Registro honesto',
-                    message: 'Guardamos el tiempo sin convertirlo en una recompensa que no refleje avance todavía.',
-                    closing: 'La próxima vez cierra una tarea o un paso clave para convertir el tiempo en avance.'
+                    title: 'Carrera terminada',
+                    message: 'No cerraste tareas durante esta sesión. Cuéntanos abajo cómo te fue.',
+                    closing: 'Puedes retomar con una tarea más pequeña o continuar desde donde estabas.'
                 };
             }
 
@@ -2125,6 +2181,29 @@
                 message: 'Tu tiempo quedó ligado a un avance concreto, sin premiar prisas ni minutos vacíos.',
                 closing: 'La constancia crece con cierres honestos, incluso cuando el paso es pequeño.'
             };
+        }
+
+        function confirmSessionOutcome(record, outcome) {
+            const allowed = ['advanced', 'blocked', 'not-worked'];
+
+            if (!record || !record.id || !allowed.includes(outcome)) {
+                return record;
+            }
+
+            const updatedRecord = {
+                ...record,
+                ...evaluateSession({ ...record, outcome })
+            };
+            const state = getState();
+            const history = getSessionHistory(state).map(session => (
+                session.id === updatedRecord.id ? updatedRecord : session
+            ));
+
+            updateState({ history }, { notify: false });
+            renderAnalyticsSummary();
+            onSessionComplete(updatedRecord);
+            showSessionSummary(updatedRecord);
+            return updatedRecord;
         }
 
         function endSession(result, showSummary) {
@@ -2359,6 +2438,8 @@
                 sessionConfirmedAwayMs: 0,
                 sessionAwayStartedAt: null,
                 sessionAwayWasRunning: false,
+                sessionBackgroundMs: 0,
+                sessionBackgroundStartedAt: null,
                 sessionCompletedTodoIds: [],
                 sessionCompletedSubtaskKeys: [],
                 sessionTodoSnapshot: createSessionTodoSnapshot(sessionTodoIds),
@@ -2655,6 +2736,31 @@
 
             if (!state.active || state.suspended) {
                 return state;
+            }
+
+            if (shouldRunInBackground()) {
+                if (hidden) {
+                    if (state.status !== 'running' || state.sessionBackgroundStartedAt) {
+                        return state;
+                    }
+
+                    return updateState({
+                        sessionBackgroundStartedAt: getNowTimestamp()
+                    }, { notify: false });
+                }
+
+                if (!state.sessionBackgroundStartedAt) {
+                    return state;
+                }
+
+                const nextState = updateState({
+                    sessionBackgroundMs: getCurrentBackgroundMs(state),
+                    sessionBackgroundStartedAt: null
+                }, { notify: false });
+
+                syncPomodoroPhase();
+                render();
+                return nextState;
             }
 
             if (hidden) {

@@ -905,6 +905,9 @@
             raceProgressActions.append(
                 createButton('Simular avance real', 'simulate-progress-meaningful'),
                 createButton('Simular ritmo sostenible', 'simulate-progress-sustainable', 'secondary'),
+                createButton('Simular avance confirmado', 'simulate-progress-advanced', 'secondary'),
+                createButton('Simular bloqueo', 'simulate-progress-blocked', 'ghost'),
+                createButton('Simular segundo plano', 'simulate-progress-background', 'ghost'),
                 createButton('Simular tiempo dudoso', 'simulate-progress-suspicious', 'ghost'),
                 createButton('Reiniciar progreso sostenible', 'clear-sustainable-progress', 'danger')
             );
@@ -1149,7 +1152,11 @@
                 const type = action.replace('simulate-progress-', '');
                 const day = simulateSustainableSession(type);
                 const session = day && Array.isArray(day.sessions) ? day.sessions[day.sessions.length - 1] : null;
-                const label = session && session.sustainable
+                const label = session && session.outcome === 'blocked'
+                    ? 'Bloqueo registrado solo para analítica.'
+                    : session && session.backgroundMs > 0
+                        ? 'Sesión en segundo plano registrada.'
+                        : session && session.sustainable
                     ? 'Ritmo sostenible registrado.'
                     : session && session.meaningful
                         ? 'Avance real registrado.'
@@ -1410,7 +1417,7 @@
                 streakAnimation: 'todoDev.playStreak(30) reproduce la celebración del nivel indicado.',
                 state: 'todoDev.state() devuelve tareas, historial, meta, rachas y gamificación.',
                 playCompletion: "todoDev.playCompletion('regular' | 'goal' | 'legendary') reproduce una animación de tarea.",
-                simulateSustainableSession: "todoDev.simulateSustainableSession('meaningful' | 'sustainable' | 'suspicious') prueba la nueva lectura de Carrera.",
+                simulateSustainableSession: "todoDev.simulateSustainableSession('meaningful' | 'sustainable' | 'advanced' | 'blocked' | 'background' | 'suspicious') prueba la lectura de Carrera.",
                 clearSustainableProgress: 'todoDev.clearSustainableProgress() reinicia solo el ledger de progreso sostenible.',
                 resetAll: 'todoDev.resetAll() reinicia tareas, historial, meta y rachas.',
                 addTask: "todoDev.addTask('Texto', 'urgent') crea una tarea.",

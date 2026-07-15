@@ -62,6 +62,40 @@
             </fieldset>
         </section>
 
+        <section class="settings-section settings-progress-preferences" aria-labelledby="settings-progress-title">
+            <h3 id="settings-progress-title">Tu forma de avanzar</h3>
+            <p class="settings-help-text">Elige qué debe pesar más en tu progreso diario. Puedes cambiarlo cuando tu rutina cambie.</p>
+            <fieldset class="settings-progress-modes">
+                <legend class="sr-only">Medida principal de progreso</legend>
+                <label>
+                    <input type="radio" name="settings-progress-mode" value="tasks">
+                    <span><strong>Avances</strong><small>Tareas y pasos cerrados</small></span>
+                </label>
+                <label>
+                    <input type="radio" name="settings-progress-mode" value="focus">
+                    <span><strong>Enfoque</strong><small>Tiempo confirmado</small></span>
+                </label>
+                <label>
+                    <input type="radio" name="settings-progress-mode" value="balanced">
+                    <span><strong>Equilibrado</strong><small>Avance y tiempo</small></span>
+                </label>
+            </fieldset>
+            <label class="settings-range-control" for="settings-focus-goal">
+                <span>
+                    <strong>Meta diaria de enfoque</strong>
+                    <small><span id="settings-focus-goal-value">50 min</span> de trabajo intencional</small>
+                </span>
+                <input type="range" id="settings-focus-goal" min="15" max="240" step="5" value="50">
+            </label>
+            <label class="settings-switch" for="settings-background-timer">
+                <span>
+                    <strong>Continuar en segundo plano</strong>
+                    <small>La Carrera sigue mientras estudias en otras pestañas o aplicaciones.</small>
+                </span>
+                <input type="checkbox" id="settings-background-timer">
+            </label>
+        </section>
+
         <section class="settings-section" aria-labelledby="settings-notifications-title">
             <div class="settings-section-title-row">
                 <h3 id="settings-notifications-title">Notificaciones</h3>
@@ -433,15 +467,21 @@
                 </div>
                 <div class="daily-goal">
                     <span id="daily-goal-count">0/3</span>
-                    <p>meta diaria</p>
+                    <p id="daily-goal-label">meta diaria</p>
                     <div class="goal-track" aria-hidden="true">
                         <span id="daily-goal-bar"></span>
                     </div>
-                    <label class="goal-setting" for="daily-goal-input">
-                        <span>Meta</span>
-                        <input type="number" id="daily-goal-input" min="1" max="20" value="3">
-                    </label>
-                    <div class="recommended-goal">
+                    <div class="daily-goal-settings">
+                        <label id="daily-task-goal-setting" class="goal-setting" for="daily-goal-input">
+                            <span>Tareas</span>
+                            <input type="number" id="daily-goal-input" min="1" max="20" value="3">
+                        </label>
+                        <label id="daily-focus-goal-setting" class="goal-setting" for="daily-focus-goal-input" hidden>
+                            <span>Minutos</span>
+                            <input type="number" id="daily-focus-goal-input" min="15" max="240" step="5" value="50">
+                        </label>
+                    </div>
+                    <div id="recommended-task-goal" class="recommended-goal">
                         <span id="recommended-goal-text">Meta sugerida: 1</span>
                         <button type="button" id="apply-recommended-goal">Usar</button>
                     </div>
@@ -463,7 +503,7 @@
 
                 <article class="performance-overview" aria-live="polite">
                     <div class="performance-score">
-                        <span>Tareas completadas</span>
+                        <span id="analytics-primary-label">Tareas completadas</span>
                         <strong id="analytics-completion-rate">0%</strong>
                         <p id="analytics-completion-detail">0 de 0 tareas del periodo</p>
                     </div>
@@ -486,22 +526,20 @@
                     <div id="weekly-flow-chart" class="weekly-flow-chart"></div>
                 </section>
 
-                <section class="performance-balance" aria-labelledby="performance-balance-title">
+                <section class="performance-focus" aria-labelledby="performance-focus-title">
                     <div class="performance-section-heading">
                         <div>
-                            <p class="section-kicker">Balance</p>
-                            <h4 id="performance-balance-title">Resultado del periodo</h4>
+                            <p class="section-kicker">Enfoque</p>
+                            <h4 id="performance-focus-title">Tiempo que sí produjo avance</h4>
                         </div>
-                        <span id="analytics-balance-label">Sin actividad</span>
+                        <span class="performance-focus-key">Tiempo confirmado</span>
                     </div>
-                    <div class="performance-balance-track" role="img" aria-label="Distribución de tareas completadas y sin completar">
-                        <span id="analytics-balance-completed" class="balance-completed"></span>
-                        <span id="analytics-balance-pending" class="balance-pending"></span>
+                    <div class="performance-focus-metrics" aria-live="polite">
+                        <span><strong id="analytics-focus-total">0 min</strong><small>Enfoque</small></span>
+                        <span><strong id="analytics-focus-sessions">0</strong><small>Sesiones sostenibles</small></span>
+                        <span><strong id="analytics-focus-average">0 min</strong><small>Promedio activo</small></span>
                     </div>
-                    <div class="performance-balance-legend" aria-hidden="true">
-                        <span><i class="legend-completed"></i> Completadas</span>
-                        <span><i class="legend-pending"></i> Sin completar</span>
-                    </div>
+                    <div id="focus-flow-chart" class="focus-flow-chart"></div>
                 </section>
 
                 <article class="performance-advice" aria-live="polite">

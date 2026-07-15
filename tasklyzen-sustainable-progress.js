@@ -9,7 +9,9 @@
     const STORAGE_VERSION = 1;
     const LONG_FOCUS_MS = 50 * 60 * 1000;
     const MIN_HEALTHY_BREAK_MS = 5 * 60 * 1000;
+    const MIN_CONFIRMED_FOCUS_MS = 15 * 60 * 1000;
     const MAX_SESSIONS_PER_DAY = 24;
+    const PROGRESS_MODES = ['tasks', 'focus', 'balanced'];
 
     function isObject(value) {
         return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -54,13 +56,23 @@
         const breakMs = safeMs(source.breakMs);
         const pausedMs = safeMs(source.pausedMs);
         const awayMs = safeMs(source.awayMs);
+        const backgroundMs = safeMs(source.backgroundMs);
+        const uncertainMs = safeMs(source.uncertainMs);
         const confirmedAwayMs = safeMs(source.confirmedAwayMs);
         const selectedCount = safeCount(source.selectedCount);
         const closed = source.closed !== false && !['abandoned', 'exited'].includes(source.result);
         const hasConcreteProgress = completedCount > 0 || completedSubtaskCount > 0;
+        const allowedOutcomes = ['completed', 'advanced', 'blocked', 'not-worked', 'unconfirmed'];
+        const outcome = hasConcreteProgress
+            ? 'completed'
+            : (allowedOutcomes.includes(source.outcome) ? source.outcome : 'unconfirmed');
         const mostlyAway = confirmedAwayMs > focusMs / 2 && !hasConcreteProgress;
         const integrityValid = !integrityFlags.some(flag => ['clock-skew', 'overlap', 'unresolved-away'].includes(flag));
-        const meaningful = integrityValid && !mostlyAway && hasConcreteProgress;
+        const confirmedFocusMs = ['not-worked', 'unconfirmed'].includes(outcome) ? 0 : focusMs;
+        const meaningful = integrityValid && !mostlyAway && (
+            hasConcreteProgress
+            || (outcome === 'advanced' && selectedCount > 0 && focusMs >= MIN_CONFIRMED_FOCUS_MS)
+        );
         const breakCompliant = Boolean(source.breakCompliant)
             || focusMs < LONG_FOCUS_MS
             || breakMs >= MIN_HEALTHY_BREAK_MS
@@ -78,9 +90,12 @@
             completedTodoIds,
             completedSubtaskKeys,
             focusMs,
+            confirmedFocusMs,
             breakMs,
             pausedMs,
             awayMs,
+            backgroundMs,
+            uncertainMs,
             confirmedAwayMs,
             completedBreaks: safeCount(source.completedBreaks),
             longBreaks: safeCount(source.longBreaks),
@@ -89,6 +104,7 @@
             integrityFlags,
             integrityValid,
             closed,
+            outcome,
             meaningful,
             intentional: meaningful && closed && selectedCount > 0,
             breakCompliant,
@@ -115,23 +131,33 @@
         const intentionalSessions = sessions.filter(session => session.intentional);
         const sustainableSessions = sessions.filter(session => session.sustainable);
         const closedSessions = sessions.filter(session => session.closed);
+        const sessionTaskIds = uniqueStrings(sessions.flatMap(session => session.completedTodoIds));
+        const sessionSubtaskKeys = uniqueStrings(sessions.flatMap(session => session.completedSubtaskKeys));
+        const meaningfulActions = uniqueStrings(taskIds.concat(sessionTaskIds)).length
+            + uniqueStrings(requiredSubtaskKeys.concat(sessionSubtaskKeys)).length;
 
         return {
             dateKey,
+            progressMode: PROGRESS_MODES.includes(source.progressMode) ? source.progressMode : null,
+            focusGoalMinutes: Math.min(Math.max(Math.round(Number(source.focusGoalMinutes) || 50), 15), 240),
             taskIds,
             requiredSubtaskKeys,
             sessions,
             progressAuthoritative: Boolean(source.progressAuthoritative),
-            focusMs: sessions.reduce((total, session) => total + session.focusMs, 0),
+            recordedFocusMs: sessions.reduce((total, session) => total + session.focusMs, 0),
+            focusMs: sessions.reduce((total, session) => total + session.confirmedFocusMs, 0),
+            rewardedFocusMs: meaningfulSessions.reduce((total, session) => total + session.confirmedFocusMs, 0),
             breakMs: sessions.reduce((total, session) => total + session.breakMs, 0),
             pausedMs: sessions.reduce((total, session) => total + session.pausedMs, 0),
             awayMs: sessions.reduce((total, session) => total + session.awayMs, 0),
+            backgroundMs: sessions.reduce((total, session) => total + session.backgroundMs, 0),
+            uncertainMs: sessions.reduce((total, session) => total + session.uncertainMs, 0),
             completedBreaks: sessions.reduce((total, session) => total + session.completedBreaks, 0),
             closedSessions: closedSessions.length,
             intentionalSessions: intentionalSessions.length,
             sustainableSessions: sustainableSessions.length,
             meaningfulSessions: meaningfulSessions.length,
-            meaningfulActions: taskIds.length + requiredSubtaskKeys.length,
+            meaningfulActions,
             active: taskIds.length > 0 || requiredSubtaskKeys.length > 0 || meaningfulSessions.length > 0,
             updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : null
         };
@@ -174,6 +200,12 @@
         const getDailyGoal = typeof config.getDailyGoal === 'function'
             ? config.getDailyGoal
             : () => 3;
+        const getProgressMode = typeof config.getProgressMode === 'function'
+            ? config.getProgressMode
+            : () => 'tasks';
+        const getDailyFocusGoalMinutes = typeof config.getDailyFocusGoalMinutes === 'function'
+            ? config.getDailyFocusGoalMinutes
+            : () => 50;
         let state = normalizeProgressState(read());
 
         function read() {
@@ -210,13 +242,49 @@
             const stored = getStoredDay(safeDateKey);
             const day = normalizeDay(stored, safeDateKey);
             const dailyGoal = Math.max(Math.round(Number(getDailyGoal()) || 1), 1);
+            const configuredMode = PROGRESS_MODES.includes(getProgressMode()) ? getProgressMode() : 'tasks';
+            const isToday = safeDateKey === getTodayKey();
+            const progressMode = isToday ? configuredMode : (day.progressMode || 'tasks');
+            const configuredFocusGoal = Math.min(Math.max(Math.round(Number(getDailyFocusGoalMinutes()) || 50), 15), 240);
+            const focusGoalMinutes = isToday ? configuredFocusGoal : day.focusGoalMinutes;
+            const focusGoalMs = focusGoalMinutes * 60 * 1000;
+            const taskPercent = Math.min(Math.round((day.meaningfulActions / dailyGoal) * 100), 100);
+            const focusPercent = Math.min(Math.round((day.rewardedFocusMs / focusGoalMs) * 100), 100);
+            const taskGoalReached = day.meaningfulActions >= dailyGoal;
+            const focusGoalReached = day.rewardedFocusMs >= focusGoalMs;
+            const creditActive = progressMode === 'focus'
+                ? day.rewardedFocusMs >= MIN_CONFIRMED_FOCUS_MS
+                : progressMode === 'balanced'
+                    ? day.meaningfulActions > 0 || day.rewardedFocusMs >= MIN_CONFIRMED_FOCUS_MS
+                    : day.meaningfulActions > 0;
+            const goalReached = progressMode === 'focus'
+                ? focusGoalReached
+                : progressMode === 'balanced'
+                    ? taskGoalReached && focusGoalReached
+                    : taskGoalReached;
+            const goalPercent = progressMode === 'focus'
+                ? focusPercent
+                : progressMode === 'balanced'
+                    ? Math.round((taskPercent + focusPercent) / 2)
+                    : taskPercent;
 
             return {
                 ...day,
+                recordedActive: day.active,
+                active: creditActive,
                 recorded: Boolean(stored),
                 dailyGoal,
-                perfect: day.active && (day.intentionalSessions > 0 || day.meaningfulActions >= dailyGoal),
-                legendary: day.active && day.sustainableSessions > 0 && day.meaningfulActions >= dailyGoal
+                progressMode,
+                focusGoalMinutes,
+                focusGoalMs,
+                taskPercent,
+                focusPercent,
+                goalPercent,
+                taskGoalReached,
+                focusGoalReached,
+                goalReached,
+                perfect: creditActive && goalReached,
+                legendary: creditActive && taskGoalReached && focusGoalReached && day.sustainableSessions > 0
             };
         }
 
@@ -227,6 +295,8 @@
 
             state.days[safeDateKey] = normalizeDay({
                 ...next,
+                progressMode: PROGRESS_MODES.includes(getProgressMode()) ? getProgressMode() : 'tasks',
+                focusGoalMinutes: Math.min(Math.max(Math.round(Number(getDailyFocusGoalMinutes()) || 50), 15), 240),
                 updatedAt: getNowTimestamp()
             }, safeDateKey);
             save();
@@ -373,8 +443,11 @@
                 days,
                 activeDays: days.filter(day => day.active).length,
                 focusMs: days.reduce((total, day) => total + day.focusMs, 0),
+                recordedFocusMs: days.reduce((total, day) => total + day.recordedFocusMs, 0),
+                rewardedFocusMs: days.reduce((total, day) => total + day.rewardedFocusMs, 0),
                 breakMs: days.reduce((total, day) => total + day.breakMs, 0),
                 awayMs: days.reduce((total, day) => total + day.awayMs, 0),
+                backgroundMs: days.reduce((total, day) => total + day.backgroundMs, 0),
                 sessions: days.reduce((total, day) => total + day.sessions.length, 0),
                 meaningfulSessions: days.reduce((total, day) => total + day.meaningfulSessions, 0),
                 sustainableSessions: days.reduce((total, day) => total + day.sustainableSessions, 0),
@@ -384,40 +457,97 @@
 
         function getMissionSnapshot(dateKey) {
             const day = getDaySnapshot(dateKey);
-            const missionIndex = Math.abs(Math.floor(Date.parse(day.dateKey + 'T00:00:00Z') / 86400000)) % 4;
+            const missionIndex = Math.abs(Math.floor(Date.parse(day.dateKey + 'T00:00:00Z') / 86400000));
+
+            if (day.progressMode === 'focus') {
+                const focusTargets = [
+                    Math.min(day.focusGoalMinutes, 15),
+                    Math.min(day.focusGoalMinutes, 25),
+                    day.focusGoalMinutes
+                ];
+                const targetMinutes = focusTargets[missionIndex % focusTargets.length];
+                const currentMinutes = Math.min(Math.floor(day.rewardedFocusMs / 60000), targetMinutes);
+
+                return {
+                    id: 'intentional-focus',
+                    title: targetMinutes === day.focusGoalMinutes
+                        ? 'Completa tu meta de enfoque'
+                        : 'Suma ' + targetMinutes + ' min de enfoque',
+                    message: 'Confirma ' + targetMinutes + ' min al cerrar Modo Carrera.',
+                    target: targetMinutes,
+                    current: currentMinutes,
+                    statusText: currentMinutes + '/' + targetMinutes + ' min',
+                    complete: currentMinutes >= targetMinutes,
+                    dateKey: day.dateKey
+                };
+            }
+
+            if (day.progressMode === 'balanced') {
+                const variants = [
+                    { taskTarget: 1, focusTarget: 15 },
+                    {
+                        taskTarget: Math.max(1, Math.ceil(day.dailyGoal / 2)),
+                        focusTarget: Math.max(15, Math.ceil(day.focusGoalMinutes / 2 / 5) * 5)
+                    },
+                    { taskTarget: day.dailyGoal, focusTarget: day.focusGoalMinutes }
+                ];
+                const variant = variants[missionIndex % variants.length];
+                const currentTasks = Math.min(day.meaningfulActions, variant.taskTarget);
+                const currentMinutes = Math.min(Math.floor(day.rewardedFocusMs / 60000), variant.focusTarget);
+                const taskPart = currentTasks >= variant.taskTarget ? 1 : 0;
+                const focusPart = currentMinutes >= variant.focusTarget ? 1 : 0;
+
+                return {
+                    id: 'balanced-progress',
+                    title: variant.taskTarget === day.dailyGoal && variant.focusTarget === day.focusGoalMinutes
+                        ? 'Completa tu meta equilibrada'
+                        : variant.taskTarget + ' avance' + (variant.taskTarget === 1 ? '' : 's') + ' + ' + variant.focusTarget + ' min',
+                    message: 'Combina avances terminados con tiempo confirmado en Modo Carrera.',
+                    target: 2,
+                    current: taskPart + focusPart,
+                    statusText: currentTasks + '/' + variant.taskTarget + ' avances · '
+                        + currentMinutes + '/' + variant.focusTarget + ' min',
+                    complete: taskPart + focusPart >= 2,
+                    dateKey: day.dateKey
+                };
+            }
+
+            const halfGoal = Math.max(1, Math.ceil(day.dailyGoal / 2));
+            const shortGoal = Math.min(Math.max(day.dailyGoal, 1), 2);
             const missions = [
                 {
                     id: 'meaningful-progress',
-                    title: 'Da un paso real',
-                    message: 'Completa una tarea o un paso clave con intención.',
-                    current: day.active ? 1 : 0
+                    title: 'Completa 1 avance',
+                    message: 'Termina una tarea o una subtarea obligatoria.',
+                    target: 1
                 },
                 {
-                    id: 'intentional-session',
-                    title: 'Sesión con intención',
-                    message: 'Cierra una carrera con avance en las tareas elegidas.',
-                    current: day.intentionalSessions
+                    id: 'half-task-goal',
+                    title: 'Llega a ' + halfGoal + ' avance' + (halfGoal === 1 ? '' : 's'),
+                    message: 'Completa la mitad de tu meta de tareas de hoy.',
+                    target: halfGoal
                 },
                 {
-                    id: 'sustainable-rhythm',
-                    title: 'Cuida tu ritmo',
-                    message: 'Avanza en una sesión breve o respeta una pausa si es larga.',
-                    current: day.sustainableSessions
+                    id: 'task-goal',
+                    title: 'Completa tu meta de tareas',
+                    message: 'Cierra los ' + day.dailyGoal + ' avances que elegiste para hoy.',
+                    target: day.dailyGoal
                 },
                 {
-                    id: 'conscious-close',
-                    title: 'Cierra con intención',
-                    message: 'Finaliza una sesión con avance real desde Modo Carrera.',
-                    current: day.meaningfulSessions
+                    id: 'short-task-run',
+                    title: 'Cierra ' + shortGoal + ' avance' + (shortGoal === 1 ? '' : 's'),
+                    message: 'Termina ' + shortGoal + ' tarea' + (shortGoal === 1 ? '' : 's') + ' o subtarea' + (shortGoal === 1 ? '' : 's') + '.',
+                    target: shortGoal
                 }
             ];
-            const mission = missions[missionIndex];
+            const mission = missions[missionIndex % missions.length];
+            const current = Math.min(day.meaningfulActions, mission.target);
 
             return {
                 ...mission,
-                target: 1,
-                current: Math.min(mission.current, 1),
-                complete: mission.current >= 1,
+                current,
+                statusText: current + '/' + mission.target + ' avance' + (mission.target === 1 ? '' : 's'),
+                complete: current >= mission.target,
                 dateKey: day.dateKey
             };
         }
