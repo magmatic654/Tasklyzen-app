@@ -6,6 +6,7 @@
  * - Proveer el estado del usuario a los demás módulos (especialmente Storage).
  */
 (function exposeTasklyzenAuth(global) {
+    const LOGIN_STRATEGY_KEY = 'tasklyzen-login-strategy';
     const firebaseConfig = window.TASKLYZEN_FIREBASE_CONFIG;
     if (!firebaseConfig) {
         console.error("Tasklyzen Error: No se encontró window.TASKLYZEN_FIREBASE_CONFIG. Asegúrate de haber creado el archivo firebase-env.js");
@@ -14,8 +15,56 @@
     let auth = null;
     let provider = null;
     let db = null;
-    let currentUser = null;
-    let authStateListeners = [];
+    let currentUser;
+    let authResolved = false;
+    const authStateListeners = [];
+    let resolveAuthReady;
+    const authReady = new Promise(resolve => {
+        resolveAuthReady = resolve;
+    });
+
+    function getLoginStrategy() {
+        return global.localStorage ? global.localStorage.getItem(LOGIN_STRATEGY_KEY) : null;
+    }
+
+    function setLoginStrategy(strategy) {
+        if (global.localStorage) {
+            global.localStorage.setItem(LOGIN_STRATEGY_KEY, strategy);
+        }
+    }
+
+    function getEntryState() {
+        const strategy = getLoginStrategy();
+        const authenticated = Boolean(currentUser);
+
+        return {
+            resolved: authResolved,
+            user: currentUser || null,
+            strategy,
+            authenticated,
+            canEnter: authResolved && (authenticated || strategy === 'local'),
+            shouldPrompt: authResolved && !authenticated && strategy !== 'local'
+        };
+    }
+
+    function settleAuthState(user) {
+        currentUser = user || null;
+
+        if (currentUser) {
+            setLoginStrategy('google');
+        }
+
+        if (!authResolved) {
+            authResolved = true;
+            resolveAuthReady(getEntryState());
+        }
+
+        authStateListeners.forEach(listener => listener(currentUser));
+
+        if (global.TasklyzenStorage && global.TasklyzenStorage.onAuthChange) {
+            global.TasklyzenStorage.onAuthChange(currentUser, db);
+        }
+    }
 
     if (global.firebase) {
         if (!global.firebase.apps.length) {
@@ -25,28 +74,25 @@
         provider = new global.firebase.auth.GoogleAuthProvider();
         db = global.firebase.firestore();
 
-        auth.onAuthStateChanged(user => {
-            currentUser = user;
-            authStateListeners.forEach(listener => listener(user));
-
-            if (global.TasklyzenStorage && global.TasklyzenStorage.onAuthChange) {
-                global.TasklyzenStorage.onAuthChange(user, db);
-            }
-        });
+        auth.onAuthStateChanged(settleAuthState);
     } else {
         console.warn('SDK de Firebase no encontrado. Asegúrate de cargarlo en el HTML.');
+        settleAuthState(null);
     }
 
     function signIn() {
         if (!auth) return Promise.reject(new Error('Firebase no inicializado'));
         // signInWithPopup funciona en localhost (Live Server).
         // El aviso COOP en consola es inofensivo y no bloquea el flujo.
-        return auth.signInWithPopup(provider).catch(error => {
-            // Ignorar el aviso de COOP; solo reportar errores reales
+        return auth.signInWithPopup(provider).then(result => {
+            setLoginStrategy('google');
+            return result;
+        }).catch(error => {
             if (error.code !== 'auth/cancelled-popup-request' &&
                 error.code !== 'auth/popup-closed-by-user') {
                 console.error('Error al iniciar sesión con Google:', error);
             }
+            throw error;
         });
     }
 
@@ -59,16 +105,27 @@
 
     function onAuthStateChanged(listener) {
         authStateListeners.push(listener);
-        // Entregar el estado actual inmediatamente si ya está disponible
-        if (currentUser !== undefined) {
+        if (authResolved) {
             listener(currentUser);
         }
+    }
+
+    function whenReady() {
+        return authReady.then(() => getEntryState());
+    }
+
+    function chooseLocalMode() {
+        setLoginStrategy('local');
+        return getEntryState();
     }
 
     global.TasklyzenAuth = {
         signIn,
         signOut,
         onAuthStateChanged,
+        whenReady,
+        getEntryState,
+        chooseLocalMode,
         get currentUser() { return currentUser; },
         get db() { return db; }
     };
@@ -76,7 +133,48 @@
     // ── UI Logic ───────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
         const onboardingLoginBtn = document.getElementById('onboarding-login-btn');
+        const onboardingSkipBtn   = document.getElementById('onboarding-skip-btn');
+        const onboardingOverlay   = document.getElementById('onboarding-overlay');
         const settingsAuthBtn    = document.getElementById('settings-auth-button');
+        let entryReadyDispatched = false;
+
+        function dispatchEntryReady() {
+            if (entryReadyDispatched) return;
+            entryReadyDispatched = true;
+            global.dispatchEvent(new CustomEvent('tasklyzen:entry-ready', {
+                detail: getEntryState()
+            }));
+        }
+
+        function enterApp() {
+            if (!onboardingOverlay || onboardingOverlay.hidden) {
+                if (onboardingOverlay) onboardingOverlay.hidden = true;
+                dispatchEntryReady();
+                return;
+            }
+
+            onboardingOverlay.style.opacity = '0';
+            setTimeout(() => {
+                onboardingOverlay.hidden = true;
+                onboardingOverlay.style.removeProperty('opacity');
+                dispatchEntryReady();
+            }, 300);
+        }
+
+        function syncEntryUi() {
+            const entryState = getEntryState();
+
+            if (entryState.canEnter) {
+                enterApp();
+                return;
+            }
+
+            entryReadyDispatched = false;
+            if (onboardingOverlay) {
+                onboardingOverlay.style.removeProperty('opacity');
+                onboardingOverlay.hidden = false;
+            }
+        }
 
         onAuthStateChanged(user => {
             if (settingsAuthBtn) {
@@ -94,20 +192,14 @@
 
         const handleAuthClick = () => {
             if (currentUser) {
-                signOut();
+                signOut().catch(() => {});
             } else {
-                signIn().then(() => {
-                    // Si el usuario viene del onboarding, ocultarlo y arrancar la app
-                    const overlay = document.getElementById('onboarding-overlay');
-                    if (overlay && !overlay.hidden) {
-                        localStorage.setItem('tasklyzen-login-strategy', 'google');
-                        overlay.style.opacity = '0';
-                        setTimeout(() => {
-                            overlay.hidden = true;
-                            if (window.__TLZ_startApp) window.__TLZ_startApp();
-                        }, 300);
+                signIn().then(result => {
+                    if (result && result.user) {
+                        currentUser = result.user;
+                        enterApp();
                     }
-                });
+                }).catch(() => {});
             }
         };
 
@@ -115,8 +207,17 @@
             onboardingLoginBtn.addEventListener('click', handleAuthClick);
         }
 
+        if (onboardingSkipBtn) {
+            onboardingSkipBtn.addEventListener('click', () => {
+                chooseLocalMode();
+                enterApp();
+            });
+        }
+
         if (settingsAuthBtn) {
             settingsAuthBtn.addEventListener('click', handleAuthClick);
         }
+
+        whenReady().then(syncEntryUi);
     });
 })(window);

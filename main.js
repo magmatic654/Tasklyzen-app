@@ -1,7 +1,7 @@
 /*
  * Módulo: runtime principal
  * Propósito:
- * - Coordinar tareas, analítica, rachas, logros y modo desarrollador.
+ * - Coordinar tareas, analítica, rachas y modo desarrollador.
  * Entradas:
  * - TasklyzenConfig, TasklyzenStorage, TasklyzenUtils, TasklyzenTasks, TasklyzenDom y TasklyzenOOP.
  * Salidas:
@@ -21,7 +21,6 @@ const FEATURES_KEY = TASKLYZEN_CONFIG.storageKeys.features;
 const SETTINGS_KEY = TASKLYZEN_CONFIG.storageKeys.settings;
 const OVERDUE_REVIEW_KEY = TASKLYZEN_CONFIG.storageKeys.overdueReview;
 const DEFAULT_DAILY_GOAL = TASKLYZEN_CONFIG.defaults.dailyGoal;
-const FEATURED_ACHIEVEMENTS_LIMIT = TASKLYZEN_CONFIG.defaults.featuredAchievementsLimit;
 const TASK_EXPIRATION_DAYS = TASKLYZEN_CONFIG.defaults.taskExpirationDays;
 const TASK_TIME_LIMIT_DEFAULT_DAYS = TASKLYZEN_CONFIG.defaults.taskTimeLimitDefaultDays;
 const TASK_TIME_LIMIT_MAX_DAYS = TASKLYZEN_CONFIG.defaults.taskTimeLimitMaxDays;
@@ -29,14 +28,11 @@ const TASK_DEADLINE_SOON_HOURS = TASKLYZEN_CONFIG.defaults.taskDeadlineSoonHours
 const OVERDUE_REVIEW_INTERVAL_DAYS = TASKLYZEN_CONFIG.defaults.overdueReviewIntervalDays;
 const OVERDUE_AUTO_DELETE_DAYS = TASKLYZEN_CONFIG.defaults.overdueAutoDeleteDays;
 const STREAK_PRESTIGE_LEVELS = TASKLYZEN_CONFIG.streakPrestigeLevels;
-const ACHIEVEMENT_RARITY_KEYS = TASKLYZEN_CONFIG.achievementRarityKeys;
-const ACHIEVEMENT_CATEGORY_KEYS = TASKLYZEN_CONFIG.achievementCategoryKeys;
-const ACHIEVEMENT_RARITIES = TASKLYZEN_CONFIG.achievementRarities;
-const ACHIEVEMENT_CATEGORIES = TASKLYZEN_CONFIG.achievementCategories;
 const TASKLYZEN_STORAGE = window.TasklyzenStorage;
 const TASKLYZEN_UI_COMPONENTS = window.TasklyzenUiComponents;
 const TASKLYZEN_TASK_CREATION_UI = window.TasklyzenTaskCreationUi;
 const TASKLYZEN_SETTINGS = window.TasklyzenSettings;
+const TASKLYZEN_AUDIO = window.TasklyzenAudio;
 const TASKLYZEN_NOTIFICATIONS = window.TasklyzenNotifications;
 const TASKLYZEN_TASK_UI = window.TasklyzenTaskUi;
 const TASKLYZEN_OVERDUE_REVIEW = window.TasklyzenOverdueReview || {
@@ -56,29 +52,10 @@ const TASKLYZEN_OVERDUE_REVIEW = window.TasklyzenOverdueReview || {
 };
 
 const TASKLYZEN_ANALYTICS_PROGRESS = window.TasklyzenAnalyticsProgress;
-const TASKLYZEN_ACHIEVEMENTS = window.TasklyzenAchievements;
 const TASKLYZEN_GAMIFICATION = window.TasklyzenGamification;
 const TASKLYZEN_GAMIFICATION_UI = window.TasklyzenGamificationUi;
 const TASKLYZEN_FEATURES = window.TasklyzenFeatures;
 const TASKLYZEN_DEVELOPER = window.TasklyzenDeveloper;
-const ACHIEVEMENT_DEFINITIONS = TASKLYZEN_ACHIEVEMENTS.createAchievementDefinitions({
-    getTodayHistory: () => getHistoryCount(getTodayKey()),
-    getDailyGoal: () => dailyGoal,
-    getCleanDayProgress: () => {
-        const stats = getTaskStats();
-        return stats.total > 0 && stats.available === 0 && getHistoryCount(getTodayKey()) > 0 ? 1 : 0;
-    },
-    getCurrentStreak,
-    getPerfectStreak,
-    getLegendaryStreak,
-    getTotalCompletedTasks,
-    getBestDayTotal,
-    getCompletedPriorityCount,
-    getEarnedShields,
-    getActiveDaysTotal,
-    getUsedShields: () => gamification.usedShields
-});
-
 const TASKLYZEN_DOM = window.TasklyzenDom;
 const {
     taskCreatePanel,
@@ -196,7 +173,6 @@ const {
     dailyCloseCard,
     dailyCloseTitle,
     dailyCloseSummary,
-    dailyCloseAchievements,
     recommendedGoalText,
     applyRecommendedGoalButton,
     analyticsPeriodControl,
@@ -231,7 +207,6 @@ const {
     backlogHealthTitle,
     backlogHealthMessage,
     taskFunnel,
-    achievementRankingList,
     consistencyStrip,
     activeStreakTotal,
     perfectStreakTotal,
@@ -254,22 +229,6 @@ const {
     streakCelebrationKicker,
     streakCelebrationTitle,
     streakCelebrationMessage,
-    featuredAchievementHint,
-    featuredAchievementList,
-    achievementPageHint,
-    achievementPageList,
-    collectionEarnedTotal,
-    collectionPendingTotal,
-    collectionFeaturedTotal,
-    collectionRarityTotal,
-    achievementCategoryFilter,
-    achievementRarityFilter,
-    achievementSortInput,
-    achievementShowcase,
-    showcaseRarity,
-    showcaseMark,
-    showcaseTitle,
-    showcaseMessage,
     contributionGrid
 } = TASKLYZEN_DOM;
 const TASKLYZEN_UTILS = window.TasklyzenUtils;
@@ -360,12 +319,13 @@ let completionHistory = buildCompletionHistory(todos, analyticsEvents);
 let gamification = loadGamification();
 let dailyStats = loadDailyStats();
 let appSettings = settingsController.load();
+const audioController = TASKLYZEN_AUDIO.createAudioController({
+    windowRef: window,
+    getSettings: () => appSettings
+});
 let dailyGoal = loadDailyGoal();
 let activeProgressView = loadProgressView();
 let activeFlowPeriod = loadAnalyticsFlowPeriod();
-let achievementCategoryFilterValue = 'all';
-let achievementRarityFilterValue = 'all';
-let achievementSortMode = 'smart';
 let celebrationTimer;
 let streakCelebrationTimer;
 let taskStateRefreshTimer = null;
@@ -476,12 +436,7 @@ const overdueReviewController = TASKLYZEN_OVERDUE_REVIEW.createOverdueReviewCont
 window.TasklyzenRuntime.overdueReviewController = overdueReviewController;
 
 const gamificationController = TASKLYZEN_GAMIFICATION.createGamificationController({
-    definitions: ACHIEVEMENT_DEFINITIONS,
-    rarities: ACHIEVEMENT_RARITIES,
-    categories: ACHIEVEMENT_CATEGORIES,
-    rarityKeys: ACHIEVEMENT_RARITY_KEYS,
     prestigeLevels: STREAK_PRESTIGE_LEVELS,
-    featuredLimit: FEATURED_ACHIEVEMENTS_LIMIT,
     utils: TASKLYZEN_UTILS,
     getGamification: () => gamification,
     setGamification: value => {
@@ -490,11 +445,7 @@ const gamificationController = TASKLYZEN_GAMIFICATION.createGamificationControll
     saveGamification,
     getCompletionHistory: () => completionHistory,
     getDailyGoal: () => dailyGoal,
-    showToast,
-    renderCurrentPage,
-    renderAchievementSurfaces,
-    queueAchievementShowcase,
-    logAnalyticsEvent
+    renderCurrentPage
 });
 window.TasklyzenRuntime.gamificationController = gamificationController;
 const gamificationUiController = TASKLYZEN_GAMIFICATION_UI.createGamificationUiController({
@@ -503,13 +454,7 @@ const gamificationUiController = TASKLYZEN_GAMIFICATION_UI.createGamificationUiC
     components: TASKLYZEN_UI_COMPONENTS,
     windowRef: window,
     prestigeLevels: STREAK_PRESTIGE_LEVELS,
-    featuredLimit: FEATURED_ACHIEVEMENTS_LIMIT,
     utils: TASKLYZEN_UTILS,
-    getGamification: () => gamification,
-    getAllAchievements,
-    getUnseenAchievements: () => gamificationController.getUnseenAchievements(),
-    getFilteredAchievementCollection,
-    getFeaturedAchievements,
     getCurrentStreak,
     getPerfectStreak,
     getLegendaryStreak,
@@ -523,9 +468,7 @@ const gamificationUiController = TASKLYZEN_GAMIFICATION_UI.createGamificationUiC
     getNextStreakReward,
     getContributionLevel,
     getHistoryCount,
-    isProtectedDate,
-    getRarityRankLabel,
-    toggleFeaturedAchievement
+    isProtectedDate
 });
 window.TasklyzenRuntime.gamificationUiController = gamificationUiController;
 const analyticsProgressController = TASKLYZEN_ANALYTICS_PROGRESS.createAnalyticsProgressController({
@@ -563,7 +506,6 @@ const analyticsProgressController = TASKLYZEN_ANALYTICS_PROGRESS.createAnalytics
     getPriorityLabel,
     getPriorityRank,
     getLifecycleAnalyticsForRange,
-    getAllAchievements,
     getRescueState,
     getCurrentStreak,
     getStreakBeforeToday,
@@ -579,14 +521,6 @@ const analyticsProgressController = TASKLYZEN_ANALYTICS_PROGRESS.createAnalytics
     renderStreakPrestigeRoad,
     renderStreakSafety,
     renderNextReward,
-    renderFeaturedAchievements,
-    renderAchievementSurfaces,
-    onAchievementsViewed: () => {
-        if (gamificationController.markAchievementsSeen()) {
-            gamificationUiController.renderAchievementSurfaces();
-        }
-    },
-    syncAchievementCollection,
     showToast,
     saveDailyGoal,
     logAnalyticsEvent,
@@ -615,6 +549,9 @@ const betaFeatureControllers = TASKLYZEN_FEATURES.createBetaFeatureControllers({
     onCompleteTodo: completeTodoFromFeature,
     onToggleSubtask: toggleSubtaskFromFeature,
     onSessionComplete: handleFocusSessionComplete,
+    onStateChange: renderRaceModeButton,
+    onTimerCue: type => audioController.playRaceCue(type),
+    unlockAudio: () => audioController.unlock(),
     analyticsDom: {
         card: TASKLYZEN_DOM.analytics.raceAnalyticsSummary,
         minutes: TASKLYZEN_DOM.analytics.raceAnalyticsMinutes,
@@ -666,7 +603,6 @@ function getDeveloperController() {
             gamification = value;
         },
         getAnalyticsSnapshot,
-        getAllAchievements,
         getDailyMission,
         getCurrentStreak,
         getPerfectStreak,
@@ -681,24 +617,36 @@ function getDeveloperController() {
         createNextHabitOccurrence,
         removeNextHabitOccurrence,
         updateDailyGoal,
-        queueAchievementShowcase,
         showCompletionAnimation,
         showStreakDayCelebration,
+        previewRaceState: state => {
+            if (!todos.some(todo => todo && !todo.completed)) {
+                addTodoItem('Sesión de prueba de Modo Carrera', 'normal');
+            }
+
+            return betaFeatureControllers.focus.previewForDeveloper(state);
+        },
+        playRaceCue: cue => {
+            audioController.unlock();
+            return audioController.playRaceCue(cue);
+        },
+        enableAppSound: () => {
+            audioController.unlock();
+            settingsController.update({
+                sound: true,
+                soundVolume: appSettings.soundVolume > 0 ? appSettings.soundVolume : 0.6
+            }, 'Sonido activado para las demos de Modo Carrera.');
+            return true;
+        },
         showToast,
         saveTodoList,
         saveCompletionHistory,
         saveDailyGoal,
         saveGamification,
         syncCompletionHistory,
-        syncAchievementCollection,
         renderCurrentPage,
         taskUiController,
         gamificationController,
-        grantAchievement: (achievementId, shouldAnimate) => gamificationController.grantAchievement(achievementId, shouldAnimate),
-        removeAchievement: achievementId => gamificationController.removeAchievement(achievementId),
-        resetAchievements: () => gamificationController.resetAchievements(),
-        unlockAllAchievements: options => gamificationController.unlockAllAchievements(options),
-        forceFinalizePendingAchievements: () => gamificationController.forceFinalizePendingAchievements(),
         normalizeGamification,
         normalizeStoredTodoText,
         normalizeTaskTimeLimit,
@@ -728,7 +676,6 @@ normalizeGamification();
 overdueReviewController.init();
 processOverdueRetention(true);
 if (!todoForm) {
-    syncAchievementCollection(false);
     saveCompletionHistory();
     saveGamification();
     syncAnalyticsData();
@@ -823,7 +770,6 @@ function restoreRuntimeFromStorage() {
     featureRegistry.reload();
     overdueReviewController.reload({ refresh: false });
     processOverdueRetention(false);
-    syncAchievementCollection(false);
     renderCurrentPage();
 }
 
@@ -863,7 +809,6 @@ function createEmptyDailyStat(dateKey) {
         edited: 0,
         snoozed: 0,
         goalChanges: 0,
-        achievements: 0,
         usageEvents: 0,
         completionValue: 0
     };
@@ -960,8 +905,6 @@ function buildDailyStats(todoItems, events) {
             stat.snoozed += 1;
         } else if (event.type === 'goal_changed') {
             stat.goalChanges += 1;
-        } else if (event.type === 'achievement_unlocked') {
-            stat.achievements += 1;
         }
     });
 
@@ -1088,18 +1031,6 @@ function loadDailyGoal() {
     }
 
     return DEFAULT_DAILY_GOAL;
-}
-
-function createAchievementState() {
-    return TASKLYZEN_GAMIFICATION.createAchievementState();
-}
-
-function normalizeAchievementState(state) {
-    return TASKLYZEN_GAMIFICATION.normalizeAchievementState(state);
-}
-
-function getAchievementState(achievementId) {
-    return gamificationController.getAchievementState(achievementId);
 }
 
 function loadGamification() {
@@ -1542,36 +1473,7 @@ function showToast(message, type, options) {
 }
 
 function playCompletionSound(type) {
-    if (!appSettings.sound) {
-        return;
-    }
-
-    const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
-
-    if (!AudioContextConstructor) {
-        return;
-    }
-
-    try {
-        const audioContext = new AudioContextConstructor();
-        const oscillator = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        const baseFrequency = type === 'legendary' ? 660 : type === 'goal' ? 540 : 420;
-        const targetGain = Math.max(appSettings.soundVolume * 0.16, 0.0001);
-
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(baseFrequency, audioContext.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(baseFrequency * 1.28, audioContext.currentTime + 0.12);
-        gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
-        gain.gain.exponentialRampToValueAtTime(targetGain, audioContext.currentTime + 0.03);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.22);
-        oscillator.connect(gain);
-        gain.connect(audioContext.destination);
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.24);
-    } catch (error) {
-        settingsController.update({ sound: false }, null, { apply: false, render: false });
-    }
+    audioController.playCompletion(type);
 }
 
 function getCompletionCelebrationCopy(type) {
@@ -1861,10 +1763,6 @@ function getMonthlyFunnelAnalytics(monthAnalytics) {
 function getClarityAnalytics() {
     return analyticsProgressController.getClarityAnalytics();
 }
-function getClosestAchievements(limit) {
-    return analyticsProgressController.getClosestAchievements(limit);
-}
-
 function getConsistencyAnalytics(days) {
     return analyticsProgressController.getConsistencyAnalytics(days);
 }
@@ -2547,7 +2445,6 @@ function hydrateProgressDashboard(reason) {
     progressHydrationScheduled = false;
     disconnectProgressHydrationObserver();
     renderProgressDashboard(reason);
-    renderAchievementSurfaces();
 }
 
 function scheduleProgressHydration() {
@@ -2562,7 +2459,6 @@ function scheduleProgressHydration() {
 
 function runDeferredStartupWork() {
     deferredStartupScheduled = false;
-    syncAchievementCollection(false);
     saveCompletionHistory();
     saveGamification();
     ensureAnalyticsDataFresh();
@@ -2570,12 +2466,9 @@ function runDeferredStartupWork() {
     if (todoForm) {
         if (progressDashboardHydrated) {
             renderProgressDashboard('startup');
-            renderAchievementSurfaces();
         } else {
             hydrateProgressDashboard('startup');
         }
-    } else {
-        renderAchievementSurfaces();
     }
 
     startBrowserReminderLoop();
@@ -2592,7 +2485,7 @@ function scheduleDeferredStartupWork() {
 
 function getLocalFeatureContext() {
     return {
-        page: todoForm ? 'main' : achievementPageList ? 'achievements' : 'unknown',
+        page: todoForm ? 'main' : 'unknown',
         dom: TASKLYZEN_DOM,
         settings: appSettings,
         getTodos: () => todos.slice(),
@@ -2601,7 +2494,6 @@ function getLocalFeatureContext() {
         getAnalyticsSnapshot,
         getDailyMission,
         getCurrentStreak,
-        getFeaturedAchievements,
         showToast,
         renderCurrentPage
     };
@@ -2613,14 +2505,26 @@ function renderFeatureSurfaces() {
 }
 
 function renderRaceModeButton() {
-    if (focusModeButton) {
-        focusModeButton.hidden = false;
-        focusModeButton.setAttribute('aria-label', 'Iniciar Modo Carrera');
+    if (!focusModeButton) {
+        return;
+    }
+
+    const launchState = betaFeatureControllers.focus.getLaunchState();
+    const textNode = focusModeButton.querySelector('span:last-child');
+
+    focusModeButton.hidden = false;
+    focusModeButton.classList.toggle('has-resumable-session', launchState.resumable);
+    focusModeButton.setAttribute('aria-label', launchState.resumable
+        ? launchState.buttonLabel + ' para ' + launchState.todoTitle
+        : 'Iniciar Modo Carrera');
+
+    if (textNode) {
+        textNode.textContent = launchState.buttonLabel;
     }
 }
 
 function startFocusModeFromApp() {
-    const result = betaFeatureControllers.focus.openSetup();
+    const result = betaFeatureControllers.focus.openLauncher();
 
     if (result && result.status === 'empty') {
         showToast(result.message || 'No hay tareas disponibles para iniciar Modo Carrera.', 'info', { key: 'focus-mode-empty' });
@@ -2629,74 +2533,6 @@ function startFocusModeFromApp() {
 
 function handleFocusSessionComplete() {
     renderCurrentPage();
-}
-
-function getRarityMeta(rarity) {
-    return gamificationController.getRarityMeta(rarity);
-}
-
-function getRarityRank(rarity) {
-    return gamificationController.getRarityRank(rarity);
-}
-
-function getRarityRankLabel(rarity) {
-    return gamificationController.getRarityRankLabel(rarity);
-}
-
-function getCategoryMeta(category) {
-    return gamificationController.getCategoryMeta(category);
-}
-
-function finalizePendingAchievements() {
-    return gamificationController.finalizePendingAchievements();
-}
-
-function resolveAchievement(definition) {
-    return gamificationController.resolveAchievement(definition);
-}
-
-function getAllAchievements() {
-    return gamificationController.getAllAchievements();
-}
-
-function sortAchievements(achievements, mode) {
-    return gamificationController.sortAchievements(achievements, mode);
-}
-
-function getAchievementCollection() {
-    return gamificationController.getAchievementCollection();
-}
-
-function getFilteredAchievementCollection() {
-    return gamificationController.getFilteredAchievementCollection(achievementCategoryFilterValue, achievementRarityFilterValue, achievementSortMode);
-}
-
-function syncAchievementCollection(shouldShow) {
-    gamificationController.syncAchievementCollection(shouldShow);
-}
-
-function getAutomaticFeaturedAchievements() {
-    return gamificationController.getAutomaticFeaturedAchievements();
-}
-
-function getFeaturedAchievements() {
-    return gamificationController.getFeaturedAchievements();
-}
-
-function toggleFeaturedAchievement(achievementId) {
-    gamificationController.toggleFeaturedAchievement(achievementId);
-}
-
-function queueAchievementShowcase(achievements) {
-    gamificationUiController.queueAchievementShowcase(achievements);
-}
-
-function getAchievementShowcaseDuration(rarity) {
-    return gamificationUiController.getAchievementShowcaseDuration(rarity);
-}
-
-function showNextAchievement() {
-    gamificationUiController.showNextAchievement();
 }
 
 function getStreakPrestigeLevel(streak) {
@@ -2772,29 +2608,6 @@ function renderDailyMission() {
 
 function renderDailyClose() {
     analyticsProgressController.renderDailyClose();
-}
-function createAchievementCard(achievement, options) {
-    return gamificationUiController.createAchievementCard(achievement, options);
-}
-
-function createFeaturedAchievementCard(achievement) {
-    return gamificationUiController.createFeaturedAchievementCard(achievement);
-}
-
-function renderFeaturedAchievements() {
-    gamificationUiController.renderFeaturedAchievements();
-}
-
-function getBestCollectedRarityLabel(achievements) {
-    return gamificationUiController.getBestCollectedRarityLabel(achievements);
-}
-
-function renderAchievementsPage() {
-    gamificationUiController.renderAchievementsPage();
-}
-
-function renderAchievementSurfaces() {
-    gamificationUiController.renderAchievementSurfaces();
 }
 
 function renderNextReward() {
@@ -2911,10 +2724,6 @@ function renderCurrentPage() {
         notifyDeadlineRisks();
     }
 
-    if (!todoForm || progressDashboardHydrated) {
-        renderAchievementSurfaces();
-    }
-
     renderFeatureSurfaces();
     refreshDeveloperPanel();
 }
@@ -2989,7 +2798,6 @@ function saveEditedTodoItem(id) {
         textChanged: previousText !== cleanText
     });
     syncCompletionHistory();
-    syncAchievementCollection(false);
     processOverdueRetention(true);
     renderCurrentPage();
 }
@@ -3034,7 +2842,6 @@ function removeOverdueTasks(taskItems, eventType) {
         todos = todos.filter(todo => !requestedIds.has(todo.id));
         saveTodoList();
         syncCompletionHistory();
-        syncAchievementCollection(false);
         return true;
     } catch (error) {
         showToast('No se pudieron eliminar las tareas vencidas. Intenta de nuevo.', 'error', {
@@ -3087,7 +2894,6 @@ function clearCompletedTodos() {
     todos = cleanableResult.todos;
     saveTodoList();
     syncCompletionHistory();
-    syncAchievementCollection(false);
     renderCurrentPage();
 }
 
@@ -3107,6 +2913,10 @@ function toggleTodoItem(id) {
     if (TASKLYZEN_COMPOSITE_TASKS.isCompositeTask(todo)) {
         taskUiController.setExpandedTodo(todo.id, true, true);
         return;
+    }
+
+    if (!wasCompleted) {
+        audioController.unlock();
     }
 
     if (todo.completed) {
@@ -3147,7 +2957,9 @@ function toggleTodoItem(id) {
             celebrationType = 'legendary';
         }
 
-        if (celebrationType !== 'regular') {
+        if (celebrationType === 'regular') {
+            playCompletionSound(celebrationType);
+        } else {
             showCompletionAnimation(celebrationType);
         }
 
@@ -3171,7 +2983,6 @@ function toggleTodoItem(id) {
 
     saveTodoList();
     syncCompletionHistory();
-    syncAchievementCollection(!wasCompleted);
 
     if (streakCelebrationContext) {
         const updatedStreak = getCurrentStreak();
@@ -3199,9 +3010,6 @@ function removeTodoItem(id) {
 
     if (removedTodo && removedTodo.completed) {
         syncCompletionHistory();
-        syncAchievementCollection(false);
-    } else {
-        syncAchievementCollection(false);
     }
 
     renderCurrentPage();
@@ -3254,7 +3062,6 @@ function commitCompositeChange(todo, previousCompleted) {
     logCompositeTransition(todo, transition);
     saveTodoList();
     syncCompletionHistory();
-    syncAchievementCollection(Boolean(transition.completedNow));
 
     if (transition.completedNow && previousTodayCount === 0 && !gamificationController.hasCelebratedStreakDate(todayKey)) {
         const updatedStreak = getCurrentStreak();
@@ -3312,6 +3119,9 @@ function toggleTodoSubtask(todoId, subtaskId) {
     const todo = todos.find(item => item.id === todoId);
     const subtask = todo && Array.isArray(todo.subtasks) ? todo.subtasks.find(item => item.id === subtaskId) : null;
     if (!subtask) return false;
+    if (!subtask.completed) {
+        audioController.unlock();
+    }
     const previousCompleted = Boolean(todo.completed);
     subtask.completed = !subtask.completed;
     subtask.completedAt = subtask.completed ? getNowTimestamp() : null;
@@ -3911,32 +3721,6 @@ function installDeveloperModeCommand() {
     }
 }
 
-function handleAchievementPageClick(event) {
-    const featureButton = event.target.closest('[data-feature-achievement]');
-
-    if (!featureButton) {
-        return;
-    }
-
-    toggleFeaturedAchievement(featureButton.dataset.featureAchievement);
-}
-
-function handleAchievementCategoryFilterChange(event) {
-    achievementCategoryFilterValue = ACHIEVEMENT_CATEGORY_KEYS.includes(event.target.value) ? event.target.value : 'all';
-    renderAchievementsPage();
-}
-
-function handleAchievementRarityFilterChange(event) {
-    achievementRarityFilterValue = ACHIEVEMENT_RARITY_KEYS.includes(event.target.value) ? event.target.value : 'all';
-    renderAchievementsPage();
-}
-
-function handleAchievementSortChange(event) {
-    const sortModes = ['smart', 'rarity-desc', 'rarity-asc', 'progress-desc', 'collected-first', 'title-asc'];
-    achievementSortMode = sortModes.includes(event.target.value) ? event.target.value : 'smart';
-    renderAchievementsPage();
-}
-
 function handleNotificationsChange(event) {
     notificationController.handlePreferenceChange(event);
 }
@@ -4167,22 +3951,6 @@ if (rescueButton) {
     rescueButton.addEventListener('click', handleRescueClick);
 }
 
-if (achievementPageList) {
-    achievementPageList.addEventListener('click', handleAchievementPageClick);
-}
-
-if (achievementCategoryFilter) {
-    achievementCategoryFilter.addEventListener('change', handleAchievementCategoryFilterChange);
-}
-
-if (achievementRarityFilter) {
-    achievementRarityFilter.addEventListener('change', handleAchievementRarityFilterChange);
-}
-
-if (achievementSortInput) {
-    achievementSortInput.addEventListener('change', handleAchievementSortChange);
-}
-
 
 setProgressPanelExpanded(false, false);
 
@@ -4207,43 +3975,74 @@ document.addEventListener('visibilitychange', () => {
 
 window.addEventListener('focus', refreshTimeSensitiveTaskState);
 
-if (achievementPageList) {
-    window.addEventListener('pagehide', () => {
-        gamificationController.markAchievementsSeen();
-    }, { once: true });
-}
-
-// Onboarding Logic
-const loginStrategy = localStorage.getItem('tasklyzen-login-strategy');
+// Entrada de usuario y recuperación de sesión
 const onboardingOverlay = document.getElementById('onboarding-overlay');
 const onboardingSkipBtn = document.getElementById('onboarding-skip-btn');
 
 let appStarted = false;
+let startupRacePromptHandled = false;
+
+function openStartupRacePrompt() {
+    if (!appStarted || startupRacePromptHandled || (onboardingOverlay && !onboardingOverlay.hidden)) {
+        return;
+    }
+
+    const launchState = betaFeatureControllers.focus.getLaunchState();
+
+    if (!launchState.resumable) {
+        return;
+    }
+
+    startupRacePromptHandled = true;
+    window.setTimeout(() => {
+        betaFeatureControllers.focus.openResumePrompt();
+    }, 0);
+}
+
 function startApp() {
     if (appStarted) return;
     appStarted = true;
     installDeveloperModeCommand();
     featureRegistry.init();
+    betaFeatureControllers.focus.prepareForEntry();
     renderCurrentPage();
     scheduleDeferredStartupWork();
+    openStartupRacePrompt();
 }
 window.__TLZ_startApp = startApp;
 
-if (!loginStrategy && onboardingOverlay) {
-    onboardingOverlay.hidden = false;
-} else {
-    if (onboardingOverlay) onboardingOverlay.hidden = true;
-    startApp();
-}
+window.addEventListener('tasklyzen:entry-ready', startApp);
 
-if (onboardingSkipBtn) {
-    onboardingSkipBtn.addEventListener('click', () => {
-        localStorage.setItem('tasklyzen-login-strategy', 'local');
-        onboardingOverlay.style.opacity = '0';
-        setTimeout(() => {
+if (window.TasklyzenAuth && typeof window.TasklyzenAuth.whenReady === 'function') {
+    window.TasklyzenAuth.whenReady().then(entryState => {
+        if (entryState.canEnter) {
+            startApp();
+        }
+    });
+} else {
+    const loginStrategy = localStorage.getItem('tasklyzen-login-strategy');
+
+    if (!loginStrategy && onboardingOverlay) {
+        onboardingOverlay.hidden = false;
+    } else {
+        if (onboardingOverlay) onboardingOverlay.hidden = true;
+        startApp();
+    }
+
+    if (onboardingSkipBtn) {
+        onboardingSkipBtn.addEventListener('click', () => {
+            localStorage.setItem('tasklyzen-login-strategy', 'local');
             onboardingOverlay.hidden = true;
             startApp();
-        }, 300);
-    });
+        });
+    }
 }
+
+window.addEventListener('pagehide', () => {
+    const raceState = betaFeatureControllers.focus.getState();
+
+    if (raceState.active && !raceState.suspended) {
+        betaFeatureControllers.focus.leave();
+    }
+});
 

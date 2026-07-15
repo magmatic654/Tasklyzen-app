@@ -11,12 +11,11 @@
  */
 (function exposeTasklyzenAnalyticsProgress(global) {
     const FLOW_PERIODS = ['weekly', 'monthly', 'quarterly'];
-    const PROGRESS_VIEWS = ['today', 'analytics', 'streak', 'achievements'];
+    const PROGRESS_VIEWS = ['today', 'analytics', 'streak'];
     const PROGRESS_VIEW_HEADINGS = {
         today: { kicker: 'Enfoque diario', title: 'Progreso de hoy' },
         analytics: { kicker: 'Lectura útil', title: 'Rendimiento' },
-        streak: { kicker: 'Constancia', title: 'Tu racha' },
-        achievements: { kicker: 'Colección', title: 'Logros' }
+        streak: { kicker: 'Constancia', title: 'Tu racha' }
     };
 
     function normalizeFlowPeriod(value) {
@@ -55,7 +54,6 @@
         const getPriorityLabel = fn(config.getPriorityLabel, () => 'Normal');
         const getPriorityRank = fn(config.getPriorityRank, () => 1);
         const getLifecycleAnalyticsForRange = fn(config.getLifecycleAnalyticsForRange, () => emptyLifecycle());
-        const getAllAchievements = fn(config.getAllAchievements, () => []);
         const getRescueState = fn(config.getRescueState, () => ({}));
         const getCurrentStreak = fn(config.getCurrentStreak, () => 0);
         const getStreakBeforeToday = fn(config.getStreakBeforeToday, () => 0);
@@ -71,10 +69,6 @@
         const renderStreakPrestigeRoad = fn(config.renderStreakPrestigeRoad, () => {});
         const renderStreakSafety = fn(config.renderStreakSafety, () => {});
         const renderNextReward = fn(config.renderNextReward, () => {});
-        const renderFeaturedAchievements = fn(config.renderFeaturedAchievements, () => {});
-        const renderAchievementSurfaces = fn(config.renderAchievementSurfaces, () => {});
-        const onAchievementsViewed = fn(config.onAchievementsViewed, () => {});
-        const syncAchievementCollection = fn(config.syncAchievementCollection, () => {});
         const showToast = fn(config.showToast, () => {});
         const saveDailyGoal = fn(config.saveDailyGoal, () => {});
         const logAnalyticsEvent = fn(config.logAnalyticsEvent, () => {});
@@ -945,26 +939,6 @@
             };
         }
 
-        function getClosestAchievements(limit) {
-            return getAllAchievements()
-                .filter(achievement => !achievement.collected)
-                .sort((first, second) => {
-                    const firstProgress = first.target > 0 ? first.current / first.target : 0;
-                    const secondProgress = second.target > 0 ? second.current / second.target : 0;
-
-                    if (firstProgress !== secondProgress) {
-                        return secondProgress - firstProgress;
-                    }
-
-                    if (first.remaining !== second.remaining) {
-                        return first.remaining - second.remaining;
-                    }
-
-                    return second.rarityWeight - first.rarityWeight;
-                })
-                .slice(0, Math.max(Math.round(Number(limit) || 3), 1));
-        }
-
         function getConsistencyAnalytics(days) {
             const entries = getDailyStatEntries(days, 0);
             const activeDays = entries.filter(entry => entry.completed > 0).length;
@@ -1406,7 +1380,6 @@
                 saludPendientes: clarity.backlog,
                 embudo: getMonthlyFunnelAnalytics(monthAnalytics),
                 consistencia: getConsistencyAnalytics(30),
-                logrosCercanos: getClosestAchievements(3),
                 metaSugerida: getAdaptiveGoalRecommendation(),
                 riesgoRacha: getStreakRiskInsight(),
                 perfil: getProductivityProfile(),
@@ -1437,8 +1410,6 @@
                     nextGoal
                 });
             }
-            syncAchievementCollection(shouldNotify);
-
             if (shouldNotify) {
                 showToast('Meta diaria actualizada a ' + nextGoal + '.', 'info');
             }
@@ -1446,7 +1417,6 @@
             if (dom.todoForm) {
                 renderProgressDashboard();
             }
-            renderAchievementSurfaces();
         }
 
         function renderRecommendedGoal() {
@@ -1924,13 +1894,12 @@
         }
 
         function renderDailyClose() {
-            if (!dom.dailyCloseCard || !dom.dailyCloseSummary || !dom.dailyCloseAchievements) {
+            if (!dom.dailyCloseCard || !dom.dailyCloseSummary) {
                 return;
             }
 
             const todayCount = getHistoryCount(getTodayKey());
             const reachedGoal = todayCount >= getDailyGoal();
-            const pendingAchievements = getAllAchievements().filter(achievement => achievement.pending).slice(0, 3);
 
             dom.dailyCloseCard.hidden = !reachedGoal;
 
@@ -1943,20 +1912,6 @@
             }
 
             dom.dailyCloseSummary.textContent = 'Hoy completaste ' + todayCount + ' de ' + getDailyGoal() + ' tareas. Tu racha queda protegida para volver con menos fricción.';
-            dom.dailyCloseAchievements.innerHTML = '';
-
-            if (pendingAchievements.length === 0) {
-                const item = documentRef.createElement('li');
-                item.textContent = 'Sin logros nuevos en revisión, pero el día ya cuenta para tu racha.';
-                dom.dailyCloseAchievements.appendChild(item);
-                return;
-            }
-
-            pendingAchievements.forEach(achievement => {
-                const item = documentRef.createElement('li');
-                item.textContent = achievement.title + ' - ' + achievement.rarityLabel;
-                dom.dailyCloseAchievements.appendChild(item);
-            });
         }
 
         function renderMotivationPanel() {
@@ -2047,10 +2002,6 @@
 
             renderProgressSections();
 
-            if (nextView === 'achievements') {
-                onAchievementsViewed();
-            }
-
             if (nextView === 'streak') {
                 scheduleContributionGridRender();
             }
@@ -2093,7 +2044,6 @@
             renderDailyMission();
             renderDailyClose();
             renderNextReward();
-            renderFeaturedAchievements();
             renderProgressSections();
 
             if (getActiveProgressView() === 'streak') {
@@ -2147,7 +2097,6 @@
             getWeeklyLifecycleAnalytics,
             getMonthlyFunnelAnalytics,
             getClarityAnalytics,
-            getClosestAchievements,
             getConsistencyAnalytics,
             getRecentHistoryCounts,
             getWeeklyActivities,
@@ -2201,7 +2150,6 @@
             edited: 0,
             snoozed: 0,
             goalChanges: 0,
-            achievements: 0,
             usageEvents: 0,
             completionValue: 0
         };

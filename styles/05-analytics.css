@@ -1099,7 +1099,6 @@
 .task-funnel-card,
 .analytics-clarity-panel,
 .weekly-flow-panel,
-.achievement-ranking-panel,
 .consistency-strip-panel {
     position: relative;
     margin-bottom: 12px;
@@ -1236,87 +1235,6 @@
 .funnel-reactivated .task-funnel-track span,
 .funnel-deleted .task-funnel-track span {
     background: linear-gradient(90deg, var(--coral), var(--danger));
-}
-
-.achievement-ranking-list {
-    display: grid;
-    gap: 9px;
-}
-
-.achievement-ranking-item {
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr);
-    gap: 10px;
-    align-items: center;
-    padding: 10px;
-    background: var(--soft-blue);
-    border: 2px solid rgba(39, 125, 161, 0.1);
-    border-radius: 8px;
-}
-
-.achievement-ranking-item > strong {
-    display: grid;
-    place-items: center;
-    width: 42px;
-    height: 42px;
-    color: #ffffff;
-    font-size: 0.78rem;
-    font-weight: 1000;
-    background: var(--blue);
-    border-radius: 50%;
-}
-
-.achievement-ranking-item span,
-.achievement-ranking-item em {
-    display: block;
-}
-
-.achievement-ranking-item span {
-    color: var(--ink);
-    font-size: 0.86rem;
-    font-weight: 1000;
-    line-height: 1.08;
-}
-
-.achievement-ranking-item em {
-    margin-top: 4px;
-    color: var(--muted);
-    font-size: 0.74rem;
-    font-style: normal;
-    font-weight: 900;
-}
-
-.achievement-ranking-track {
-    height: 8px;
-    margin-top: 8px;
-    overflow: hidden;
-    background: #e8eef3;
-    border-radius: 999px;
-}
-
-.achievement-ranking-track span {
-    display: block;
-    width: var(--bar-width);
-    height: 100%;
-    background: linear-gradient(90deg, var(--teal), var(--green-3));
-    border-radius: inherit;
-}
-
-.achievement-ranking-item.rarity-epic > strong,
-.achievement-ranking-item.rarity-legendary > strong,
-.achievement-ranking-item.rarity-mythic > strong {
-    background: linear-gradient(135deg, var(--coral), var(--orange), var(--gold));
-}
-
-.achievement-ranking-empty {
-    margin: 0;
-    padding: 12px;
-    color: var(--muted);
-    font-size: 0.86rem;
-    font-weight: 900;
-    text-align: center;
-    background: var(--soft-blue);
-    border-radius: 8px;
 }
 
 .consistency-strip {

@@ -16,7 +16,7 @@
         <div class="onboarding-card">
             <img src="assets/tasklyzen-icon.svg" alt="Tasklyzen Logo" class="onboarding-logo">
             <h1 class="onboarding-title">Bienvenido a Tasklyzen</h1>
-            <p class="onboarding-subtitle">Organiza tus tareas, consigue logros y sincroniza tu progreso en todos tus dispositivos.</p>
+            <p class="onboarding-subtitle">Organiza tus tareas y sincroniza tu progreso en todos tus dispositivos.</p>
             
             <button type="button" id="onboarding-login-btn" class="google-btn-chunky">
                 <svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
@@ -50,7 +50,7 @@
                     Iniciar Sesión
                 </button>
             </div>
-            <p class="settings-help-text">Al iniciar sesión, tus tareas, logros y progreso se guardarán en la nube y podrás acceder desde cualquier dispositivo.</p>
+            <p class="settings-help-text">Al iniciar sesión, tus tareas y progreso se guardarán en la nube y podrás acceder desde cualquier dispositivo.</p>
         </section>
 
         <section class="settings-section" aria-labelledby="settings-personalization-title">
@@ -276,14 +276,6 @@
                     </span>
                     <span id="compact-progress-week-status" class="compact-progress-row-status">0/21</span>
                 </button>
-                <button type="button" id="compact-achievement-news" class="compact-progress-menu-item compact-achievement-news" data-progress-shortcut="achievements" role="menuitem" hidden>
-                    <span class="compact-progress-menu-icon compact-progress-menu-achievement" aria-hidden="true"></span>
-                    <span>
-                        <strong>Nuevos logros</strong>
-                        <small id="compact-achievement-news-note">Tienes progreso por descubrir</small>
-                    </span>
-                    <span id="compact-achievement-news-count" class="achievement-new-count">0</span>
-                </button>
             </div>
         </section>
 
@@ -431,9 +423,6 @@
                 <button type="button" class="progress-tab active" data-progress-view="today" role="tab" aria-selected="true">Hoy</button>
                 <button type="button" class="progress-tab" data-progress-view="analytics" role="tab" aria-selected="false">Rendimiento</button>
                 <button type="button" class="progress-tab" data-progress-view="streak" role="tab" aria-selected="false">Racha</button>
-                <button type="button" class="progress-tab" data-progress-view="achievements" role="tab" aria-selected="false">
-                    Logros <span id="achievement-tab-new-count" class="achievement-new-count" hidden>0</span>
-                </button>
             </div>
 
             <div class="motivation-card" data-progress-section="today" aria-live="polite">
@@ -565,7 +554,6 @@
                     <p class="section-kicker">Cierre diario</p>
                     <h3 id="daily-close-title">Meta cumplida</h3>
                     <p id="daily-close-summary">Buen avance de hoy.</p>
-                    <ul id="daily-close-achievements" class="daily-close-achievements"></ul>
                 </div>
             </article>
 
@@ -625,21 +613,6 @@
                 </div>
                 <button type="button" id="rescue-button" class="rescue-button" disabled>Rescatar ayer</button>
             </article>
-
-            <section class="achievement-overview" data-progress-section="achievements" aria-labelledby="achievement-overview-title">
-                <div class="achievement-overview-heading">
-                    <div>
-                        <p class="section-kicker">Progreso personal</p>
-                        <h3 id="achievement-overview-title">Tus logros</h3>
-                    </div>
-                    <a class="collection-link" href="achievements.html">Abrir colección</a>
-                </div>
-                <p id="achievement-overview-count" class="achievement-overview-count">Empieza con una tarea para construir tu recorrido.</p>
-                <div class="achievement-overview-grid" aria-live="polite">
-                    <div id="achievement-latest-card"></div>
-                    <div id="achievement-next-card"></div>
-                </div>
-            </section>
 
             <div class="contribution-panel" data-progress-section="streak">
                 <div class="contribution-heading">
@@ -724,22 +697,11 @@
         </div>
     </div>
 
-    <div id="achievement-showcase" class="achievement-showcase" aria-hidden="true" role="status" aria-live="polite">
-        <div class="achievement-showcase-card">
-            <span id="showcase-rarity" class="showcase-rarity">Común</span>
-            <div class="showcase-medal" aria-hidden="true">
-                <span id="showcase-mark">A</span>
-            </div>
-            <p class="section-kicker">Logro desbloqueado</p>
-            <strong id="showcase-title">Primer impulso</strong>
-            <p id="showcase-message">Completa una tarea y enciende el día.</p>
-        </div>
-    </div>
-
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="tasklyzen-config.js"></script>
+    <script src="tasklyzen-data-migration.js"></script>
     <script src="firebase-env.js"></script>
     <script src="tasklyzen-auth.js"></script>
     <script src="tasklyzen-storage.js"></script>
@@ -751,11 +713,11 @@
     <script src="tasklyzen-overdue-review.js"></script>
     <script src="components/tasklyzen-task-creation-ui.js"></script>
     <script src="tasklyzen-settings.js"></script>
+    <script src="tasklyzen-audio.js"></script>
     <script src="tasklyzen-notifications.js"></script>
     <script src="tasklyzen-task-ui.js"></script>
 
     <script src="tasklyzen-analytics-progress.js"></script>
-    <script src="tasklyzen-achievements.js"></script>
     <script src="tasklyzen-gamification.js"></script>
     <script src="tasklyzen-gamification-ui.js"></script>
     <script src="tasklyzen-features.js"></script>

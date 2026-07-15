@@ -25,7 +25,6 @@
 
     const defaults = {
         dailyGoal: 3,
-        featuredAchievementsLimit: 3,
         developerStreakPrefix: 'Racha dev',
         developerStreakMaxDays: 5000,
         taskExpirationDays: 30,
@@ -52,30 +51,9 @@
         { min: 1500, label: 'Leyenda viva', className: 'streak-transcendent', rewardTitle: 'Leyenda viva', rewardMessage: 'A este nivel la racha merece una presencia monumental.' }
     ];
 
-    const achievementRarities = {
-        common: { label: 'Común', weight: 1 },
-        uncommon: { label: 'Poco común', weight: 2 },
-        rare: { label: 'Raro', weight: 3 },
-        epic: { label: 'Épico', weight: 4 },
-        legendary: { label: 'Legendario', weight: 5 },
-        mythic: { label: 'Mítico', weight: 6 }
-    };
-
-    const achievementCategories = {
-        daily: { label: 'Diarias' },
-        streak: { label: 'Rachas' },
-        priority: { label: 'Prioridades' },
-        volume: { label: 'Volumen' },
-        shields: { label: 'Escudos' }
-    };
-
     global.TasklyzenConfig = {
         storageKeys,
         defaults,
-        streakPrestigeLevels,
-        achievementRarityKeys: Object.keys(achievementRarities),
-        achievementCategoryKeys: Object.keys(achievementCategories),
-        achievementRarities,
-        achievementCategories
+        streakPrestigeLevels
     };
 })(window);

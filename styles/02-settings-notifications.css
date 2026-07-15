@@ -10,7 +10,6 @@ button,
 .progress-tab,
 .summary-window-button,
 .cleanup-button,
-.collection-link,
 .settings-secondary-button,
 .settings-danger-button {
     transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease;

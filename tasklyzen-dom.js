@@ -126,10 +126,6 @@
         compactProgressWeekItem: byId('compact-progress-week-item'),
         compactProgressWeekNote: byId('compact-progress-week-note'),
         compactProgressWeekStatus: byId('compact-progress-week-status'),
-        compactAchievementNews: byId('compact-achievement-news'),
-        compactAchievementNewsNote: byId('compact-achievement-news-note'),
-        compactAchievementNewsCount: byId('compact-achievement-news-count'),
-        achievementTabNewCount: byId('achievement-tab-new-count'),
         progressToggle: byId('progress-toggle'),
         progressDetailLayer: byId('progress-detail-layer'),
         progressHeadingKicker: byId('progress-heading-kicker'),
@@ -153,7 +149,6 @@
         dailyCloseCard: byId('daily-close-card'),
         dailyCloseTitle: byId('daily-close-title'),
         dailyCloseSummary: byId('daily-close-summary'),
-        dailyCloseAchievements: byId('daily-close-achievements'),
         recommendedGoalText: byId('recommended-goal-text'),
         applyRecommendedGoalButton: byId('apply-recommended-goal'),
         contributionGrid: byId('contribution-grid')
@@ -192,7 +187,6 @@
         backlogHealthTitle: byId('backlog-health-title'),
         backlogHealthMessage: byId('backlog-health-message'),
         taskFunnel: byId('task-funnel'),
-        achievementRankingList: byId('achievement-ranking-list'),
         consistencyStrip: byId('consistency-strip')
     };
 
@@ -226,33 +220,7 @@
         streakCelebrationEmblem: byId('streak-celebration-emblem'),
         streakCelebrationKicker: byId('streak-celebration-kicker'),
         streakCelebrationTitle: byId('streak-celebration-title'),
-        streakCelebrationMessage: byId('streak-celebration-message'),
-        featuredAchievementHint: byId('featured-achievement-hint'),
-        featuredAchievementList: byId('featured-achievement-list'),
-        achievementOverviewCount: byId('achievement-overview-count'),
-        achievementLatestCard: byId('achievement-latest-card'),
-        achievementNextCard: byId('achievement-next-card'),
-        achievementShowcase: byId('achievement-showcase'),
-        showcaseRarity: byId('showcase-rarity'),
-        showcaseMark: byId('showcase-mark'),
-        showcaseTitle: byId('showcase-title'),
-        showcaseMessage: byId('showcase-message')
-    };
-
-    const achievements = {
-        achievementPageHint: byId('achievement-page-hint'),
-        achievementPageList: byId('achievement-page-list'),
-        collectionEarnedTotal: byId('collection-earned-total'),
-        collectionPendingTotal: byId('collection-pending-total'),
-        collectionFeaturedTotal: byId('collection-featured-total'),
-        collectionNewTotal: byId('collection-new-total'),
-        collectionRarityTotal: byId('collection-rarity-total'),
-        achievementPageLatest: byId('achievement-page-latest'),
-        achievementPageNext: byId('achievement-page-next'),
-        achievementMilestonesList: byId('achievement-milestones-list'),
-        achievementCategoryFilter: byId('achievement-category-filter'),
-        achievementRarityFilter: byId('achievement-rarity-filter'),
-        achievementSortInput: byId('achievement-sort-input')
+        streakCelebrationMessage: byId('streak-celebration-message')
     };
 
     const features = {
@@ -274,8 +242,7 @@
         progress,
         analytics,
         gamification,
-        achievements,
         features,
         dev
-    }, settings, notifications, tasks, feedback, overdueReview, progress, analytics, gamification, achievements, features);
+    }, settings, notifications, tasks, feedback, overdueReview, progress, analytics, gamification, features);
 })(window);

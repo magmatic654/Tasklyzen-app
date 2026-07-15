@@ -114,89 +114,6 @@ body.theme-dark .analytics-summary-window {
     border-color: var(--border-soft);
 }
 
-body.theme-dark :where(
-    .todo-item,
-    .empty-state,
-    .analytics-metric,
-    .analytics-action-card,
-    .analytics-risk-card,
-    .analytics-insight,
-    .analytics-ring-card,
-    .analytics-context-card,
-    .analytics-clarity-panel,
-    .analytics-clarity-board,
-    .monthly-analysis-panel,
-    .monthly-performance-summary,
-    .monthly-recap-card,
-    .monthly-history-item,
-    .weekly-flow-panel,
-    .settings-section,
-    .achievement-tile,
-    .achievement-card,
-    .achievement-empty-state,
-    .streak-type-card,
-    .featured-achievements,
-    .contribution-panel,
-    .expired-tasks-panel,
-    .next-action-card,
-    .daily-mission-card,
-    .daily-close-card,
-    .streak-safety-card,
-    .next-reward-card,
-    .motivation-card,
-    .prestige-step,
-    .rarity-step,
-    .collection-summary article,
-    .collection-controls,
-    .summary-hero-copy,
-    .summary-risk-card,
-    .summary-recommendation,
-    .summary-section,
-    .summary-month-card,
-    .summary-metric,
-    .summary-insight,
-    .achievement-showcase-card,
-    .compact-progress-widget,
-    .compact-progress-shell,
-    .compact-progress-menu,
-    .compact-progress-menu-item,
-    .developer-panel,
-    .developer-section,
-    .developer-summary article,
-    .developer-overdue-status article
-) {
-    color: var(--text-primary);
-    background: var(--surface-panel-muted);
-    border-color: var(--border-soft);
-}
-
-body.theme-dark :where(
-    #todo-input,
-    .priority-input,
-    .time-limit-input,
-    .habit-toggle,
-    .summary-window-button,
-    .progress-tab,
-    .filter-button,
-    .collection-controls select,
-    .goal-setting input,
-    .edit-input,
-    .edit-priority-input,
-    .edit-time-limit-input,
-    .settings-panel input[type="text"],
-    .settings-panel input[type="color"],
-    .delete-data-card input,
-    .developer-field input,
-    .developer-field select,
-    .info-tooltip.info-tooltip,
-    .analytics-chip,
-    .showcase-rarity
-) {
-    color: var(--text-primary);
-    background: var(--surface-info);
-    border-color: var(--border-soft);
-}
-
 body.theme-dark .settings-button,
 body.theme-dark .settings-secondary-button {
     color: var(--ink);
@@ -247,30 +164,6 @@ body.theme-dark .notification-status-card.unsupported {
 }
 
 body.theme-dark :where(
-    .collection-link,
-    .analytics-profile.profile-burst,
-    .analytics-profile.profile-ambitious,
-    .analytics-risk-card.risk-medium > span,
-    .analytics-action-card > span,
-    .summary-risk-card.risk-medium > span,
-    .analytics-chip.chip-warning,
-    #achievement-page-hint,
-    #daily-mission-status,
-    .rarity-step.rarity-rare strong,
-    .rarity-step.rarity-legendary strong,
-    .achievement-showcase.rarity-rare .showcase-medal,
-    .achievement-showcase.rarity-legendary .showcase-medal,
-    .developer-action.secondary,
-    .cleanup-button:disabled,
-    .recommended-goal button:disabled,
-    .rescue-button:disabled,
-    .summary-recommendation button:disabled,
-    .settings-danger-button:disabled
-) {
-    color: var(--bright-ink);
-}
-
-body.theme-dark :where(
     .daily-mission-card.complete,
     .monthly-performance-summary.tone-strong,
     .summary-hero-copy,
@@ -278,17 +171,6 @@ body.theme-dark :where(
 ) {
     background: linear-gradient(135deg, #153124, #162b2f);
     border-color: rgba(0, 168, 150, 0.28);
-}
-
-body.theme-dark :where(
-    .monthly-performance-summary.tone-habit,
-    .monthly-performance-summary.tone-steady,
-    .summary-recommendation,
-    .rarity-step.rarity-legendary,
-    .daily-close-card
-) {
-    background: linear-gradient(135deg, #332913, #231d12);
-    border-color: rgba(249, 199, 79, 0.32);
 }
 
 body.theme-dark :where(
@@ -369,8 +251,7 @@ body.reduced-animations *::after {
     transition-duration: 0.001ms !important;
 }
 
-body.reduced-animations .completion-celebration,
-body.reduced-animations .achievement-showcase {
+body.reduced-animations .completion-celebration{
     display: none !important;
 }
 
