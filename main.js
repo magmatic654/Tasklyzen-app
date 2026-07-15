@@ -626,9 +626,33 @@ experienceController = TASKLYZEN_EXPERIENCE.createExperienceController({
             setProgressPanelExpanded(false, false);
         }
         syncAppLayerState();
+        if (completionCelebration && TASKLYZEN_DOM.experience.dialog) {
+            TASKLYZEN_DOM.experience.dialog.appendChild(completionCelebration);
+        }
     },
-    onClose: syncAppLayerState,
-    onComplete: renderCurrentPage
+    onClose: () => {
+        syncAppLayerState();
+        if (completionCelebration) {
+            document.body.appendChild(completionCelebration);
+        }
+    },
+    onComplete: renderCurrentPage,
+    onPreviewSound: () => {
+        audioController.unlock();
+        audioController.playCompletion('regular');
+    },
+    onPreviewAnimation: () => {
+        showCompletionAnimation('regular');
+    },
+    onRequestNotificationPermission: () => {
+        return requestBrowserNotificationPermission().then(permission => {
+            if (permission === 'granted') {
+                sendNotificationReadyConfirmation();
+            }
+            return permission;
+        });
+    }
+
 });
 experienceController.init();
 window.TasklyzenRuntime.experienceController = experienceController;

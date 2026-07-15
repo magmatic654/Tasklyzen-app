@@ -12,8 +12,8 @@
 (function exposeTasklyzenSettings(global) {
     const defaultSettings = Object.freeze({
         theme: 'light',
-        notifications: true,
-        sound: false,
+        notifications: false,
+        sound: true,
         soundVolume: 0.7,
         animations: true,
         simplifiedAnalytics: false,

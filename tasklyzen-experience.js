@@ -68,6 +68,9 @@
         const onOpen = typeof config.onOpen === 'function' ? config.onOpen : () => {};
         const onClose = typeof config.onClose === 'function' ? config.onClose : () => {};
         const onComplete = typeof config.onComplete === 'function' ? config.onComplete : () => {};
+        const onPreviewSound = typeof config.onPreviewSound === 'function' ? config.onPreviewSound : () => {};
+        const onPreviewAnimation = typeof config.onPreviewAnimation === 'function' ? config.onPreviewAnimation : () => {};
+        const onRequestNotificationPermission = typeof config.onRequestNotificationPermission === 'function' ? config.onRequestNotificationPermission : () => {};
         const defaultSettings = normalizeSettings(config.defaultSettings || {});
         const defaultDailyGoal = Math.min(Math.max(Math.round(Number(config.defaultDailyGoal) || 3), 1), 20);
         let state = normalizeExperienceState(read());
@@ -117,7 +120,7 @@
                     kicker: 'Guía esencial',
                     title: 'Conoce Tasklyzen de principio a fin',
                     message: 'Repasa las herramientas principales y descubre cómo se conectan para ayudarte a estudiar con menos fricción.',
-                    secondary: 'Ver después'
+                    secondary: 'Omitir guía'
                 };
             }
 
@@ -135,7 +138,7 @@
                     kicker: 'Empezar de nuevo',
                     title: 'Prepara tu centro de estudio',
                     message: 'Conoce cada herramienta importante y vuelve a elegir cómo quieres medir tu avance.',
-                    secondary: 'Usar valores iniciales'
+                    secondary: 'Omitir configuración'
                 };
             }
 
@@ -143,7 +146,7 @@
                 kicker: 'Tu primer recorrido',
                 title: 'Conoce tu centro de estudio',
                 message: 'Aprende el flujo principal en cinco pasos breves y deja Tasklyzen listo para ti.',
-                secondary: 'Usar valores iniciales'
+                secondary: 'Omitir configuración'
             };
         }
 
@@ -167,7 +170,7 @@
                 '</div>',
                 '</div>',
                 '<div class="experience-caption-grid">',
-                '<p><strong>Completa</strong><span>Usa únicamente el control circular.</span></p>',
+                '<p><strong>Completa</strong><span>Marca el círculo para darla por terminada.</span></p>',
                 '<p><strong>Consulta</strong><span>Toca la tarjeta para desplegar detalles.</span></p>',
                 '<p><strong>Divide</strong><span>Convierte proyectos grandes en hitos.</span></p>',
                 '</div>'
@@ -179,9 +182,10 @@
                 '<div class="experience-intro">',
                 '<p>Modo Carrera reúne las tareas elegidas en una sesión y conserva el contador aunque vuelvas a la lista.</p>',
                 '<div class="experience-showcase experience-showcase--race" role="img" aria-label="Ejemplo del cronómetro y la cola de tareas de Modo Carrera">',
-                '<div class="experience-mini-modes"><span>Ritmo libre</span><span class="is-active">Pomodoro</span><span>Contra reloj</span></div>',
+                '<div class="experience-mini-modes"><span>Ritmo libre</span><span class="is-active">Contra reloj</span></div>',
+                '<div class="experience-mini-pomodoro"><i class="experience-mini-check" aria-hidden="true"></i><span>Usar Pomodoro</span></div>',
                 '<div class="experience-mini-race-layout">',
-                '<div class="experience-mini-clock"><i aria-hidden="true"></i><strong>24:36</strong><small>Trabajo · ciclo 2 de 4</small></div>',
+                '<div class="experience-mini-clock"><i aria-hidden="true"></i><strong>24:36</strong><small>Tiempo en tarea</small></div>',
                 '<div class="experience-mini-queue"><small>Ahora</small><strong>Resolver ejercicios</strong><b><i></i></b><span>3 tareas en esta Carrera</span></div>',
                 '</div>',
                 '</div>',
@@ -202,14 +206,14 @@
                 '<strong>Hoy 2/3</strong><b><i></i></b><span class="experience-mini-flame" aria-hidden="true"></span><strong>4</strong><span>Semana <strong>67%</strong></span>',
                 '</div>',
                 '<div class="experience-mini-panel">',
-                '<nav><span class="is-active">Hoy</span><span>Tendencia</span><span>Racha</span></nav>',
+                '<nav><span class="is-active">Hoy</span><span>Rendimiento</span><span>Racha</span></nav>',
                 '<div class="experience-mini-chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>',
                 '<p><strong>Tu mejor ritmo: viernes</strong><span>Reserva ahí tu tarea más importante.</span></p>',
                 '</div>',
                 '</div>',
                 '<div class="experience-caption-grid experience-caption-grid--progress">',
                 '<p><strong>Hoy</strong><span>Tu meta y avance diario.</span></p>',
-                '<p><strong>Semana</strong><span>Tu constancia reciente.</span></p>',
+                '<p><strong>Rendimiento</strong><span>Tu constancia reciente.</span></p>',
                 '<p><strong>Racha</strong><span>Días con progreso significativo.</span></p>',
                 '</div>'
             ].join('');
@@ -225,10 +229,10 @@
                 '</div>',
                 '</fieldset>',
                 '<div class="experience-switch-list">',
-                renderSwitch('sound', 'Sonidos de apoyo', 'Avisos de Carrera y cierre de tareas.', draftSettings.sound),
-                renderSwitch('animations', 'Movimiento amable', 'Microanimaciones breves al interactuar.', draftSettings.animations),
-                renderSwitch('backgroundTimer', 'Carrera en segundo plano', 'El reloj continúa mientras estudias en otra ventana.', draftSettings.backgroundTimer),
-                renderSwitch('notifications', 'Recordatorios del navegador', 'El permiso se solicita después desde Ajustes, solo si lo deseas.', draftSettings.notifications),
+                renderSwitch('sound', 'Efectos sonoros', 'Reproduce un sonido breve al completar tareas.', draftSettings.sound),
+                renderSwitch('animations', 'Animaciones de celebración', 'Controla los efectos visuales al avanzar.', draftSettings.animations),
+                renderSwitch('backgroundTimer', 'Continuar en segundo plano', 'La Carrera sigue mientras estudias en otras pestañas o aplicaciones.', draftSettings.backgroundTimer),
+                renderSwitch('notifications', 'Recordatorios inteligentes', 'Avisa cuando tengas pendientes relevantes.', draftSettings.notifications),
                 '</div>'
             ].join('');
         }
@@ -248,9 +252,9 @@
                 '<fieldset class="experience-fieldset">',
                 '<legend>¿Qué debe representar un buen día?</legend>',
                 '<div class="experience-mode-list">',
-                renderChoice('experience-progress-mode', 'tasks', 'Avances', 'Da prioridad a tareas y subtareas terminadas.', mode === 'tasks'),
-                renderChoice('experience-progress-mode', 'focus', 'Enfoque', 'Da prioridad al tiempo de trabajo confirmado.', mode === 'focus'),
-                renderChoice('experience-progress-mode', 'balanced', 'Equilibrado', 'Combina resultados y tiempo dedicado.', mode === 'balanced'),
+                renderChoice('experience-progress-mode', 'tasks', 'Avances', 'Tareas y pasos cerrados.', mode === 'tasks'),
+                renderChoice('experience-progress-mode', 'focus', 'Enfoque', 'Tiempo confirmado.', mode === 'focus'),
+                renderChoice('experience-progress-mode', 'balanced', 'Equilibrado', 'Avance y tiempo.', mode === 'balanced'),
                 '</div>',
                 '</fieldset>',
                 '<div class="experience-goals">',
@@ -459,12 +463,14 @@
 
             if (target.name === 'experience-theme') {
                 draftSettings.theme = target.value;
+                applySettings(normalizeSettings(draftSettings));
                 renderStep(false);
                 return;
             }
 
             if (target.name === 'experience-progress-mode') {
                 draftSettings.progressMode = target.value;
+                applySettings(normalizeSettings(draftSettings));
                 renderStep(false);
                 return;
             }
@@ -481,6 +487,29 @@
 
             if (target.type === 'checkbox') {
                 draftSettings[setting] = Boolean(target.checked);
+                applySettings(normalizeSettings(draftSettings));
+
+                if (event.type === 'change') {
+                    if (setting === 'sound' && target.checked) {
+                        onPreviewSound();
+                    }
+
+                    if (setting === 'animations' && target.checked) {
+                        onPreviewAnimation();
+                    }
+                    if (setting === 'notifications' && target.checked) {
+                        const promise = onRequestNotificationPermission();
+                        if (promise && typeof promise.then === 'function') {
+                            promise.then(permission => {
+                                if (permission !== 'granted') {
+                                    target.checked = false;
+                                    draftSettings[setting] = false;
+                                    applySettings(normalizeSettings(draftSettings));
+                                }
+                            });
+                        }
+                    }
+                }
             } else if (setting === 'dailyFocusGoalMinutes') {
                 draftSettings[setting] = Math.min(Math.max(Math.round(Number(target.value) / 5) * 5, 15), 240);
             }
