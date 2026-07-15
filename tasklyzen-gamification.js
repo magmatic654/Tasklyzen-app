@@ -42,6 +42,8 @@
         const saveGamification = fn(config.saveGamification, () => {});
         const getCompletionHistory = fn(config.getCompletionHistory, () => ({}));
         const getDailyGoal = fn(config.getDailyGoal, () => 1);
+        const getMeaningfulDay = fn(config.getMeaningfulDay, () => null);
+        const getMeaningfulDateKeys = fn(config.getMeaningfulDateKeys, () => []);
         const renderCurrentPage = fn(config.renderCurrentPage, () => {});
         const getStartOfDay = fn(utils.getStartOfDay, value => {
             const date = value ? new Date(value) : new Date();
@@ -61,7 +63,7 @@
 
         function normalizeGamification() {
             const normalizedState = normalizeGamificationState(getState());
-            const earnedShields = Math.floor(Object.keys(getCompletionHistory()).length / 5);
+            const earnedShields = Math.floor(getActiveDaysTotal() / 5);
             const protectedDates = [...new Set(normalizedState.protectedDates)].sort();
 
             normalizedState.usedShields = Math.max(Math.min(normalizedState.usedShields, earnedShields, protectedDates.length), 0);
@@ -80,8 +82,42 @@
             return getState().protectedDates.includes(dateKey);
         }
 
+        function getMeaningfulSnapshot(dateKey) {
+            const snapshot = getMeaningfulDay(dateKey);
+
+            return snapshot && typeof snapshot === 'object' ? snapshot : null;
+        }
+
         function hasActiveCredit(dateKey) {
+            const snapshot = getMeaningfulSnapshot(dateKey);
+
+            if (snapshot && snapshot.recorded && (snapshot.progressAuthoritative || snapshot.active)) {
+                return Boolean(snapshot.active) || isProtectedDate(dateKey);
+            }
+
             return getHistoryCount(dateKey) > 0 || isProtectedDate(dateKey);
+        }
+
+        function hasPerfectCredit(dateKey) {
+            const snapshot = getMeaningfulSnapshot(dateKey);
+
+            return snapshot && snapshot.recorded && (snapshot.progressAuthoritative || snapshot.active)
+                ? Boolean(snapshot.perfect)
+                : getHistoryCount(dateKey) >= getDailyGoal();
+        }
+
+        function hasLegendaryCredit(dateKey) {
+            const snapshot = getMeaningfulSnapshot(dateKey);
+
+            return snapshot && snapshot.recorded && (snapshot.progressAuthoritative || snapshot.active)
+                ? Boolean(snapshot.legendary)
+                : getHistoryCount(dateKey) > getDailyGoal();
+        }
+
+        function getProgressDateKeys() {
+            return Array.from(new Set(
+                Object.keys(getCompletionHistory()).concat(getMeaningfulDateKeys())
+            )).filter(dateKey => /^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || '')));
         }
 
         function getStreakByRule(rule) {
@@ -110,7 +146,7 @@
 
         function getDateRangeStart() {
             const state = getState();
-            const dateKeys = Object.keys(getCompletionHistory()).concat(state.protectedDates);
+            const dateKeys = getProgressDateKeys().concat(state.protectedDates);
 
             if (dateKeys.length === 0) {
                 return getStartOfDay(new Date());
@@ -170,11 +206,11 @@
         }
 
         function getPerfectStreak() {
-            return getStreakByRule(dateKey => getHistoryCount(dateKey) >= getDailyGoal());
+            return getStreakByRule(hasPerfectCredit);
         }
 
         function getLegendaryStreak() {
-            return getStreakByRule(dateKey => getHistoryCount(dateKey) > getDailyGoal());
+            return getStreakByRule(hasLegendaryCredit);
         }
 
         function getLongestActiveStreak() {
@@ -182,7 +218,13 @@
         }
 
         function getActiveDaysTotal() {
-            return Object.keys(getCompletionHistory()).length;
+            return getProgressDateKeys().filter(dateKey => {
+                const snapshot = getMeaningfulSnapshot(dateKey);
+
+                return snapshot && snapshot.recorded && (snapshot.progressAuthoritative || snapshot.active)
+                    ? Boolean(snapshot.active)
+                    : getHistoryCount(dateKey) > 0;
+            }).length;
         }
 
         function getTotalCompletedTasks() {
@@ -279,7 +321,10 @@
             normalizeGamification,
             getHistoryCount,
             isProtectedDate,
+            getMeaningfulSnapshot,
             hasActiveCredit,
+            hasPerfectCredit,
+            hasLegendaryCredit,
             getStreakByRule,
             getActiveStreakEndingAt,
             getDateRangeStart,

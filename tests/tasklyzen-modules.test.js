@@ -97,6 +97,7 @@ loadBrowserModule(context, 'tasklyzen-settings.js');
 loadBrowserModule(context, 'tasklyzen-audio.js');
 loadBrowserModule(context, 'tasklyzen-notifications.js');
 loadBrowserModule(context, 'tasklyzen-task-ui.js');
+loadBrowserModule(context, 'tasklyzen-sustainable-progress.js');
 loadBrowserModule(context, 'tasklyzen-analytics-progress.js');
 loadBrowserModule(context, 'tasklyzen-gamification.js');
 loadBrowserModule(context, 'tasklyzen-gamification-ui.js');
@@ -115,6 +116,7 @@ const settings = context.TasklyzenSettings;
 const audio = context.TasklyzenAudio;
 const notifications = context.TasklyzenNotifications;
 const taskUi = context.TasklyzenTaskUi;
+const sustainableProgress = context.TasklyzenSustainableProgress;
 const analyticsProgress = context.TasklyzenAnalyticsProgress;
 const gamification = context.TasklyzenGamification;
 const gamificationUi = context.TasklyzenGamificationUi;
@@ -480,6 +482,28 @@ assert.strictEqual(interruptedLaunch.resumable, true);
 assert.strictEqual(interruptedController.focus.getState().suspended, true);
 assert.strictEqual(interruptedController.focus.getState().sessionAccumulatedMs, 3 * 60 * 1000);
 
+let visibilityNow = '2026-07-12T12:00:00.000Z';
+const visibilityTodo = { id: 'visibility-race', text: 'Lectura enfocada', completed: false };
+const visibilityRegistry = features.createFeatureRegistry({
+    storage,
+    storageKey: 'visibility-race-test',
+    definitions: features.plannedLocalFeatures
+});
+const visibilityController = features.createBetaFeatureControllers({
+    registry: visibilityRegistry,
+    getTodos: () => [visibilityTodo],
+    getTopPriorityTodo: () => visibilityTodo,
+    getNowTimestamp: () => visibilityNow
+});
+visibilityController.focus.start(visibilityTodo.id, { mode: 'free' });
+visibilityNow = '2026-07-12T12:02:00.000Z';
+visibilityController.focus.handleVisibilityChange(true);
+visibilityNow = '2026-07-12T12:12:00.000Z';
+visibilityController.focus.handleVisibilityChange(false);
+assert.strictEqual(visibilityController.focus.getState().sessionAccumulatedMs, 2 * 60 * 1000);
+assert.strictEqual(visibilityController.focus.getState().sessionAwayMs, 10 * 60 * 1000);
+assert.strictEqual(visibilityController.focus.getState().status, 'running');
+
 const focusHito = {
     id: 'focus-hito',
     text: 'Hito en carrera',
@@ -549,6 +573,7 @@ const raceSessionController = features.createBetaFeatureControllers({
     getTodos: () => [raceTodo],
     getTopPriorityTodo: () => raceTodo,
     getNowTimestamp: () => raceNow,
+    evaluateSession: sustainableProgress.evaluateSession,
     onCompleteTodo: todoId => {
         if (todoId === raceTodo.id) {
             raceTodo.completed = true;
@@ -577,6 +602,9 @@ assert.strictEqual(completedRaceSession.completedCount, 1);
 assert.strictEqual(completedRaceSession.completedTodos[0].title, 'Preparar exposición');
 assert.strictEqual(completedRaceSession.mode, 'countdown');
 assert.strictEqual(completedRaceSession.targetReached, false);
+assert.strictEqual(completedRaceSession.focusMs, 6 * 60 * 1000);
+assert.strictEqual(completedRaceSession.meaningful, true);
+assert.strictEqual(completedRaceSession.sustainable, true);
 assert.deepStrictEqual(Array.from(raceCues), ['session-complete']);
 assert.strictEqual(raceSessionController.focus.getWeeklySummary().sessions, 1);
 assert.strictEqual(raceSessionController.focus.getWeeklySummary().successfulTargets, 1);
@@ -1636,6 +1664,115 @@ assert.strictEqual(typeof dailyMissionSnapshot.title, 'string');
 assert.strictEqual(typeof dailyMissionSnapshot.current, 'number');
 assert.strictEqual(typeof dailyMissionSnapshot.target, 'number');
 assert.strictEqual(typeof dailyMissionSnapshot.complete, 'boolean');
+
+const sustainableController = sustainableProgress.createSustainableProgressController({
+    storage,
+    storageKey: 'sustainable-progress-test',
+    getTodayKey: () => '2026-07-14',
+    getNowTimestamp: () => '2026-07-14T14:00:00.000Z',
+    getDailyGoal: () => 3
+});
+let sustainableDay = sustainableController.recordSession({
+    id: 'meaningful-short',
+    startedAt: '2026-07-14T08:00:00.000Z',
+    completedAt: '2026-07-14T08:20:00.000Z',
+    selectedCount: 1,
+    focusMs: 20 * 60 * 1000,
+    result: 'manual'
+});
+assert.strictEqual(sustainableDay.sessions[0].meaningful, false);
+assert.strictEqual(sustainableDay.sessions[0].sustainable, false);
+sustainableDay = sustainableController.recordSession({
+    id: 'long-without-break',
+    startedAt: '2026-07-14T09:00:00.000Z',
+    completedAt: '2026-07-14T10:00:00.000Z',
+    selectedCount: 1,
+    completedCount: 1,
+    completedTodoIds: ['long-task'],
+    focusMs: 60 * 60 * 1000,
+    breakMs: 0,
+    result: 'manual'
+});
+assert.strictEqual(sustainableDay.sessions.find(session => session.id === 'long-without-break').meaningful, true);
+assert.strictEqual(sustainableDay.sessions.find(session => session.id === 'long-without-break').sustainable, false);
+sustainableDay = sustainableController.recordSession({
+    id: 'long-with-break',
+    startedAt: '2026-07-14T11:00:00.000Z',
+    completedAt: '2026-07-14T11:55:00.000Z',
+    selectedCount: 1,
+    completedCount: 1,
+    focusMs: 50 * 60 * 1000,
+    breakMs: 5 * 60 * 1000,
+    completedBreaks: 1,
+    result: 'manual'
+});
+assert.strictEqual(sustainableDay.sessions.find(session => session.id === 'long-with-break').sustainable, true);
+sustainableDay = sustainableController.recordSession({
+    id: 'mostly-away',
+    startedAt: '2026-07-14T12:00:00.000Z',
+    completedAt: '2026-07-14T13:00:00.000Z',
+    selectedCount: 1,
+    focusMs: 60 * 60 * 1000,
+    confirmedAwayMs: 55 * 60 * 1000,
+    result: 'manual'
+});
+assert.strictEqual(sustainableDay.sessions.find(session => session.id === 'mostly-away').meaningful, false);
+assert.strictEqual(sustainableDay.active, true);
+assert.strictEqual(sustainableController.getMissionSnapshot('2026-07-14').target, 1);
+sustainableController.revokeTaskCompletion('long-task', '2026-07-14');
+assert.strictEqual(sustainableController.getDaySnapshot('2026-07-14').sessions.find(session => session.id === 'long-without-break').meaningful, false);
+sustainableController.recordTaskCompletion({ id: 'revocable-task' }, { dateKey: '2026-07-15' });
+assert.strictEqual(sustainableController.getDaySnapshot('2026-07-15').active, true);
+sustainableController.revokeTaskCompletion('revocable-task', '2026-07-15');
+assert.strictEqual(sustainableController.getDaySnapshot('2026-07-15').active, false);
+sustainableController.recordSession({
+    id: 'legacy-session-without-progress',
+    startedAt: '2026-07-10T08:00:00.000Z',
+    completedAt: '2026-07-10T08:20:00.000Z',
+    selectedCount: 1,
+    focusMs: 20 * 60 * 1000,
+    result: 'manual'
+});
+const localDateController = sustainableProgress.createSustainableProgressController({
+    storage,
+    storageKey: 'sustainable-progress-local-date-test',
+    getTodayKey: () => '2026-07-14',
+    getDateKeyFromTimestamp: () => '2026-07-14'
+});
+localDateController.recordSession({
+    id: 'local-midnight-session',
+    startedAt: '2026-07-15T04:30:00.000Z',
+    completedAt: '2026-07-15T05:15:00.000Z',
+    selectedCount: 1,
+    completedCount: 1,
+    completedTodoIds: ['local-task'],
+    focusMs: 45 * 60 * 1000,
+    result: 'manual'
+});
+assert.strictEqual(localDateController.getDateKeys()[0], '2026-07-14');
+
+let sustainableGamificationState = gamification.normalizeGamificationState({});
+const sustainableGamification = gamification.createGamificationController({
+    prestigeLevels: context.TasklyzenConfig.streakPrestigeLevels,
+    utils,
+    getGamification: () => sustainableGamificationState,
+    setGamification: value => {
+        sustainableGamificationState = value;
+    },
+    saveGamification: () => {},
+    getCompletionHistory: () => ({ '2026-07-10': 1, '2026-07-15': 5 }),
+    getDailyGoal: () => 3,
+    getMeaningfulDay: dateKey => sustainableController.getDaySnapshot(dateKey),
+    getMeaningfulDateKeys: () => sustainableController.getDateKeys()
+});
+assert.strictEqual(sustainableGamification.hasActiveCredit('2026-07-10'), true);
+assert.strictEqual(sustainableGamification.hasActiveCredit('2026-07-15'), false);
+assert.strictEqual(sustainableGamification.hasPerfectCredit('2026-07-14'), true);
+assert.strictEqual(sustainableGamification.hasLegendaryCredit('2026-07-14'), false);
+sustainableController.recordTaskCompletion({ id: 'legendary-1' }, { dateKey: '2026-07-14' });
+sustainableController.recordTaskCompletion({ id: 'legendary-2' }, { dateKey: '2026-07-14' });
+sustainableController.recordTaskCompletion({ id: 'legendary-3' }, { dateKey: '2026-07-14' });
+assert.strictEqual(sustainableGamification.hasLegendaryCredit('2026-07-14'), true);
 
 const toggledClasses = new Set();
 const fakeElement = {

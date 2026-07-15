@@ -61,6 +61,7 @@
         const getCompletedPriorityCount = fn(config.getCompletedPriorityCount, () => 0);
         const getTodayCompletedPriorityCount = fn(config.getTodayCompletedPriorityCount, () => 0);
         const getTodayCompletedHabitCount = fn(config.getTodayCompletedHabitCount, () => 0);
+        const getSustainableMissionSnapshot = fn(config.getSustainableMissionSnapshot, () => null);
         const getTodoDeadlineState = fn(config.getTodoDeadlineState, () => null);
         const isTodoAvailableToday = fn(config.isTodoAvailableToday, todo => Boolean(todo && !todo.completed));
         const isProtectedDate = fn(config.isProtectedDate, () => false);
@@ -1814,6 +1815,18 @@
         }
 
         function getDailyMission() {
+            const sustainableMission = getSustainableMissionSnapshot(getTodayKey());
+
+            if (sustainableMission && sustainableMission.id) {
+                return {
+                    id: sustainableMission.id,
+                    title: sustainableMission.title,
+                    message: sustainableMission.message,
+                    current: () => sustainableMission.current,
+                    target: () => sustainableMission.target
+                };
+            }
+
             const missions = [
                 {
                     id: 'start',

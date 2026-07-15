@@ -18,8 +18,8 @@ diferida. Los modulos de dominio no deben leer variables internas de `main.js`.
    `tasklyzen-composite-tasks.js`, `tasklyzen-tasks.js`.
 6. UI y controladores: componentes, revision de vencidas, creacion, ajustes,
    audio, notificaciones y lista de tareas.
-7. Analitica, rachas, features locales, modo desarrollador, referencias DOM y
-   capa POO.
+7. Progreso sostenible, analítica, rachas, features locales, modo
+   desarrollador, referencias DOM y capa POO.
 8. `main.js` al final.
 
 Todo script nuevo debe cargarse antes de `main.js` y despues de sus
@@ -40,6 +40,8 @@ toda la cadena de carga.
 - `tasklyzen-audio.js`: sintetiza senales breves y respeta sonido/volumen.
 - `tasklyzen-notifications.js`: toast interno y recordatorios del navegador.
 - `tasklyzen-task-ui.js`: lista, filtros, contadores y acciones de tarea.
+- `tasklyzen-sustainable-progress.js`: ledger diario de avance significativo,
+  sesiones intencionales, pausas y ritmo sostenible.
 - `tasklyzen-analytics-progress.js`: calculo y render de analitica/progreso.
 - `tasklyzen-gamification.js`: rachas, escudos y niveles de prestigio.
 - `tasklyzen-gamification-ui.js`: tarjeta, ruta y cuadricula de racha.
@@ -58,6 +60,7 @@ Las claves se concentran en `TasklyzenConfig.storageKeys`:
 - `gamification`: solo rachas, escudos y protecciones de racha.
 - `dailyStats`, `analyticsEvents`, `analyticsFlowPeriod`, `progressView`.
 - `settings`, `features`, `overdueReview`, `developerSnapshot`.
+- `sustainableProgress`: avance diario y clasificación de sesiones de Carrera.
 
 `tasklyzen-data-migration.js` se ejecuta al cargar almacenamiento y antes de
 sincronizar una sesion autenticada. Elimina claves independientes retiradas y
@@ -97,7 +100,9 @@ reglas de modo oscuro, `body.reduced-animations` y
 - Analitica: `AnalyticsEngine` para calculo; `tasklyzen-analytics-progress.js`
   para coordinacion y DOM.
 - Rachas: calculo en `tasklyzen-gamification.js`; visuales en
-  `tasklyzen-gamification-ui.js`.
+  `tasklyzen-gamification-ui.js`. El motor consulta primero el ledger
+  sostenible y usa el historial anterior solo cuando un día aún no tiene un
+  registro nuevo, preservando compatibilidad.
 - Ajustes y notificaciones: sus modulos propios; evitar duplicar defaults en
   `main.js`.
 - Acceso inicial: `tasklyzen-auth.js` espera el primer estado real de Firebase
@@ -108,15 +113,24 @@ reglas de modo oscuro, `body.reduced-animations` y
   además de la tarea activa y el conjunto de tareas elegido para la sesión.
   Si una carrera antigua no tiene ese conjunto, se conservan todas las pendientes
   como comportamiento compatible.
-  el borrador de subtareas y la fase Pomodoro. `suspended` permite volver a la
+  También conserva el borrador de subtareas y la fase Pomodoro. `suspended` permite volver a la
   lista y reanudar sin registrar ni reiniciar la sesión. Pomodoro ofrece solo
   25/5 (hasta 8 ciclos) y 50/10 (hasta 4 ciclos). El motor inserta una pausa
   larga de 20 minutos a mitad de las sesiones extendidas; el aro principal
   representa el bloque activo de la sesión. En contrarreloj se
   configura por ciclos y calcula su duración total. El cierre guarda tiempo,
-  ciclos, tiempo por tarea y una instantánea de las tareas visitadas para el resumen final,
-  incluso cuando el usuario termina antes. `prepareForEntry` transforma una
+  ciclos, enfoque, descanso, pausa, tiempo fuera de la app, tiempo por tarea y
+  una instantánea de las tareas visitadas para el resumen final, incluso cuando
+  el usuario termina antes. Cambiar de pestaña congela el reloj y excluye ese
+  intervalo del enfoque. `prepareForEntry` transforma una
   carrera interrumpida en una sesión reanudable antes del primer render.
+- Crédito sostenible: el tiempo se conserva para analítica, pero una sesión
+  solo cuenta como avance gamificado si cierra una tarea o paso clave. Las
+  sesiones de 50 minutos o más requieren al menos 5 minutos de pausa para
+  clasificarse como sostenibles. Tiempo fuera de la app, solapamientos y
+  relojes incoherentes no generan recompensas. La velocidad por sí sola nunca
+  aumenta rachas ni misiones. El historial anterior sigue como respaldo hasta
+  que una acción actual marca el día como autoritativo.
 - Demos de Carrera: `tasklyzen-developer.js` invoca las APIs públicas
   `previewForDeveloper` y `TasklyzenAudio.playRaceCue`; no replica el render ni
   accede al estado interno del motor de audio.

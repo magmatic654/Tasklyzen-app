@@ -48,6 +48,11 @@
         const showCompletionAnimation = fn(config.showCompletionAnimation, () => {});
         const showStreakDayCelebration = fn(config.showStreakDayCelebration, () => {});
         const previewRaceState = fn(config.previewRaceState, () => ({ status: 'unavailable' }));
+        const getSustainableProgress = fn(config.getSustainableProgress, () => ({ version: 1, days: {} }));
+        const replaceSustainableProgress = fn(config.replaceSustainableProgress, () => ({}));
+        const clearSustainableProgress = fn(config.clearSustainableProgress, () => ({}));
+        const recordSustainableTaskCompletion = fn(config.recordSustainableTaskCompletion, () => ({}));
+        const simulateSustainableSession = fn(config.simulateSustainableSession, () => ({}));
         const playRaceCue = fn(config.playRaceCue, () => false);
         const enableAppSound = fn(config.enableAppSound, () => false);
         const showToast = fn(config.showToast, () => {});
@@ -531,6 +536,7 @@
                 usedShields: 0,
                 protectedDates: []
             });
+            clearSustainableProgress();
             if (taskUiController.clearEditingTodo) {
                 taskUiController.clearEditingTodo(false);
             }
@@ -555,7 +561,8 @@
                 todos: getTodos(),
                 completionHistory: getCompletionHistory(),
                 dailyGoal: getDailyGoal(),
-                gamification: getGamification()
+                gamification: getGamification(),
+                sustainableProgress: getSustainableProgress()
             };
 
             if (storage.writeJson) {
@@ -591,6 +598,7 @@
                     usedShields: 0,
                     protectedDates: []
                 });
+            replaceSustainableProgress(snapshot.sustainableProgress || { version: 1, days: {} });
 
             if (config.normalizeGamification) {
                 config.normalizeGamification();
@@ -790,6 +798,7 @@
             const overdueActions = createNode('div', 'developer-actions');
             const overdueStatus = createNode('div', 'developer-overdue-status');
             const racePreviewActions = createNode('div', 'developer-actions developer-race-actions');
+            const raceProgressActions = createNode('div', 'developer-actions developer-race-actions');
             const raceSoundActions = createNode('div', 'developer-actions developer-race-actions');
             const animationGrid = createNode('div', 'developer-grid');
             const animationActions = createNode('div', 'developer-actions');
@@ -893,9 +902,17 @@
                 createButton('Sonido de descanso', 'play-race-break', 'ghost'),
                 createButton('Sonido de cierre', 'play-race-complete', 'ghost')
             );
+            raceProgressActions.append(
+                createButton('Simular avance real', 'simulate-progress-meaningful'),
+                createButton('Simular ritmo sostenible', 'simulate-progress-sustainable', 'secondary'),
+                createButton('Simular tiempo dudoso', 'simulate-progress-suspicious', 'ghost'),
+                createButton('Reiniciar progreso sostenible', 'clear-sustainable-progress', 'danger')
+            );
             raceSection.append(
                 createNode('p', 'developer-note', 'Estados visuales'),
                 racePreviewActions,
+                createNode('p', 'developer-note', 'Lectura de progreso y protección contra tiempo vacío'),
+                raceProgressActions,
                 createNode('p', 'developer-note', 'Señales de audio (respetan sonido y volumen de Ajustes)'),
                 raceSoundActions
             );
@@ -1065,6 +1082,7 @@
                     rachaActual: getCurrentStreak(),
                     rachaPerfecta: getPerfectStreak(),
                     rachaLegendaria: getLegendaryStreak(),
+                    progresoSostenibleHoy: getSustainableProgress().days?.[getTodayKey()] || null,
                     perfil: analyticsSnapshot.perfil && analyticsSnapshot.perfil.label,
                     riesgoRacha: analyticsSnapshot.riesgoRacha && analyticsSnapshot.riesgoRacha.label,
                     revisionVencidas: overdueDebug,
@@ -1125,6 +1143,25 @@
                 if (result && result.status === 'empty') {
                     showToast('Crea una tarea pendiente para abrir esta vista de Carrera.', 'info');
                 }
+            }
+
+            if (action.startsWith('simulate-progress-')) {
+                const type = action.replace('simulate-progress-', '');
+                const day = simulateSustainableSession(type);
+                const session = day && Array.isArray(day.sessions) ? day.sessions[day.sessions.length - 1] : null;
+                const label = session && session.sustainable
+                    ? 'Ritmo sostenible registrado.'
+                    : session && session.meaningful
+                        ? 'Avance real registrado.'
+                        : 'Sesión dudosa registrada sin recompensa.';
+
+                showToast(label, 'info');
+            }
+
+            if (action === 'clear-sustainable-progress') {
+                clearSustainableProgress();
+                renderCurrentPage();
+                showToast('Progreso sostenible reiniciado.', 'info');
             }
 
             if (action === 'play-race-focus') {
@@ -1210,6 +1247,7 @@
                 task.completedAt = completedAt;
                 task.updatedAt = completedAt;
                 task.snoozedUntil = null;
+                recordSustainableTaskCompletion(task);
                 createNextHabitOccurrence(task);
                 saveTodoList();
                 syncCompletionHistory();
@@ -1348,6 +1386,7 @@
                     todo.completedAt = completedAt;
                     todo.updatedAt = completedAt;
                     todo.snoozedUntil = null;
+                    recordSustainableTaskCompletion(todo);
                     createNextHabitOccurrence(todo);
                 }
             });
@@ -1371,6 +1410,8 @@
                 streakAnimation: 'todoDev.playStreak(30) reproduce la celebración del nivel indicado.',
                 state: 'todoDev.state() devuelve tareas, historial, meta, rachas y gamificación.',
                 playCompletion: "todoDev.playCompletion('regular' | 'goal' | 'legendary') reproduce una animación de tarea.",
+                simulateSustainableSession: "todoDev.simulateSustainableSession('meaningful' | 'sustainable' | 'suspicious') prueba la nueva lectura de Carrera.",
+                clearSustainableProgress: 'todoDev.clearSustainableProgress() reinicia solo el ledger de progreso sostenible.',
                 resetAll: 'todoDev.resetAll() reinicia tareas, historial, meta y rachas.',
                 addTask: "todoDev.addTask('Texto', 'urgent') crea una tarea.",
                 addHabit: "todoDev.addHabit('Leer 10 minutos', 'important') crea un hábito diario.",
@@ -1409,6 +1450,7 @@
                     completionHistory: getCompletionHistory(),
                     dailyGoal: getDailyGoal(),
                     gamification: getGamification(),
+                    sustainableProgress: getSustainableProgress(),
                     analytics: getAnalyticsSnapshot(),
                     developerSnapshot: getDeveloperSnapshot()
                 }),
@@ -1428,6 +1470,8 @@
                     return 'Demo en marcha';
                 },
                 previewRace: state => cloneForConsole(previewRaceState(state || 'focus')),
+                simulateSustainableSession: type => cloneForConsole(simulateSustainableSession(type || 'meaningful')),
+                clearSustainableProgress: () => cloneForConsole(clearSustainableProgress()),
                 playRaceSound: cue => playRaceCue(cue || 'focus-start'),
                 resetAll: () => {
                     captureDeveloperSnapshot('Antes de todoDev.resetAll');
@@ -1455,6 +1499,7 @@
                         todo.completedAt = completedAt;
                         todo.updatedAt = completedAt;
                         todo.snoozedUntil = null;
+                        recordSustainableTaskCompletion(todo);
                         createNextHabitOccurrence(todo);
                         saveTodoList();
                         syncCompletionHistory();
@@ -1487,12 +1532,8 @@
                     const todo = getTodos().find(item => item.id === todoId);
                     captureDeveloperSnapshot('Antes de todoDev.deleteTask');
                     if (todo) {
-                        removeNextHabitOccurrence(todo);
+                        removeTodoItem(todoId);
                     }
-                    setTodos(getTodos().filter(item => item.id !== todoId));
-                    saveTodoList();
-                    syncCompletionHistory();
-                    renderCurrentPage();
                     return api.state();
                 },
                 clearTasks: () => {

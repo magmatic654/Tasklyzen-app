@@ -18,6 +18,7 @@
         analyticsEvents: 'tasklyzen-analytics-events',
         dailyStats: 'tasklyzen-daily-stats',
         analyticsFlowPeriod: 'tasklyzen-analytics-flow-period',
+        sustainableProgress: 'tasklyzen-sustainable-progress',
         features: 'tasklyzen-local-features',
         settings: 'tasklyzen-settings',
         overdueReview: 'tasklyzen-overdue-review'

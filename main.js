@@ -20,6 +20,7 @@ const ANALYTICS_FLOW_PERIOD_KEY = TASKLYZEN_CONFIG.storageKeys.analyticsFlowPeri
 const FEATURES_KEY = TASKLYZEN_CONFIG.storageKeys.features;
 const SETTINGS_KEY = TASKLYZEN_CONFIG.storageKeys.settings;
 const OVERDUE_REVIEW_KEY = TASKLYZEN_CONFIG.storageKeys.overdueReview;
+const SUSTAINABLE_PROGRESS_KEY = TASKLYZEN_CONFIG.storageKeys.sustainableProgress;
 const DEFAULT_DAILY_GOAL = TASKLYZEN_CONFIG.defaults.dailyGoal;
 const TASK_EXPIRATION_DAYS = TASKLYZEN_CONFIG.defaults.taskExpirationDays;
 const TASK_TIME_LIMIT_DEFAULT_DAYS = TASKLYZEN_CONFIG.defaults.taskTimeLimitDefaultDays;
@@ -54,6 +55,7 @@ const TASKLYZEN_OVERDUE_REVIEW = window.TasklyzenOverdueReview || {
 const TASKLYZEN_ANALYTICS_PROGRESS = window.TasklyzenAnalyticsProgress;
 const TASKLYZEN_GAMIFICATION = window.TasklyzenGamification;
 const TASKLYZEN_GAMIFICATION_UI = window.TasklyzenGamificationUi;
+const TASKLYZEN_SUSTAINABLE_PROGRESS = window.TasklyzenSustainableProgress;
 const TASKLYZEN_FEATURES = window.TasklyzenFeatures;
 const TASKLYZEN_DEVELOPER = window.TasklyzenDeveloper;
 const TASKLYZEN_DOM = window.TasklyzenDom;
@@ -435,6 +437,16 @@ const overdueReviewController = TASKLYZEN_OVERDUE_REVIEW.createOverdueReviewCont
 });
 window.TasklyzenRuntime.overdueReviewController = overdueReviewController;
 
+const sustainableProgressController = TASKLYZEN_SUSTAINABLE_PROGRESS.createSustainableProgressController({
+    storage: TASKLYZEN_STORAGE,
+    storageKey: SUSTAINABLE_PROGRESS_KEY,
+    getNowTimestamp,
+    getTodayKey,
+    getDateKeyFromTimestamp,
+    getDailyGoal: () => dailyGoal
+});
+window.TasklyzenRuntime.sustainableProgressController = sustainableProgressController;
+
 const gamificationController = TASKLYZEN_GAMIFICATION.createGamificationController({
     prestigeLevels: STREAK_PRESTIGE_LEVELS,
     utils: TASKLYZEN_UTILS,
@@ -445,6 +457,8 @@ const gamificationController = TASKLYZEN_GAMIFICATION.createGamificationControll
     saveGamification,
     getCompletionHistory: () => completionHistory,
     getDailyGoal: () => dailyGoal,
+    getMeaningfulDay: dateKey => sustainableProgressController.getDaySnapshot(dateKey),
+    getMeaningfulDateKeys: () => sustainableProgressController.getDateKeys(),
     renderCurrentPage
 });
 window.TasklyzenRuntime.gamificationController = gamificationController;
@@ -513,6 +527,7 @@ const analyticsProgressController = TASKLYZEN_ANALYTICS_PROGRESS.createAnalytics
     getCompletedPriorityCount,
     getTodayCompletedPriorityCount,
     getTodayCompletedHabitCount,
+    getSustainableMissionSnapshot: dateKey => sustainableProgressController.getMissionSnapshot(dateKey),
     getTodoDeadlineState,
     isTodoAvailableToday,
     isProtectedDate,
@@ -549,6 +564,7 @@ const betaFeatureControllers = TASKLYZEN_FEATURES.createBetaFeatureControllers({
     onCompleteTodo: completeTodoFromFeature,
     onToggleSubtask: toggleSubtaskFromFeature,
     onSessionComplete: handleFocusSessionComplete,
+    evaluateSession: record => sustainableProgressController.evaluateSession(record),
     onStateChange: renderRaceModeButton,
     onTimerCue: type => audioController.playRaceCue(type),
     unlockAudio: () => audioController.unlock(),
@@ -626,6 +642,15 @@ function getDeveloperController() {
 
             return betaFeatureControllers.focus.previewForDeveloper(state);
         },
+        getSustainableProgress: () => sustainableProgressController.getSnapshot(),
+        replaceSustainableProgress: value => sustainableProgressController.replace(value),
+        clearSustainableProgress: () => sustainableProgressController.clear(),
+        recordSustainableTaskCompletion: todo => sustainableProgressController.recordTaskCompletion(todo, {
+            dateKey: getCompletionDateKey(todo) || getTodayKey(),
+            completedAt: todo && todo.completedAt,
+            source: 'developer'
+        }),
+        simulateSustainableSession: simulateSustainableSessionForDev,
         playRaceCue: cue => {
             audioController.unlock();
             return audioController.playRaceCue(cue);
@@ -691,7 +716,8 @@ TASKLYZEN_STORAGE.subscribe([
     ANALYTICS_FLOW_PERIOD_KEY,
     FEATURES_KEY,
     SETTINGS_KEY,
-    OVERDUE_REVIEW_KEY
+    OVERDUE_REVIEW_KEY,
+    SUSTAINABLE_PROGRESS_KEY
 ], handleExternalStorageChange);
 
 function saveTodoList() {
@@ -764,10 +790,12 @@ function restoreRuntimeFromStorage() {
     appSettings = settingsController.load();
     taskUiController.clearEditingTodo(false);
     notificationController.resetExternalState();
-    normalizeGamification();
     settingsController.apply(false);
     settingsController.syncControls();
+    sustainableProgressController.reload();
     featureRegistry.reload();
+    syncRaceHistoryIntoSustainableProgress();
+    normalizeGamification();
     overdueReviewController.reload({ refresh: false });
     processOverdueRetention(false);
     renderCurrentPage();
@@ -789,6 +817,7 @@ function resetRuntimeAfterDataDeletion() {
     notificationController.resetExternalState();
     settingsController.apply(false);
     settingsController.syncControls();
+    sustainableProgressController.reload();
     featureRegistry.reload();
     overdueReviewController.reload({ refresh: false });
     renderCurrentPage();
@@ -946,8 +975,10 @@ function handleExternalStorageChange() {
     appSettings = settingsController.load();
     settingsController.apply(false);
     settingsController.syncControls();
-    normalizeGamification();
+    sustainableProgressController.reload();
     featureRegistry.reload();
+    syncRaceHistoryIntoSustainableProgress();
+    normalizeGamification();
     overdueReviewController.reload({ refresh: false });
     processOverdueRetention(false);
     renderCurrentPage();
@@ -2531,8 +2562,69 @@ function startFocusModeFromApp() {
     }
 }
 
-function handleFocusSessionComplete() {
+function handleFocusSessionComplete(record) {
+    if (record) {
+        sustainableProgressController.recordSession(record);
+        normalizeGamification();
+    }
+
     renderCurrentPage();
+}
+
+function syncRaceHistoryIntoSustainableProgress() {
+    const focusState = featureRegistry.getFeatureState('focus-mode');
+    const history = Array.isArray(focusState && focusState.history) ? focusState.history : [];
+    const storedIds = new Set(
+        sustainableProgressController.getDateKeys().flatMap(dateKey => (
+            sustainableProgressController.getDaySnapshot(dateKey).sessions.map(session => session.id)
+        ))
+    );
+
+    history.forEach(session => {
+        if (!session || !session.id || storedIds.has(session.id)) {
+            return;
+        }
+
+        sustainableProgressController.recordSession({
+            ...session,
+            focusMs: Number.isFinite(Number(session.focusMs)) ? session.focusMs : session.elapsedMs,
+            selectedCount: Number(session.selectedCount) || (Array.isArray(session.sessionTodoIds) ? session.sessionTodoIds.length : 0)
+        });
+    });
+}
+
+function simulateSustainableSessionForDev(type) {
+    const simulationType = ['meaningful', 'sustainable', 'suspicious'].includes(type) ? type : 'meaningful';
+    const existingCount = sustainableProgressController.getDaySnapshot(getTodayKey()).sessions.length;
+    const completedAtMs = Date.now() - ((existingCount + 1) * 2 * 60 * 60 * 1000);
+    const sustainable = simulationType === 'sustainable';
+    const suspicious = simulationType === 'suspicious';
+    const focusMs = sustainable ? 50 * 60 * 1000 : suspicious ? 60 * 60 * 1000 : 25 * 60 * 1000;
+    const breakMs = sustainable ? 5 * 60 * 1000 : 0;
+    const record = {
+        id: 'dev-sustainable-' + Date.now().toString(36) + '-' + simulationType,
+        startedAt: new Date(completedAtMs - focusMs - breakMs).toISOString(),
+        completedAt: new Date(completedAtMs).toISOString(),
+        mode: 'free',
+        result: 'manual',
+        selectedCount: 1,
+        completedCount: suspicious ? 0 : 1,
+        completedSubtaskCount: 0,
+        focusMs,
+        breakMs,
+        pausedMs: 0,
+        awayMs: suspicious ? 55 * 60 * 1000 : 0,
+        confirmedAwayMs: suspicious ? 55 * 60 * 1000 : 0,
+        completedBreaks: sustainable ? 1 : 0,
+        longBreaks: 0,
+        pomodoroEnabled: sustainable,
+        integrityFlags: []
+    };
+    const day = sustainableProgressController.recordSession(record);
+
+    normalizeGamification();
+    renderCurrentPage();
+    return day;
 }
 
 function getStreakPrestigeLevel(streak) {
@@ -2898,10 +2990,39 @@ function clearCompletedTodos() {
 }
 
 function reactivateTodoForToday(todo) {
-    return taskManager.reactivate(todo).reactivatedAt;
+    const completedOn = getCompletionDateKey(todo);
+    const reactivatedAt = taskManager.reactivate(todo).reactivatedAt;
+
+    if (todo && completedOn === getTodayKey()) {
+        sustainableProgressController.revokeTaskCompletion(todo.id, completedOn);
+    }
+
+    return reactivatedAt;
 }
 
-function toggleTodoItem(id) {
+function getCompletionDateKey(item) {
+    return item && (item.completedOn || getDateKeyFromTimestamp(item.completedAt));
+}
+
+function revokeTodaySustainableCredits(todo) {
+    if (!todo) return;
+    const todayKey = getTodayKey();
+
+    if (getCompletionDateKey(todo) === todayKey) {
+        sustainableProgressController.revokeTaskCompletion(todo.id, todayKey);
+    }
+
+    if (Array.isArray(todo.subtasks)) {
+        todo.subtasks.forEach(subtask => {
+            if (!subtask.optional && subtask.completed && getDateKeyFromTimestamp(subtask.completedAt) === todayKey) {
+                sustainableProgressController.revokeSubtaskCompletion(todo.id, subtask.id, todayKey);
+            }
+        });
+    }
+}
+
+function toggleTodoItem(id, options) {
+    const actionContext = options || {};
     const todo = todos.find(item => item.id === id);
     const wasCompleted = todo ? todo.completed : false;
     let streakCelebrationContext = null;
@@ -2946,6 +3067,12 @@ function toggleTodoItem(id) {
         let celebrationType = 'regular';
 
         taskManager.complete(todo, { completedOn: todayKey, completedAt });
+        sustainableProgressController.recordTaskCompletion(todo, {
+            dateKey: todayKey,
+            completedAt,
+            source: actionContext.source || 'tasks',
+            sessionId: actionContext.sessionId || null
+        });
 
         if (previousTodayCount === 0 && !gamificationController.hasCelebratedStreakDate(todayKey)) {
             streakCelebrationContext = { todayKey, previousRecord };
@@ -3001,6 +3128,7 @@ function removeTodoItem(id) {
     const removedTodo = removalResult.removedTodo;
 
     if (removedTodo) {
+        revokeTodaySustainableCredits(removedTodo);
         removeNextHabitOccurrence(removedTodo);
         logTodoRemoval(removedTodo, 'task_deleted');
     }
@@ -3052,13 +3180,26 @@ function logCompositeTransition(todo, transition) {
     }
 }
 
-function commitCompositeChange(todo, previousCompleted) {
+function commitCompositeChange(todo, previousCompleted, options) {
     if (!todo) return false;
+    const actionContext = options || {};
     const todayKey = getTodayKey();
     const previousTodayCount = getHistoryCount(todayKey);
     const previousRecord = getLongestActiveStreak();
     todo.completed = Boolean(previousCompleted);
     const transition = TASKLYZEN_COMPOSITE_TASKS.synchronizeCompositeTask(todo, { dateKey: todayKey });
+
+    if (transition.completedNow) {
+        sustainableProgressController.recordTaskCompletion(todo, {
+            dateKey: todayKey,
+            completedAt: todo.completedAt,
+            source: actionContext.source || 'tasks',
+            sessionId: actionContext.sessionId || null
+        });
+    } else if (transition.reactivatedNow) {
+        sustainableProgressController.revokeTaskCompletion(todo.id, todayKey);
+    }
+
     logCompositeTransition(todo, transition);
     saveTodoList();
     syncCompletionHistory();
@@ -3115,10 +3256,13 @@ function addSubtaskToTodo(todoId, title, optional, options) {
     return commitCompositeChange(todo, previousCompleted);
 }
 
-function toggleTodoSubtask(todoId, subtaskId) {
+function toggleTodoSubtask(todoId, subtaskId, options) {
+    const actionContext = options || {};
     const todo = todos.find(item => item.id === todoId);
     const subtask = todo && Array.isArray(todo.subtasks) ? todo.subtasks.find(item => item.id === subtaskId) : null;
     if (!subtask) return false;
+    const wasCompleted = Boolean(subtask.completed);
+    const previousCompletedAt = subtask.completedAt;
     if (!subtask.completed) {
         audioController.unlock();
     }
@@ -3126,10 +3270,24 @@ function toggleTodoSubtask(todoId, subtaskId) {
     subtask.completed = !subtask.completed;
     subtask.completedAt = subtask.completed ? getNowTimestamp() : null;
     subtask.updatedAt = getNowTimestamp();
-    return commitCompositeChange(todo, previousCompleted);
+    const committed = commitCompositeChange(todo, previousCompleted, actionContext);
+
+    if (committed && !subtask.optional) {
+        if (!wasCompleted && subtask.completed) {
+            sustainableProgressController.recordSubtaskCompletion(todo.id, subtask.id, {
+                completedAt: subtask.completedAt,
+                source: actionContext.source || 'tasks',
+                sessionId: actionContext.sessionId || null
+            });
+        } else if (wasCompleted && !subtask.completed && getDateKeyFromTimestamp(previousCompletedAt) === getTodayKey()) {
+            sustainableProgressController.revokeSubtaskCompletion(todo.id, subtask.id, getTodayKey());
+        }
+    }
+
+    return committed;
 }
 
-function completeTodoFromFeature(todoId) {
+function completeTodoFromFeature(todoId, context) {
     const todo = todos.find(item => item.id === todoId);
 
     if (!todo) {
@@ -3144,12 +3302,18 @@ function completeTodoFromFeature(todoId) {
         return TASKLYZEN_COMPOSITE_TASKS.isCompositeTaskCompleted(todo);
     }
 
-    toggleTodoItem(todoId);
+    toggleTodoItem(todoId, {
+        source: 'race',
+        sessionId: context && context.sessionId
+    });
     return Boolean(todos.find(item => item.id === todoId && item.completed));
 }
 
-function toggleSubtaskFromFeature(todoId, subtaskId) {
-    return toggleTodoSubtask(todoId, subtaskId);
+function toggleSubtaskFromFeature(todoId, subtaskId, context) {
+    return toggleTodoSubtask(todoId, subtaskId, {
+        source: 'race',
+        sessionId: context && context.sessionId
+    });
 }
 
 function saveTodoSubtaskEdit(todoId, subtaskId, title, optional) {
@@ -3204,14 +3368,27 @@ function deleteTodoSubtask(todoId, subtaskId, strategy) {
     const todo = todos.find(item => item.id === todoId);
     const subtask = todo && Array.isArray(todo.subtasks) ? todo.subtasks.find(item => item.id === subtaskId) : null;
     if (!subtask) return false;
+    const todayKey = getTodayKey();
+
+    if (!subtask.optional && subtask.completed && getDateKeyFromTimestamp(subtask.completedAt) === todayKey) {
+        sustainableProgressController.revokeSubtaskCompletion(todo.id, subtask.id, todayKey);
+    }
 
     if (strategy === 'promote-optional') {
         const optionalReplacement = todo.subtasks.find(item => item.id !== subtaskId && item.optional);
         if (!optionalReplacement) return false;
         optionalReplacement.optional = false;
+        if (optionalReplacement.completed && getDateKeyFromTimestamp(optionalReplacement.completedAt) === todayKey) {
+            sustainableProgressController.recordSubtaskCompletion(todo.id, optionalReplacement.id, {
+                dateKey: todayKey,
+                completedAt: optionalReplacement.completedAt,
+                source: 'tasks'
+            });
+        }
     }
 
     if (strategy === 'convert-normal') {
+        revokeTodaySustainableCredits(todo);
         todo.type = 'normal';
         delete todo.subtasks;
         delete todo.compositeStatus;
@@ -3247,6 +3424,7 @@ function moveTodoSubtask(todoId, subtaskId, direction) {
 function convertCompositeTodoToNormal(todoId) {
     const todo = todos.find(item => item.id === todoId);
     if (!TASKLYZEN_COMPOSITE_TASKS.isCompositeTask(todo)) return;
+    revokeTodaySustainableCredits(todo);
     todo.type = 'normal';
     delete todo.subtasks;
     delete todo.compositeStatus;
@@ -3966,10 +4144,12 @@ window.addEventListener('resize', function() {
 
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
+        betaFeatureControllers.focus.handleVisibilityChange(true);
         sendBrowserTaskReminder(false);
         return;
     }
 
+    betaFeatureControllers.focus.handleVisibilityChange(false);
     refreshTimeSensitiveTaskState();
 });
 
@@ -4004,6 +4184,8 @@ function startApp() {
     appStarted = true;
     installDeveloperModeCommand();
     featureRegistry.init();
+    syncRaceHistoryIntoSustainableProgress();
+    normalizeGamification();
     betaFeatureControllers.focus.prepareForEntry();
     renderCurrentPage();
     scheduleDeferredStartupWork();

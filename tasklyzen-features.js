@@ -30,9 +30,16 @@
                 mode: 'free',
                 targetMs: 0,
                 sessionCreatedAt: null,
+                sessionId: null,
                 sessionStartedAt: null,
                 sessionAccumulatedMs: 0,
+                sessionPausedMs: 0,
+                sessionAwayMs: 0,
+                sessionConfirmedAwayMs: 0,
+                sessionAwayStartedAt: null,
+                sessionAwayWasRunning: false,
                 sessionCompletedTodoIds: [],
+                sessionCompletedSubtaskKeys: [],
                 sessionTodoSnapshot: [],
                 sessionVisitedTodoIds: [],
                 sessionTodoIds: [],
@@ -91,6 +98,7 @@
         const onCompleteTodo = fn(config.onCompleteTodo, () => false);
         const onToggleSubtask = fn(config.onToggleSubtask, () => false);
         const onSessionComplete = fn(config.onSessionComplete, noop);
+        const evaluateSession = fn(config.evaluateSession, record => record);
         const onStateChange = fn(config.onStateChange, noop);
         const onTimerCue = fn(config.onTimerCue, noop);
         const unlockAudio = fn(config.unlockAudio, noop);
@@ -100,6 +108,7 @@
         let resumeShell = null;
         let summaryShell = null;
         let timer = null;
+        const liveSessionIds = new Set();
 
         const MAX_SESSION_HISTORY = 80;
         const COUNTDOWN_PRESETS = [10, 25, 45];
@@ -152,6 +161,24 @@
             const parsed = Date.parse(timestamp || '');
 
             return Number.isFinite(parsed) ? parsed : null;
+        }
+
+        function getCurrentPauseMs(state) {
+            const stored = Math.max(Number(state && state.sessionPausedMs) || 0, 0);
+            const pausedAt = parseMs(state && state.pausedAt);
+
+            if (!state || state.status !== 'paused' || state.sessionAwayStartedAt || pausedAt === null) {
+                return stored;
+            }
+
+            return stored + Math.max(getNowMs() - pausedAt, 0);
+        }
+
+        function getCurrentAwayMs(state) {
+            const stored = Math.max(Number(state && state.sessionAwayMs) || 0, 0);
+            const awayStartedAt = parseMs(state && state.sessionAwayStartedAt);
+
+            return awayStartedAt === null ? stored : stored + Math.max(getNowMs() - awayStartedAt, 0);
         }
 
         function getPendingTodos() {
@@ -461,6 +488,12 @@
                 : [];
         }
 
+        function getCompletedSubtaskKeys(state) {
+            return Array.isArray(state && state.sessionCompletedSubtaskKeys)
+                ? Array.from(new Set(state.sessionCompletedSubtaskKeys.filter(Boolean)))
+                : [];
+        }
+
         function getTaskElapsedMap(state) {
             return isPlainObject(state && state.taskElapsedMsById)
                 ? { ...state.taskElapsedMsById }
@@ -570,6 +603,38 @@
 
         function getPomodoroSessionTargetMs(workMs, breakMs, cycles) {
             return getPomodoroSchedule(workMs, breakMs, cycles).totalMs;
+        }
+
+        function getSessionTimeBreakdown(state, sessionElapsedMs) {
+            const totalMs = Math.max(Number(sessionElapsedMs) || 0, 0);
+            const pomodoro = getPomodoroConfig(state);
+
+            if (!pomodoro.enabled) {
+                return {
+                    focusMs: totalMs,
+                    breakMs: 0,
+                    completedBreaks: 0,
+                    longBreaks: 0
+                };
+            }
+
+            const completedCycles = Math.max(Math.round(Number(state.pomodoroCompletedCycles) || 0), 0);
+            const phase = state.pomodoroPhase === 'break' ? 'break' : 'work';
+            const phaseElapsedMs = Math.min(getPomodoroPhaseElapsedMs(state), totalMs);
+            const completedFocusMs = completedCycles * pomodoro.workMs;
+            const focusMs = Math.min(
+                phase === 'work' ? completedFocusMs + phaseElapsedMs : completedFocusMs,
+                totalMs
+            );
+            const completedBreaks = Math.max(phase === 'work' ? completedCycles : completedCycles - 1, 0);
+            const policy = getPomodoroCyclePolicy(pomodoro.workMs);
+
+            return {
+                focusMs,
+                breakMs: Math.max(totalMs - focusMs, 0),
+                completedBreaks,
+                longBreaks: Math.floor(completedBreaks / policy.longBreakEvery)
+            };
         }
 
         function formatElapsed(ms) {
@@ -852,7 +917,10 @@
             }
 
             const taskElapsedMsById = getTaskElapsedMap(state);
-            const taskElapsedMs = getElapsedMs(state);
+            const activeInThisRuntime = Boolean(state.sessionId && liveSessionIds.has(state.sessionId));
+            const taskElapsedMs = activeInThisRuntime ? getElapsedMs(state) : Math.max(Number(state.accumulatedMs) || 0, 0);
+            const sessionElapsedMs = activeInThisRuntime ? getSessionElapsedMs(state) : Math.max(Number(state.sessionAccumulatedMs) || 0, 0);
+            const pomodoroElapsedMs = activeInThisRuntime ? getPomodoroPhaseElapsedMs(state) : Math.max(Number(state.pomodoroPhaseAccumulatedMs) || 0, 0);
 
             if (state.selectedTodoId) {
                 taskElapsedMsById[state.selectedTodoId] = taskElapsedMs;
@@ -867,10 +935,13 @@
                 pausedAt: getNowTimestamp(),
                 accumulatedMs: taskElapsedMs,
                 sessionStartedAt: null,
-                sessionAccumulatedMs: getSessionElapsedMs(state),
+                sessionAccumulatedMs: sessionElapsedMs,
+                sessionPausedMs: getCurrentPauseMs(state),
                 taskElapsedMsById,
+                sessionAwayStartedAt: getNowTimestamp(),
+                sessionAwayWasRunning: state.status === 'running',
                 pomodoroPhaseStartedAt: null,
-                pomodoroPhaseAccumulatedMs: getPomodoroPhaseElapsedMs(state)
+                pomodoroPhaseAccumulatedMs: pomodoroElapsedMs
             }, { notify: false });
 
             return getLaunchState();
@@ -887,14 +958,21 @@
 
             const startedAt = getNowTimestamp();
             const pomodoro = getPomodoroConfig(state);
+            const sessionAwayMs = getCurrentAwayMs(state);
 
             unlockAudio();
+            if (state.sessionId) {
+                liveSessionIds.add(state.sessionId);
+            }
             const nextState = updateState({
                 suspended: false,
                 status: 'running',
                 startedAt,
                 pausedAt: null,
                 sessionStartedAt: startedAt,
+                sessionAwayMs,
+                sessionAwayStartedAt: null,
+                sessionAwayWasRunning: false,
                 pomodoroPhaseStartedAt: pomodoro.enabled ? startedAt : null
             }, { notify: false });
 
@@ -1728,6 +1806,7 @@
                 ? normalizeTargetMs(state.targetMs)
                 : 0;
             const completedTodoIds = getCompletedTodoIds(state);
+            const completedSubtaskKeys = getCompletedSubtaskKeys(state);
             const pomodoro = getPomodoroConfig(state);
             const snapshot = getSessionTodoSnapshot(state);
             const liveTodos = getTodos();
@@ -1781,28 +1860,42 @@
             const completedCycles = pomodoro.enabled && targetCycles && targetMs && sessionElapsedMs >= targetMs
                 ? targetCycles
                 : Math.max(Number(state.pomodoroCompletedCycles) || 0, 0);
-
-            return {
-                id: 'race-' + getNowMs().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
+            const timeBreakdown = getSessionTimeBreakdown(state, sessionElapsedMs);
+            const record = {
+                id: state.sessionId || ('race-' + getNowMs().toString(36) + '-' + Math.random().toString(36).slice(2, 8)),
                 startedAt: state.sessionCreatedAt || state.sessionStartedAt || getNowTimestamp(),
                 completedAt: getNowTimestamp(),
                 mode: targetMs ? 'countdown' : 'free',
                 targetMs,
                 elapsedMs: sessionElapsedMs,
+                focusMs: timeBreakdown.focusMs,
+                breakMs: timeBreakdown.breakMs,
+                pausedMs: getCurrentPauseMs(state),
+                awayMs: getCurrentAwayMs(state),
+                confirmedAwayMs: Math.max(Number(state.sessionConfirmedAwayMs) || 0, 0),
+                completedBreaks: timeBreakdown.completedBreaks,
+                longBreaks: timeBreakdown.longBreaks,
                 completedCount: completedTodoIds.length,
+                completedSubtaskCount: completedSubtaskKeys.length,
                 completedTodoIds,
+                completedSubtaskKeys,
                 completedTodos,
                 taskBreakdown,
                 taskElapsedMsById,
                 sessionTodoIds: getSessionTodoIds(state),
+                selectedCount: getSessionTodoIds(state).length,
                 result: result || 'exited',
                 targetReached: Boolean(targetMs && sessionElapsedMs >= targetMs),
                 pomodoroEnabled: pomodoro.enabled,
                 pomodoroWorkMs: pomodoro.enabled ? pomodoro.workMs : 0,
                 pomodoroBreakMs: pomodoro.enabled ? pomodoro.breakMs : 0,
                 pomodoroCompletedCycles: completedCycles,
-                pomodoroTargetCycles: targetCycles
+                pomodoroTargetCycles: targetCycles,
+                integrityFlags: []
             };
+            const evaluation = evaluateSession(record) || {};
+
+            return { ...record, ...evaluation };
         }
 
         function getIdleState(state, history) {
@@ -1818,9 +1911,16 @@
                 mode: 'free',
                 targetMs: 0,
                 sessionCreatedAt: null,
+                sessionId: null,
                 sessionStartedAt: null,
                 sessionAccumulatedMs: 0,
+                sessionPausedMs: 0,
+                sessionAwayMs: 0,
+                sessionConfirmedAwayMs: 0,
+                sessionAwayStartedAt: null,
+                sessionAwayWasRunning: false,
                 sessionCompletedTodoIds: [],
+                sessionCompletedSubtaskKeys: [],
                 sessionTodoSnapshot: [],
                 sessionVisitedTodoIds: [],
                 sessionTodoIds: [],
@@ -1846,14 +1946,23 @@
                 const completedAt = parseMs(session.completedAt);
 
                 return completedAt !== null && completedAt >= sevenDaysAgo;
-            });
+            }).map(session => ({
+                ...session,
+                ...evaluateSession({
+                    ...session,
+                    focusMs: Number.isFinite(Number(session.focusMs)) ? session.focusMs : session.elapsedMs
+                })
+            }));
             const targetSessions = sessions.filter(session => normalizeTargetMs(session.targetMs) > 0);
             const successfulTargets = targetSessions.filter(session => !session.targetReached).length;
 
             return {
                 sessions: sessions.length,
                 elapsedMs: sessions.reduce((total, session) => total + Math.max(Number(session.elapsedMs) || 0, 0), 0),
+                focusMs: sessions.reduce((total, session) => total + Math.max(Number(session.focusMs) || 0, 0), 0),
                 completedCount: sessions.reduce((total, session) => total + Math.max(Number(session.completedCount) || 0, 0), 0),
+                meaningfulSessions: sessions.filter(session => session.meaningful).length,
+                sustainableSessions: sessions.filter(session => session.sustainable).length,
                 targetSessions: targetSessions.length,
                 successfulTargets
             };
@@ -1874,16 +1983,17 @@
             }
 
             if (analyticsDom.minutes) {
-                analyticsDom.minutes.textContent = formatDuration(summary.elapsedMs);
+                analyticsDom.minutes.textContent = formatDuration(summary.focusMs);
             }
 
             if (analyticsDom.sessions) {
-                analyticsDom.sessions.textContent = summary.sessions + (summary.sessions === 1 ? ' sesión' : ' sesiones');
+                analyticsDom.sessions.textContent = summary.meaningfulSessions
+                    + (summary.meaningfulSessions === 1 ? ' sesión con avance' : ' sesiones con avance');
             }
 
             if (analyticsDom.targets) {
-                analyticsDom.targets.textContent = summary.targetSessions
-                    ? summary.successfulTargets + '/' + summary.targetSessions + ' metas respetadas'
+                analyticsDom.targets.textContent = summary.sustainableSessions
+                    ? summary.sustainableSessions + (summary.sustainableSessions === 1 ? ' ritmo sostenible' : ' ritmos sostenibles')
                     : summary.completedCount + ' tareas cerradas';
             }
         }
@@ -1923,11 +2033,9 @@
                 '<h2>' + performance.title + '</h2>',
                 '<p>' + performance.message + '</p>',
                 '<div class="beta-focus-summary-metrics">',
-                '<span><strong>' + formatElapsed(record.elapsedMs) + '</strong><small>tiempo total</small></span>',
+                '<span><strong>' + formatElapsed(record.focusMs) + '</strong><small>tiempo enfocado</small></span>',
                 '<span><strong>' + record.completedCount + '</strong><small>tareas cerradas</small></span>',
-                record.pomodoroEnabled
-                    ? '<span><strong>' + record.pomodoroCompletedCycles + (record.pomodoroTargetCycles ? '/' + record.pomodoroTargetCycles : '') + '</strong><small>ciclos Pomodoro</small></span>'
-                    : '<span><strong>' + (record.mode === 'countdown' ? 'Contra reloj' : 'Ritmo libre') + '</strong><small>modalidad</small></span>',
+                '<span><strong>' + (record.sustainable ? 'Sostenible' : record.meaningful ? 'Avance real' : 'Registro') + '</strong><small>lectura de la sesión</small></span>',
                 '</div>',
                 '<div class="beta-focus-summary-tasks">',
                 '<h3>' + (taskBreakdown.length ? 'Tiempo por tarea' : 'Tu siguiente oportunidad') + '</h3>',
@@ -1986,36 +2094,36 @@
 
         function getSessionPerformanceCopy(record) {
             const completed = Math.max(Number(record && record.completedCount) || 0, 0);
-            const elapsedMinutes = Math.max((Number(record && record.elapsedMs) || 0) / 60000, 0);
+            const completedSteps = Math.max(Number(record && record.completedSubtaskCount) || 0, 0);
 
-            if (completed === 0) {
+            if (!record || !record.meaningful) {
                 return {
-                    title: 'Sesión registrada',
-                    message: 'Hoy mediste tu esfuerzo con honestidad. Esa información sirve para preparar una carrera más realista.',
-                    closing: 'Prueba dividir la siguiente tarea en un paso pequeño y concreto.'
+                    title: 'Registro honesto',
+                    message: 'Guardamos el tiempo sin convertirlo en una recompensa que no refleje avance todavía.',
+                    closing: 'La próxima vez cierra una tarea o un paso clave para convertir el tiempo en avance.'
                 };
             }
 
-            if (completed >= 4 || (completed >= 2 && elapsedMinutes <= 60)) {
+            if (record.sustainable) {
                 return {
-                    title: 'Ritmo extraordinario',
-                    message: 'Convertiste tu tiempo en avances concretos sin perder de vista el objetivo.',
-                    closing: 'Conserva este ritmo, pero deja espacio para descansar antes de la siguiente carrera.'
+                    title: 'Ritmo sostenible',
+                    message: 'Avanzaste con intención y respetaste el espacio necesario para recuperar energía.',
+                    closing: 'Este es el ritmo que Tasklyzen ayuda a repetir, no la velocidad por sí sola.'
                 };
             }
 
-            if (completed >= 2) {
+            if (record.intentional) {
                 return {
                     title: 'Avance con intención',
-                    message: 'Cerraste varias tareas y mantuviste una sesión útil de trabajo o estudio.',
-                    closing: 'Ya construiste impulso. Elige una prioridad clara para tu próxima sesión.'
+                    message: 'La sesión produjo ' + (completed + completedSteps) + ' avances concretos en las tareas que elegiste.',
+                    closing: 'Buen progreso. Si la siguiente carrera es larga, reserva también una pausa real.'
                 };
             }
 
             return {
-                title: 'Una victoria concreta',
-                message: 'Terminaste una tarea importante durante esta carrera.',
-                closing: 'Una tarea terminada vale más que muchas empezadas. Buen cierre.'
+                title: 'Un paso real',
+                message: 'Tu tiempo quedó ligado a un avance concreto, sin premiar prisas ni minutos vacíos.',
+                closing: 'La constancia crece con cierres honestos, incluso cuando el paso es pequeño.'
             };
         }
 
@@ -2226,8 +2334,10 @@
                     : mode.targetMs)
                 : 0;
             const startedAt = getNowTimestamp();
+            const sessionId = 'race-' + getNowMs().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 
             sessionEnding = false;
+            liveSessionIds.add(sessionId);
             unlockAudio();
             const nextState = updateState({
                 active: true,
@@ -2241,9 +2351,16 @@
                 mode: targetMs ? 'countdown' : 'free',
                 targetMs,
                 sessionCreatedAt: startedAt,
+                sessionId,
                 sessionStartedAt: startedAt,
                 sessionAccumulatedMs: 0,
+                sessionPausedMs: 0,
+                sessionAwayMs: 0,
+                sessionConfirmedAwayMs: 0,
+                sessionAwayStartedAt: null,
+                sessionAwayWasRunning: false,
                 sessionCompletedTodoIds: [],
+                sessionCompletedSubtaskKeys: [],
                 sessionTodoSnapshot: createSessionTodoSnapshot(sessionTodoIds),
                 sessionVisitedTodoIds: [selectedTodo.id],
                 sessionTodoIds,
@@ -2310,7 +2427,9 @@
 
             const completed = runTaskMutation(() => onCompleteTodo(todo.id, {
                 elapsedMs: getElapsedMs(state),
-                todo
+                todo,
+                source: 'race',
+                sessionId: state.sessionId
             }));
 
             if (!completed) {
@@ -2342,11 +2461,26 @@
                     if (liveSubtask && Boolean(liveSubtask.completed) !== Boolean(completedMap[subtask.id])) {
                         onToggleSubtask(todo.id, subtask.id, {
                             elapsedMs: getElapsedMs(state),
-                            todo
+                            todo,
+                            source: 'race',
+                            sessionId: state.sessionId
                         });
                     }
                 });
             });
+
+            const completedSubtaskKeys = getCompletedSubtaskKeys(state);
+            changedSubtasks.filter(subtask => !subtask.optional).forEach(subtask => {
+                const key = todo.id + ':' + subtask.id;
+                const index = completedSubtaskKeys.indexOf(key);
+
+                if (completedMap[subtask.id] && index < 0) {
+                    completedSubtaskKeys.push(key);
+                } else if (!completedMap[subtask.id] && index >= 0) {
+                    completedSubtaskKeys.splice(index, 1);
+                }
+            });
+            updateState({ sessionCompletedSubtaskKeys: completedSubtaskKeys }, { notify: false });
 
             const updatedTodo = getTodos().find(item => item && item.id === todo.id);
 
@@ -2439,6 +2573,7 @@
                 accumulatedMs: getElapsedMs(state),
                 startedAt: null,
                 sessionAccumulatedMs: getSessionElapsedMs(state),
+                sessionPausedMs: Math.max(Number(state.sessionPausedMs) || 0, 0),
                 sessionStartedAt: null,
                 taskElapsedMsById,
                 pomodoroPhaseAccumulatedMs: getPomodoroPhaseElapsedMs(state),
@@ -2457,14 +2592,16 @@
             }
 
             unlockAudio();
+            const resumedAt = getNowTimestamp();
             const nextState = updateState({
                 ...state,
                 suspended: false,
                 status: 'running',
-                startedAt: getNowTimestamp(),
+                startedAt: resumedAt,
                 pausedAt: null,
-                sessionStartedAt: getNowTimestamp(),
-                pomodoroPhaseStartedAt: getPomodoroConfig(state).enabled ? getNowTimestamp() : null
+                sessionStartedAt: resumedAt,
+                sessionPausedMs: getCurrentPauseMs(state),
+                pomodoroPhaseStartedAt: getPomodoroConfig(state).enabled ? resumedAt : null
             }, { notify: false });
 
             render();
@@ -2484,6 +2621,7 @@
             const taskElapsedMs = getElapsedMs(state);
             const sessionElapsedMs = getSessionElapsedMs(state);
             const pomodoroElapsedMs = getPomodoroPhaseElapsedMs(state);
+            const leftAt = state.sessionAwayStartedAt || getNowTimestamp();
 
             if (state.selectedTodoId) {
                 taskElapsedMsById[state.selectedTodoId] = taskElapsedMs;
@@ -2495,17 +2633,73 @@
                 suspended: true,
                 status: 'paused',
                 startedAt: null,
-                pausedAt: getNowTimestamp(),
+                pausedAt: leftAt,
                 accumulatedMs: taskElapsedMs,
                 sessionStartedAt: null,
                 sessionAccumulatedMs: sessionElapsedMs,
+                sessionPausedMs: getCurrentPauseMs(state),
                 taskElapsedMsById,
+                sessionAwayStartedAt: leftAt,
+                sessionAwayWasRunning: Boolean(state.sessionAwayWasRunning || state.status === 'running'),
                 pomodoroPhaseStartedAt: null,
                 pomodoroPhaseAccumulatedMs: pomodoroElapsedMs
             }, { notify: false });
 
             removeShell();
             renderAnalyticsSummary();
+            return nextState;
+        }
+
+        function handleVisibilityChange(hidden) {
+            const state = getState();
+
+            if (!state.active || state.suspended) {
+                return state;
+            }
+
+            if (hidden) {
+                if (state.status !== 'running' || state.sessionAwayStartedAt) {
+                    return state;
+                }
+
+                const clocks = captureRunningClocks(state);
+                const hiddenAt = clocks.now;
+                const nextState = updateState({
+                    status: 'paused',
+                    pausedAt: hiddenAt,
+                    startedAt: null,
+                    accumulatedMs: clocks.taskElapsedMs,
+                    sessionStartedAt: null,
+                    sessionAccumulatedMs: clocks.sessionElapsedMs,
+                    taskElapsedMsById: clocks.taskElapsedMsById,
+                    sessionAwayStartedAt: hiddenAt,
+                    sessionAwayWasRunning: true,
+                    pomodoroPhaseStartedAt: null,
+                    pomodoroPhaseAccumulatedMs: clocks.pomodoroPhaseElapsedMs
+                }, { notify: false });
+
+                stopTimer();
+                return nextState;
+            }
+
+            if (!state.sessionAwayStartedAt) {
+                return state;
+            }
+
+            const returnedAt = getNowTimestamp();
+            const shouldResume = Boolean(state.sessionAwayWasRunning);
+            const nextState = updateState({
+                status: shouldResume ? 'running' : 'paused',
+                pausedAt: shouldResume ? null : returnedAt,
+                startedAt: shouldResume ? returnedAt : null,
+                sessionStartedAt: shouldResume ? returnedAt : null,
+                sessionAwayMs: getCurrentAwayMs(state),
+                sessionAwayStartedAt: null,
+                sessionAwayWasRunning: false,
+                pomodoroPhaseStartedAt: shouldResume && getPomodoroConfig(state).enabled ? returnedAt : null
+            }, { notify: false });
+
+            render();
             return nextState;
         }
 
@@ -2523,9 +2717,18 @@
             const type = String(previewType || 'focus').toLowerCase();
 
             if (type === 'summary') {
-                showSessionSummary({
+                const previewRecord = {
+                    id: 'race-preview-summary',
+                    startedAt: new Date(getNowMs() - (62 * 60 * 1000)).toISOString(),
+                    completedAt: getNowTimestamp(),
                     elapsedMs: 52 * 60 * 1000,
+                    focusMs: 50 * 60 * 1000,
+                    breakMs: 10 * 60 * 1000,
+                    pausedMs: 2 * 60 * 1000,
+                    awayMs: 0,
+                    selectedCount: 3,
                     completedCount: 3,
+                    completedSubtaskCount: 2,
                     completedTodoIds: ['dev-race-1', 'dev-race-2', 'dev-race-3'],
                     completedTodos: [
                         { id: 'dev-race-1', title: 'Repasar el tema principal', type: 'tarea' },
@@ -2537,8 +2740,11 @@
                     targetReached: false,
                     pomodoroEnabled: true,
                     pomodoroCompletedCycles: 2,
-                    pomodoroTargetCycles: 2
-                });
+                    pomodoroTargetCycles: 2,
+                    completedBreaks: 1,
+                    result: 'manual'
+                };
+                showSessionSummary({ ...previewRecord, ...evaluateSession(previewRecord) });
                 return { status: 'summary-preview' };
             }
 
@@ -2601,6 +2807,7 @@
             skipToNext,
             leave,
             exit: leave,
+            handleVisibilityChange,
             render,
             getState,
             getLaunchState,
