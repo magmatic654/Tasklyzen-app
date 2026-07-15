@@ -19,13 +19,8 @@
         'meta diaria completa',
         'meta semanal completa',
         'extra legendario',
-        'logro desbloqueado',
         'nuevo escudo de racha',
-        'racha rescatada',
-        'logro agregado',
-        'logro removido',
-        'logros en revision',
-        'logros reiniciados'
+        'racha rescatada'
     ];
 
     function createNotificationController(options) {

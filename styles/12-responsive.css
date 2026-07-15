@@ -53,6 +53,10 @@
         grid-template-columns: 1fr;
     }
 
+    .settings-progress-modes {
+        grid-template-columns: 1fr;
+    }
+
     .settings-header,
     .delete-data-actions {
         align-items: stretch;
@@ -64,8 +68,7 @@
         width: 100%;
     }
 
-    .todo-app,
-    .achievement-page {
+    .todo-app{
         width: min(100% - 20px, 920px);
         margin: 18px auto;
     }
@@ -89,9 +92,7 @@
 
     .progress-heading,
     .contribution-heading,
-    .app-title-panel,
-    .achievement-title-panel,
-    .collection-intro {
+    .app-title-panel{
         align-items: stretch;
         flex-direction: column;
     }
@@ -103,10 +104,6 @@
 
     .brand-logo {
         width: min(100%, 340px);
-    }
-
-    .achievement-title-copy {
-        grid-template-columns: auto 1fr;
     }
 
     .page-title-icon {
@@ -297,10 +294,8 @@
     #progress-panel.progress-expanded .daily-close-card,
     #progress-panel.progress-expanded .streak-suite,
     #progress-panel.progress-expanded .streak-prestige-road,
-    #progress-panel.progress-expanded .achievement-row,
     #progress-panel.progress-expanded .streak-safety-card,
     #progress-panel.progress-expanded .next-reward-card,
-    #progress-panel.progress-expanded .featured-achievements,
     #progress-panel.progress-expanded .contribution-panel {
         padding: 12px;
     }
@@ -467,12 +462,6 @@
     }
 
     .streak-suite,
-    .achievement-row,
-    .achievement-list,
-    .featured-achievement-list,
-    .collection-summary,
-    .rarity-ladder,
-    .collection-controls,
     .streak-safety-card {
         grid-template-columns: 1fr;
     }
@@ -506,16 +495,6 @@
 
     .habit-toggle {
         justify-content: flex-start;
-    }
-
-    .featured-achievements-heading,
-    .personal-achievements-heading {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .collection-panel {
-        padding: 18px;
     }
 
     .task-toolbar {
@@ -780,18 +759,6 @@
         width: min(260px, calc(100vw - 40px));
     }
 
-    .achievement-showcase {
-        padding: 18px;
-    }
-
-    .achievement-showcase-card {
-        padding: 18px;
-    }
-
-    .showcase-line {
-        width: 96px;
-    }
-
     .developer-toggle {
         right: 14px;
         bottom: 14px;
@@ -844,8 +811,7 @@
 }
 
 @media (max-width: 460px) {
-    .todo-app,
-    .achievement-page {
+    .todo-app{
         width: min(100% - 14px, 920px);
         margin: 12px auto;
     }
@@ -968,9 +934,11 @@
 
     .performance-overview,
     .performance-trend,
-    .performance-balance {
+    .performance-balance,
+    .performance-focus {
         padding: 13px;
     }
+
 
     .performance-section-heading {
         align-items: flex-start;

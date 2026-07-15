@@ -1,19 +1,11 @@
-/*
- * Capa: 09-theme-overrides.css
- * Proposito: Late light/dark contrast fixes for tasks, analytics and achievements.
- * Nota: extraido de styles.css preservando el orden original de cascada.
- */
+
 
 body.theme-dark #todo-input,
 body.theme-dark #daily-mission-status,
 body.theme-dark .analytics-action-card > span,
 body.theme-dark .summary-risk-card.risk-medium > span,
 body.theme-dark .analytics-risk-card.risk-medium > span,
-body.theme-dark .analytics-chip.chip-warning,
-body.theme-dark .rarity-step.rarity-rare strong,
-body.theme-dark .rarity-step.rarity-legendary strong,
-body.theme-dark .achievement-showcase.rarity-rare .showcase-medal,
-body.theme-dark .achievement-showcase.rarity-legendary .showcase-medal {
+body.theme-dark .analytics-chip.chip-warning{
     color: var(--bright-ink);
 }
 
@@ -150,20 +142,6 @@ body.theme-dark .settings-danger-button:disabled {
     border-color: rgba(255, 255, 255, 0.08);
 }
 
-/* Dark mode contrast layer */
-body.theme-dark :where(h1, h2, h3, h4, .analytics-heading h3, .analytics-subheading strong, .analytics-chart-heading strong, .summary-section h3, .featured-achievements-heading h3, .expired-tasks-heading h3) {
-    color: var(--dark-text-strong);
-}
-
-body.theme-dark :where(.task-summary, .analytics-focus-card p, .analytics-metric small, .analytics-ring-card > p, .analytics-risk-card p, .analytics-action-card p, .monthly-metric-card p, .monthly-performance-summary p, .summary-metric small, .summary-insight p, .weekly-line-caption, .weekly-line-labels span, .analytics-chart-label span, .comparison-bar-heading span, .collection-summary p, .achievement-card p, .featured-achievement-card p, .expired-task-summary, .expired-task-item span, .settings-switch small, .settings-choice-group legend, .collection-controls label, .todo-item.completed .todo-text) {
-    color: var(--dark-text-soft);
-}
-
-body.theme-dark :where(.analytics-metric span, .monthly-metric-card strong, .summary-metric strong, .collection-summary span, .weekly-flow-row em, .analytics-chart-row em, .comparison-bar-heading strong, .task-funnel-step strong, .streak-type-card span) {
-    color: var(--dark-info);
-    text-shadow: 0 0 18px rgba(91, 215, 255, 0.18);
-}
-
 body.theme-dark .analytics-metric.primary span,
 body.theme-dark .summary-metric.primary strong,
 body.theme-dark .summary-metric.compact strong {
@@ -265,12 +243,6 @@ body.theme-dark .analytics-ring-card.pending-ring .analytics-ring {
         conic-gradient(var(--dark-danger) var(--percent), #27364a 0);
 }
 
-body.theme-dark :where(.progress-tab, .filter-button, .summary-window-button, .collection-controls select, .task-type-input, .priority-input, .time-limit-input, .due-date-compact-select, .edit-priority-input, .edit-time-limit-input) {
-    color: var(--dark-text-soft);
-    background: #101c2d;
-    border-color: rgba(203, 215, 232, 0.18);
-}
-
 body.theme-dark .due-date-options,
 body.theme-dark .task-secondary-options .task-type-input,
 body.theme-dark .task-secondary-options .habit-toggle {
@@ -322,10 +294,7 @@ body.theme-dark .settings-button {
 body.theme-dark .settings-button[aria-expanded="true"] {
     background: linear-gradient(135deg, var(--teal), var(--teal-deep));
 }
-
-body.theme-dark .collection-link,
-body.theme-dark #daily-mission-status,
-body.theme-dark .feature-button.selected {
+body.theme-dark #daily-mission-status {
     color: var(--bright-ink);
     background: linear-gradient(135deg, var(--dark-review), var(--dark-warning));
     box-shadow: 0 8px 0 rgba(0, 0, 0, 0.22), 0 0 0 3px rgba(255, 209, 102, 0.16);
@@ -354,7 +323,6 @@ body.theme-dark .quick-create-layer.is-empty {
 }
 
 body.theme-dark .task-button.edit-button,
-body.theme-dark .feature-button,
 body.theme-dark .recommended-goal button,
 body.theme-dark .rescue-button,
 body.theme-dark .summary-recommendation button,
@@ -412,21 +380,12 @@ body.theme-dark .task-edit-actions .cancel-button:focus-visible {
     box-shadow: inset 0 -2px 0 rgba(203, 215, 232, 0.1);
 }
 
-body.theme-dark :where(button:disabled, .feature-button:disabled, .cleanup-button:disabled, .recommended-goal button:disabled, .rescue-button:disabled, .summary-recommendation button:disabled, .settings-danger-button:disabled) {
+body.theme-dark :where(button:disabled, .cleanup-button:disabled, .recommended-goal button:disabled, .rescue-button:disabled, .summary-recommendation button:disabled, .settings-danger-button:disabled) {
     color: #8fa0b7;
     cursor: not-allowed;
     background: #253243;
     border-color: rgba(203, 215, 232, 0.12);
     box-shadow: none;
-}
-
-body.theme-dark :where(.task-button, .cleanup-button, .todo-form > button[type="submit"], .feature-button, .collection-link, .settings-secondary-button, .settings-danger-button) {
-    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
-}
-
-body.theme-dark :where(.task-button, .cleanup-button, .todo-form > button[type="submit"], .feature-button, .collection-link, .settings-secondary-button, .settings-danger-button):not(:disabled):hover {
-    transform: translateY(-1px);
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
 }
 
 body.theme-dark .todo-item.urgency-on-time {
@@ -470,179 +429,6 @@ body.theme-dark .due-date-badge {
     color: var(--dark-text-strong);
     background: rgba(91, 215, 255, 0.14);
     border: 1px solid rgba(91, 215, 255, 0.18);
-}
-
-body.theme-dark .achievement-card,
-body.theme-dark .featured-achievement-card {
-    background: #142236;
-    border-color: rgba(203, 215, 232, 0.14);
-}
-
-body.theme-dark :where(.achievement-card h4, .featured-achievement-card h4, .next-reward-card h3) {
-    color: var(--dark-text-strong);
-}
-
-body.theme-dark :where(.achievement-rarity, .featured-rarity, .achievement-category) {
-    color: var(--dark-text-soft);
-    background: #101a29;
-    border: 1px solid rgba(203, 215, 232, 0.16);
-}
-
-body.theme-dark .achievement-status {
-    color: #071522;
-    background: var(--dark-info);
-}
-
-body.theme-dark .achievement-card.collected,
-body.theme-dark .featured-achievement-card.collected {
-    background: linear-gradient(135deg, #102b24, #14263a);
-    border-color: rgba(46, 227, 155, 0.32);
-    box-shadow: inset 0 -5px 0 rgba(46, 227, 155, 0.12);
-}
-
-body.theme-dark .achievement-card.pending,
-body.theme-dark .featured-achievement-card.pending {
-    background: linear-gradient(135deg, #342812, #152335);
-    border-color: rgba(255, 209, 102, 0.48);
-    box-shadow: inset 0 -5px 0 rgba(255, 209, 102, 0.14);
-}
-
-body.theme-dark .achievement-card.collected .achievement-status {
-    color: #071b14;
-    background: var(--dark-complete);
-}
-
-body.theme-dark .achievement-card.pending .achievement-status {
-    color: var(--bright-ink);
-    background: var(--dark-review);
-}
-
-body.theme-dark .achievement-card.locked,
-body.theme-dark .featured-achievement-card.locked {
-    color: #a8b6ca;
-    background: #111d2d;
-    border-color: rgba(203, 215, 232, 0.1);
-}
-
-body.theme-dark .achievement-card.rarity-uncommon,
-body.theme-dark .featured-achievement-card.rarity-uncommon {
-    border-color: rgba(46, 227, 155, 0.28);
-}
-
-body.theme-dark .achievement-card.rarity-rare,
-body.theme-dark .featured-achievement-card.rarity-rare {
-    border-color: rgba(255, 209, 102, 0.46);
-}
-
-body.theme-dark .achievement-card.rarity-epic,
-body.theme-dark .featured-achievement-card.rarity-epic {
-    border-color: rgba(255, 117, 109, 0.42);
-}
-
-body.theme-dark .achievement-card.rarity-legendary,
-body.theme-dark .featured-achievement-card.rarity-legendary {
-    background: linear-gradient(135deg, #332711, #172638);
-    border-color: rgba(255, 209, 102, 0.62);
-    box-shadow: inset 0 -5px 0 rgba(255, 209, 102, 0.16), 0 0 0 3px rgba(255, 209, 102, 0.08);
-}
-
-body.theme-dark .achievement-card.rarity-mythic,
-body.theme-dark .featured-achievement-card.rarity-mythic {
-    background: linear-gradient(135deg, #10243a, #102b2e);
-    border-color: rgba(91, 215, 255, 0.56);
-    box-shadow: inset 0 -5px 0 rgba(91, 215, 255, 0.14), 0 0 0 3px rgba(46, 227, 155, 0.08);
-}
-
-body.theme-dark .achievement-card.rarity-common .achievement-rarity {
-    color: var(--dark-text-soft);
-    background: #26364a;
-}
-
-body.theme-dark .achievement-card.rarity-uncommon .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-uncommon .featured-rarity {
-    color: #071b14;
-    background: #8af2b7;
-}
-
-body.theme-dark .achievement-card.rarity-rare .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-rare .featured-rarity {
-    color: var(--bright-ink);
-    background: var(--dark-review);
-}
-
-body.theme-dark .achievement-card.rarity-epic .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-epic .featured-rarity {
-    color: #ffffff;
-    background: var(--dark-danger);
-}
-
-body.theme-dark .achievement-card.rarity-legendary .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-legendary .featured-rarity {
-    color: var(--bright-ink);
-    background: linear-gradient(135deg, var(--dark-review), var(--dark-warning));
-}
-
-body.theme-dark .achievement-card.rarity-mythic .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-mythic .featured-rarity {
-    color: #071522;
-    background: linear-gradient(135deg, var(--dark-info), var(--dark-complete));
-}
-
-body.theme-dark :where(.achievement-track, .achievement-card.locked .achievement-medal, .featured-achievement-card.locked .featured-medal) {
-    color: #91a1b8;
-    background: #0f1928;
-    border-color: rgba(203, 215, 232, 0.14);
-}
-
-body.theme-dark .achievement-track span {
-    box-shadow: 0 0 12px rgba(46, 227, 155, 0.26);
-}
-
-body.theme-dark .rarity-step {
-    color: var(--dark-text-soft);
-    background: #142236;
-    border-color: rgba(203, 215, 232, 0.14);
-}
-
-body.theme-dark .rarity-step strong {
-    color: #ffffff;
-    background: #2b7fb0;
-    box-shadow: 0 0 16px rgba(91, 215, 255, 0.18);
-}
-
-body.theme-dark .rarity-step.rarity-uncommon strong {
-    color: #071b14;
-    background: var(--dark-complete);
-}
-
-body.theme-dark .rarity-step.rarity-rare strong {
-    color: var(--bright-ink);
-    background: var(--dark-review);
-}
-
-body.theme-dark .rarity-step.rarity-epic strong {
-    background: var(--dark-danger);
-}
-
-body.theme-dark .rarity-step.rarity-legendary {
-    background: linear-gradient(135deg, #342812, #152335);
-    border-color: rgba(255, 209, 102, 0.5);
-}
-
-body.theme-dark .rarity-step.rarity-legendary strong {
-    color: var(--bright-ink);
-    background: linear-gradient(135deg, var(--dark-review), var(--dark-warning));
-}
-
-body.theme-dark .rarity-step.rarity-mythic {
-    color: var(--dark-text-strong);
-    background: linear-gradient(135deg, #10243a, #102b2e);
-    border-color: rgba(91, 215, 255, 0.46);
-}
-
-body.theme-dark .rarity-step.rarity-mythic strong {
-    color: #071522;
-    background: linear-gradient(135deg, var(--dark-info), var(--dark-complete));
 }
 
 body.theme-dark .level-0,
@@ -1270,277 +1056,8 @@ body.theme-dark .analytics-chip.chip-neutral {
     background: var(--dark-info);
 }
 
-body.theme-dark .achievement-card,
-body.theme-dark .featured-achievement-card {
-    overflow: hidden;
-}
-
-body.theme-dark .achievement-card::before,
-body.theme-dark .featured-achievement-card::before {
-    opacity: 1;
-}
-
-body.theme-dark .achievement-card.rarity-common,
-body.theme-dark .featured-achievement-card.rarity-common {
-    background: #142236;
-    border-color: rgba(203, 215, 232, 0.18);
-    box-shadow: inset 0 -4px 0 rgba(203, 215, 232, 0.06);
-}
-
-body.theme-dark .achievement-card.rarity-common::before,
-body.theme-dark .featured-achievement-card.rarity-common::before {
-    opacity: 0;
-}
-
-body.theme-dark .achievement-card.rarity-uncommon,
-body.theme-dark .featured-achievement-card.rarity-uncommon {
-    background:
-        linear-gradient(135deg, rgba(46, 227, 155, 0.2), transparent 48%),
-        #10241e;
-    border-color: rgba(46, 227, 155, 0.38);
-    box-shadow: inset 0 -5px 0 rgba(46, 227, 155, 0.14), 0 0 0 2px rgba(46, 227, 155, 0.05);
-}
-
-body.theme-dark .achievement-card.rarity-uncommon::before,
-body.theme-dark .featured-achievement-card.rarity-uncommon::before {
-    background: linear-gradient(120deg, transparent 0 20%, rgba(46, 227, 155, 0.12) 20% 28%, transparent 28% 100%);
-}
-
-body.theme-dark .achievement-card.rarity-rare,
-body.theme-dark .featured-achievement-card.rarity-rare {
-    background:
-        linear-gradient(135deg, rgba(91, 215, 255, 0.22), transparent 48%),
-        #10243a;
-    border-color: rgba(91, 215, 255, 0.45);
-    box-shadow: inset 0 -5px 0 rgba(91, 215, 255, 0.14), 0 0 0 2px rgba(91, 215, 255, 0.07);
-}
-
-body.theme-dark .achievement-card.rarity-rare::before,
-body.theme-dark .featured-achievement-card.rarity-rare::before {
-    background:
-        linear-gradient(90deg, rgba(91, 215, 255, 0.12) 0 2px, transparent 2px 14px),
-        radial-gradient(circle at top right, rgba(91, 215, 255, 0.18), transparent 34%);
-}
-
-body.theme-dark .achievement-card.rarity-epic,
-body.theme-dark .featured-achievement-card.rarity-epic {
-    background:
-        linear-gradient(135deg, rgba(177, 126, 255, 0.28), rgba(84, 66, 152, 0.14) 48%, transparent 78%),
-        #17172f;
-    border-color: rgba(177, 126, 255, 0.52);
-    box-shadow: inset 0 -5px 0 rgba(177, 126, 255, 0.16), 0 0 0 3px rgba(177, 126, 255, 0.08), 0 16px 34px rgba(0, 0, 0, 0.18);
-}
-
-body.theme-dark .achievement-card.rarity-epic::before,
-body.theme-dark .featured-achievement-card.rarity-epic::before {
-    background:
-        linear-gradient(135deg, rgba(177, 126, 255, 0.18) 0 2px, transparent 2px 16px),
-        radial-gradient(circle at 82% 12%, rgba(177, 126, 255, 0.28), transparent 24%);
-}
-
-body.theme-dark .achievement-card.rarity-legendary,
-body.theme-dark .featured-achievement-card.rarity-legendary {
-    background:
-        linear-gradient(135deg, rgba(255, 209, 102, 0.32), rgba(255, 177, 94, 0.14) 50%, transparent 82%),
-        #211b12;
-    border-color: rgba(255, 209, 102, 0.68);
-    box-shadow: inset 0 -5px 0 rgba(255, 209, 102, 0.18), 0 0 0 4px rgba(255, 209, 102, 0.1), 0 18px 38px rgba(0, 0, 0, 0.2);
-}
-
-body.theme-dark .achievement-card.rarity-legendary::before,
-body.theme-dark .featured-achievement-card.rarity-legendary::before {
-    background:
-        repeating-linear-gradient(90deg, rgba(255, 209, 102, 0.2) 0 3px, transparent 3px 16px),
-        radial-gradient(circle at top right, rgba(255, 209, 102, 0.28), transparent 30%);
-}
-
-body.theme-dark .achievement-card.rarity-mythic,
-body.theme-dark .featured-achievement-card.rarity-mythic {
-    background:
-        linear-gradient(135deg, rgba(255, 117, 109, 0.34), rgba(163, 35, 58, 0.18) 48%, transparent 82%),
-        #24121b;
-    border-color: rgba(255, 117, 109, 0.72);
-    box-shadow: inset 0 -5px 0 rgba(255, 117, 109, 0.2), 0 0 0 4px rgba(255, 117, 109, 0.12), 0 22px 48px rgba(0, 0, 0, 0.24);
-}
-
-body.theme-dark .achievement-card.rarity-mythic::before,
-body.theme-dark .featured-achievement-card.rarity-mythic::before {
-    background:
-        repeating-linear-gradient(135deg, rgba(255, 117, 109, 0.2) 0 4px, transparent 4px 18px),
-        radial-gradient(circle at top right, rgba(255, 117, 109, 0.34), transparent 32%);
-}
-
-body.theme-dark .achievement-card.rarity-rare .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-rare .featured-rarity {
-    color: #071522;
-    background: var(--dark-info);
-}
-
-body.theme-dark .achievement-card.rarity-epic .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-epic .featured-rarity {
-    color: #ffffff;
-    background: linear-gradient(135deg, #8f5cff, #b17eff);
-}
-
-body.theme-dark .achievement-card.rarity-mythic .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-mythic .featured-rarity {
-    color: #ffffff;
-    background: linear-gradient(135deg, #ff756d, #a3233a);
-}
-
-body.theme-dark .achievement-card.rarity-common .achievement-medal,
-body.theme-dark .featured-achievement-card.rarity-common .featured-medal {
-    background: linear-gradient(135deg, #314155, #1c2a3c);
-}
-
-body.theme-dark .achievement-card.rarity-rare.collected .achievement-medal,
-body.theme-dark .featured-achievement-card.rarity-rare.collected .featured-medal {
-    color: #071522;
-    background: linear-gradient(135deg, var(--dark-info), #2b8cff);
-}
-
-body.theme-dark .achievement-card.rarity-epic.collected .achievement-medal,
-body.theme-dark .featured-achievement-card.rarity-epic.collected .featured-medal {
-    background: linear-gradient(135deg, #8f5cff, #d196ff);
-    box-shadow: 0 0 0 5px rgba(177, 126, 255, 0.18), inset 0 -5px 0 rgba(42, 23, 84, 0.2);
-}
-
-body.theme-dark .achievement-card.rarity-mythic.collected .achievement-medal,
-body.theme-dark .featured-achievement-card.rarity-mythic.collected .featured-medal {
-    background: linear-gradient(135deg, #ff756d, #a3233a, #ffb15e);
-    box-shadow: 0 0 0 6px rgba(255, 117, 109, 0.2), inset 0 -5px 0 rgba(55, 8, 18, 0.22);
-}
-
-body.theme-dark .achievement-card.rarity-rare .achievement-track span {
-    background: linear-gradient(90deg, var(--dark-info), #2b8cff);
-}
-
-body.theme-dark .achievement-card.rarity-epic .achievement-track span {
-    background: linear-gradient(90deg, #8f5cff, #d196ff);
-}
-
-body.theme-dark .achievement-card.rarity-mythic .achievement-track span {
-    background: linear-gradient(90deg, #ff756d, #a3233a, #ffb15e);
-}
-
-body.theme-dark .rarity-step.rarity-common {
-    color: var(--dark-text-soft);
-    background: #142236;
-    border-color: rgba(203, 215, 232, 0.18);
-    box-shadow: inset 0 -3px 0 rgba(203, 215, 232, 0.06);
-}
-
-body.theme-dark .rarity-step.rarity-uncommon {
-    color: var(--dark-text-strong);
-    background:
-        linear-gradient(135deg, rgba(46, 227, 155, 0.2), transparent 48%),
-        #10241e;
-    border-color: rgba(46, 227, 155, 0.38);
-}
-
-body.theme-dark .rarity-step.rarity-rare {
-    color: var(--dark-text-strong);
-    background:
-        linear-gradient(135deg, rgba(91, 215, 255, 0.22), transparent 48%),
-        #10243a;
-    border-color: rgba(91, 215, 255, 0.45);
-}
-
-body.theme-dark .rarity-step.rarity-epic {
-    color: var(--dark-text-strong);
-    background:
-        linear-gradient(135deg, rgba(177, 126, 255, 0.28), rgba(84, 66, 152, 0.14) 48%, transparent 78%),
-        #17172f;
-    border-color: rgba(177, 126, 255, 0.52);
-    box-shadow: 0 0 0 3px rgba(177, 126, 255, 0.08);
-}
-
-body.theme-dark .rarity-step.rarity-legendary {
-    color: #fff1c2;
-    background:
-        linear-gradient(135deg, rgba(255, 209, 102, 0.32), rgba(255, 177, 94, 0.14) 50%, transparent 82%),
-        #211b12;
-    border-color: rgba(255, 209, 102, 0.68);
-    box-shadow: 0 0 0 4px rgba(255, 209, 102, 0.1);
-}
-
-body.theme-dark .rarity-step.rarity-mythic {
-    color: #ffe6e3;
-    background:
-        linear-gradient(135deg, rgba(255, 117, 109, 0.34), rgba(163, 35, 58, 0.18) 48%, transparent 82%),
-        #24121b;
-    border-color: rgba(255, 117, 109, 0.72);
-    box-shadow: 0 0 0 4px rgba(255, 117, 109, 0.12);
-}
-
-body.theme-dark .rarity-step.rarity-common strong {
-    color: var(--dark-text-strong);
-    background: #314155;
-}
-
-body.theme-dark .rarity-step.rarity-uncommon strong {
-    color: #071b14;
-    background: var(--dark-complete);
-}
-
-body.theme-dark .rarity-step.rarity-rare strong {
-    color: #071522;
-    background: var(--dark-info);
-    border-radius: 8px;
-}
-
-body.theme-dark .rarity-step.rarity-epic strong {
-    color: #ffffff;
-    background: linear-gradient(135deg, #8f5cff, #b17eff);
-    border-radius: 10px 10px 16px 16px;
-}
-
-body.theme-dark .rarity-step.rarity-legendary strong {
-    color: var(--bright-ink);
-    background: linear-gradient(135deg, var(--dark-review), var(--dark-warning));
-}
-
-body.theme-dark .rarity-step.rarity-mythic strong {
-    color: #ffffff;
-    background: linear-gradient(135deg, #ff756d, #a3233a);
-}
-
-body.theme-dark .achievement-showcase.rarity-rare .achievement-showcase-card::before {
-    background: conic-gradient(from 90deg, transparent, rgba(91, 215, 255, 0.38), transparent 32%);
-}
-
-body.theme-dark .achievement-showcase.rarity-epic .achievement-showcase-card::before {
-    background: conic-gradient(from 90deg, transparent, rgba(177, 126, 255, 0.42), rgba(91, 215, 255, 0.18), transparent 36%);
-}
-
-body.theme-dark .achievement-showcase.rarity-legendary .achievement-showcase-card::before {
-    background: conic-gradient(from 90deg, rgba(255, 209, 102, 0.12), rgba(255, 177, 94, 0.46), rgba(255, 209, 102, 0.24), rgba(255, 209, 102, 0.12));
-}
-
-body.theme-dark .achievement-showcase.rarity-mythic .achievement-showcase-card::before {
-    background: conic-gradient(from 90deg, rgba(255, 117, 109, 0.16), rgba(163, 35, 58, 0.46), rgba(255, 177, 94, 0.22), rgba(255, 117, 109, 0.16));
-}
-
-body.theme-dark .achievement-showcase.rarity-rare .showcase-medal {
-    color: #071522;
-    background: linear-gradient(135deg, var(--dark-info), #2b8cff);
-}
-
-body.theme-dark .achievement-showcase.rarity-epic .showcase-medal {
-    background: linear-gradient(135deg, #8f5cff, #d196ff);
-}
-
-body.theme-dark .achievement-showcase.rarity-mythic .showcase-medal {
-    background: linear-gradient(135deg, #ff756d, #a3233a, #ffb15e);
-    box-shadow: 0 0 0 10px rgba(255, 117, 109, 0.2), inset 0 -8px 0 rgba(55, 8, 18, 0.22);
-}
-
 /* Final light-mode visual corrections: shared identity with bright surfaces */
-body.theme-light .title-panel,
-body.theme-light .achievement-title-panel,
-body.theme-light .collection-panel,
-body.theme-light .featured-achievements,
-body.theme-light .personal-achievements {
+body.theme-light .title-panel{
     color: var(--ink);
     background:
         radial-gradient(circle at top right, rgba(22, 183, 200, 0.1), transparent 32%),
@@ -1559,256 +1076,10 @@ body.theme-light .title-panel::before {
 body.theme-light .title-panel::after {
     background: linear-gradient(90deg, var(--brand-green), var(--brand-cyan), var(--coral-soft));
 }
-
-body.theme-light .collection-panel {
-    background:
-        radial-gradient(circle at top right, rgba(22, 183, 200, 0.08), transparent 30%),
-        linear-gradient(135deg, #ffffff, #f7fffd);
-}
-
-body.theme-light #achievement-page-hint,
-body.theme-light .back-link,
-body.theme-light .feature-button.selected {
+body.theme-light .back-link {
     color: var(--ink);
     background: linear-gradient(135deg, var(--gold), var(--orange));
     border-color: rgba(255, 159, 28, 0.32);
-}
-
-body.theme-light .collection-summary article,
-body.theme-light .collection-controls,
-body.theme-light .achievement-empty-state {
-    color: var(--ink);
-    background:
-        linear-gradient(135deg, rgba(24, 165, 160, 0.05), transparent 52%),
-        #ffffff;
-    border-color: rgba(24, 165, 160, 0.14);
-}
-
-body.theme-light .collection-controls select {
-    color: var(--ink);
-    background: #ffffff;
-    border-color: rgba(39, 125, 161, 0.14);
-}
-
-body.theme-light .achievement-card.rarity-common,
-body.theme-light .featured-achievement-card.rarity-common {
-    color: var(--ink);
-    background: #ffffff;
-    border-color: rgba(39, 125, 161, 0.18);
-}
-
-body.theme-light .achievement-card.rarity-uncommon,
-body.theme-light .featured-achievement-card.rarity-uncommon {
-    color: var(--ink);
-    background:
-        linear-gradient(135deg, rgba(0, 168, 150, 0.14), transparent 48%),
-        #f3fffb;
-    border-color: rgba(0, 168, 150, 0.32);
-}
-
-body.theme-light .achievement-card.rarity-rare,
-body.theme-light .featured-achievement-card.rarity-rare {
-    color: var(--ink);
-    background:
-        linear-gradient(135deg, rgba(24, 127, 184, 0.16), transparent 48%),
-        #eff9ff;
-    border-color: rgba(24, 127, 184, 0.34);
-}
-
-body.theme-light .achievement-card.rarity-epic,
-body.theme-light .featured-achievement-card.rarity-epic {
-    color: var(--ink);
-    background:
-        radial-gradient(circle at top right, rgba(143, 92, 255, 0.12), transparent 30%),
-        linear-gradient(135deg, rgba(143, 92, 255, 0.16), rgba(209, 150, 255, 0.08) 48%, transparent 78%),
-        #fbf7ff;
-    border-color: rgba(143, 92, 255, 0.34);
-}
-
-body.theme-light .achievement-card.rarity-legendary,
-body.theme-light .featured-achievement-card.rarity-legendary {
-    color: var(--ink);
-    background:
-        repeating-linear-gradient(90deg, rgba(249, 199, 79, 0.16) 0 3px, transparent 3px 18px),
-        linear-gradient(135deg, rgba(249, 199, 79, 0.24), rgba(255, 159, 28, 0.1) 50%, transparent 82%),
-        #fffaf0;
-    border-color: rgba(249, 199, 79, 0.64);
-}
-
-body.theme-light .achievement-card.rarity-mythic,
-body.theme-light .featured-achievement-card.rarity-mythic {
-    color: var(--ink);
-    background:
-        repeating-linear-gradient(135deg, rgba(255, 111, 97, 0.12) 0 4px, transparent 4px 18px),
-        radial-gradient(circle at top right, rgba(255, 159, 28, 0.12), transparent 32%),
-        linear-gradient(135deg, rgba(214, 69, 69, 0.16), rgba(255, 111, 97, 0.08) 48%, transparent 82%),
-        #fff5f5;
-    border-color: rgba(214, 69, 69, 0.42);
-}
-
-body.theme-light .achievement-card.locked,
-body.theme-light .featured-achievement-card.locked {
-    opacity: 0.92;
-}
-
-body.theme-light .achievement-card.locked .achievement-medal,
-body.theme-light .featured-achievement-card.locked .featured-medal {
-    color: var(--muted);
-    background: #f4f8fb;
-    border-color: rgba(39, 125, 161, 0.2);
-    box-shadow: none;
-}
-
-body.theme-light .achievement-rarity,
-body.theme-light .featured-rarity,
-body.theme-light .achievement-category,
-body.theme-light .achievement-repeat {
-    color: var(--ink);
-    background: rgba(255, 255, 255, 0.82);
-    border: 1px solid rgba(39, 125, 161, 0.12);
-}
-
-body.theme-light .achievement-card.rarity-common .achievement-rarity,
-body.theme-light .featured-achievement-card.rarity-common .featured-rarity {
-    color: var(--muted);
-    background: #eef4f8;
-}
-
-body.theme-light .achievement-card.rarity-uncommon .achievement-rarity,
-body.theme-light .featured-achievement-card.rarity-uncommon .featured-rarity {
-    color: #063f36;
-    background: #b9f3d2;
-}
-
-body.theme-light .achievement-card.rarity-rare .achievement-rarity,
-body.theme-light .featured-achievement-card.rarity-rare .featured-rarity {
-    color: #063552;
-    background: #bfeeff;
-}
-
-body.theme-light .achievement-card.rarity-epic .achievement-rarity,
-body.theme-light .featured-achievement-card.rarity-epic .featured-rarity {
-    color: #ffffff;
-    background: linear-gradient(135deg, #8f5cff, #b17eff);
-}
-
-body.theme-light .achievement-card.rarity-legendary .achievement-rarity,
-body.theme-light .featured-achievement-card.rarity-legendary .featured-rarity {
-    color: var(--ink);
-    background: linear-gradient(135deg, var(--gold), var(--orange));
-}
-
-body.theme-light .achievement-card.rarity-mythic .achievement-rarity,
-body.theme-light .featured-achievement-card.rarity-mythic .featured-rarity {
-    color: #ffffff;
-    background: linear-gradient(135deg, var(--coral), var(--danger));
-}
-
-body.theme-light .rarity-step.rarity-common {
-    color: var(--muted);
-    background: #ffffff;
-    border-color: rgba(39, 125, 161, 0.16);
-}
-
-body.theme-light .rarity-step.rarity-uncommon {
-    background:
-        linear-gradient(135deg, rgba(0, 168, 150, 0.14), transparent 48%),
-        #f3fffb;
-    border-color: rgba(0, 168, 150, 0.3);
-}
-
-body.theme-light .rarity-step.rarity-rare {
-    background:
-        linear-gradient(135deg, rgba(24, 127, 184, 0.16), transparent 48%),
-        #eff9ff;
-    border-color: rgba(24, 127, 184, 0.34);
-}
-
-body.theme-light .rarity-step.rarity-epic {
-    background:
-        radial-gradient(circle at top right, rgba(143, 92, 255, 0.12), transparent 30%),
-        #fbf7ff;
-    border-color: rgba(143, 92, 255, 0.34);
-}
-
-body.theme-light .rarity-step.rarity-legendary {
-    color: var(--ink);
-    background:
-        linear-gradient(135deg, rgba(249, 199, 79, 0.24), rgba(255, 159, 28, 0.1) 54%, transparent 82%),
-        #fffaf0;
-    border-color: rgba(249, 199, 79, 0.64);
-}
-
-body.theme-light .rarity-step.rarity-mythic {
-    color: #9f2f18;
-    background:
-        linear-gradient(135deg, rgba(214, 69, 69, 0.16), rgba(255, 111, 97, 0.08) 54%, transparent 82%),
-        #fff5f5;
-    border-color: rgba(214, 69, 69, 0.42);
-}
-
-body.theme-light .rarity-step.rarity-common strong {
-    color: #ffffff;
-    background: var(--blue);
-}
-
-body.theme-light .rarity-step.rarity-uncommon strong {
-    color: #ffffff;
-    background: var(--teal);
-}
-
-body.theme-light .rarity-step.rarity-rare strong {
-    color: #ffffff;
-    background: var(--sky-blue);
-    border-radius: 8px;
-}
-
-body.theme-light .rarity-step.rarity-epic strong {
-    color: #ffffff;
-    background: linear-gradient(135deg, #8f5cff, #b17eff);
-    border-radius: 10px 10px 16px 16px;
-}
-
-body.theme-light .rarity-step.rarity-legendary strong {
-    color: var(--ink);
-    background: linear-gradient(135deg, var(--gold), var(--orange));
-}
-
-body.theme-light .rarity-step.rarity-mythic strong {
-    color: #ffffff;
-    background: linear-gradient(135deg, var(--coral), var(--danger));
-}
-
-body.theme-light .achievement-showcase.rarity-rare .showcase-medal,
-body.theme-light .achievement-card.rarity-rare.collected .achievement-medal,
-body.theme-light .featured-achievement-card.rarity-rare.collected .featured-medal {
-    color: #ffffff;
-    background: linear-gradient(135deg, var(--sky-blue), #2b8cff);
-}
-
-body.theme-light .achievement-showcase.rarity-epic .showcase-medal,
-body.theme-light .achievement-card.rarity-epic.collected .achievement-medal,
-body.theme-light .featured-achievement-card.rarity-epic.collected .featured-medal {
-    background: linear-gradient(135deg, #8f5cff, #d196ff);
-}
-
-body.theme-light .achievement-showcase.rarity-mythic .showcase-medal,
-body.theme-light .achievement-card.rarity-mythic.collected .achievement-medal,
-body.theme-light .featured-achievement-card.rarity-mythic.collected .featured-medal {
-    color: #ffffff;
-    background: linear-gradient(135deg, var(--coral), var(--danger), var(--orange));
-}
-
-body.theme-light .achievement-card.rarity-rare .achievement-track span {
-    background: linear-gradient(90deg, var(--sky-blue), #2b8cff);
-}
-
-body.theme-light .achievement-card.rarity-epic .achievement-track span {
-    background: linear-gradient(90deg, #8f5cff, #d196ff);
-}
-
-body.theme-light .achievement-card.rarity-mythic .achievement-track span {
-    background: linear-gradient(90deg, var(--coral), var(--danger), var(--orange));
 }
 
 body.theme-light .todo-item {
@@ -1945,16 +1216,7 @@ body.theme-light .urgency-badge-expired {
     border-color: rgba(214, 69, 69, 0.4);
 }
 
-/* Final dark-mode visual corrections: achievements and task urgency */
-body.theme-dark .achievement-page {
-    color: var(--dark-text-strong);
-}
-
-body.theme-dark .title-panel,
-body.theme-dark .achievement-title-panel,
-body.theme-dark .collection-panel,
-body.theme-dark .featured-achievements,
-body.theme-dark .personal-achievements {
+body.theme-dark .title-panel{
     color: var(--dark-text-strong);
     background:
         radial-gradient(circle at top right, rgba(91, 215, 255, 0.08), transparent 32%),
@@ -1992,158 +1254,10 @@ body.theme-dark .page-title-icon {
     filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.34));
 }
 
-body.theme-dark .collection-panel {
-    background:
-        radial-gradient(circle at top right, rgba(91, 215, 255, 0.07), transparent 30%),
-        linear-gradient(135deg, #142236, #0f1724);
-}
-
-body.theme-dark .collection-intro p,
-body.theme-dark .featured-achievement-hint,
-body.theme-dark #achievement-hint {
-    color: var(--dark-text-soft);
-}
-
-body.theme-dark #achievement-page-hint {
-    color: #071522;
-    background: linear-gradient(135deg, var(--dark-info), #7be4ff);
-}
-
-body.theme-dark .collection-summary article,
-body.theme-dark .collection-controls,
-body.theme-dark .achievement-empty-state {
-    color: var(--dark-text-strong);
-    background:
-        linear-gradient(135deg, rgba(203, 215, 232, 0.06), transparent 52%),
-        #111d2d;
-    border-color: rgba(203, 215, 232, 0.16);
-}
-
-body.theme-dark .collection-controls select {
-    color: var(--dark-text-strong);
-    background: #0b1421;
-    border-color: rgba(91, 215, 255, 0.24);
-}
-
-body.theme-dark .back-link,
-body.theme-dark .feature-button.selected {
+body.theme-dark .back-link {
     color: #071522;
     background: linear-gradient(135deg, var(--dark-review), var(--dark-warning));
     border-color: rgba(255, 209, 102, 0.34);
-}
-
-body.theme-dark .achievement-card.rarity-common,
-body.theme-dark .featured-achievement-card.rarity-common {
-    color: var(--dark-text-strong);
-    background: #142236;
-    border-color: rgba(203, 215, 232, 0.18);
-}
-
-body.theme-dark .achievement-card.rarity-uncommon,
-body.theme-dark .featured-achievement-card.rarity-uncommon {
-    color: var(--dark-text-strong);
-    background:
-        linear-gradient(135deg, rgba(46, 227, 155, 0.22), transparent 48%),
-        #10241e;
-    border-color: rgba(46, 227, 155, 0.4);
-}
-
-body.theme-dark .achievement-card.rarity-rare,
-body.theme-dark .featured-achievement-card.rarity-rare {
-    color: var(--dark-text-strong);
-    background:
-        linear-gradient(135deg, rgba(91, 215, 255, 0.24), transparent 48%),
-        #10243a;
-    border-color: rgba(91, 215, 255, 0.48);
-}
-
-body.theme-dark .achievement-card.rarity-epic,
-body.theme-dark .featured-achievement-card.rarity-epic {
-    color: var(--dark-text-strong);
-    background:
-        radial-gradient(circle at top right, rgba(209, 150, 255, 0.2), transparent 30%),
-        linear-gradient(135deg, rgba(177, 126, 255, 0.3), rgba(84, 66, 152, 0.14) 48%, transparent 78%),
-        #17172f;
-    border-color: rgba(177, 126, 255, 0.56);
-}
-
-body.theme-dark .achievement-card.rarity-legendary,
-body.theme-dark .featured-achievement-card.rarity-legendary {
-    color: #fff1c2;
-    background:
-        repeating-linear-gradient(90deg, rgba(255, 209, 102, 0.14) 0 3px, transparent 3px 18px),
-        linear-gradient(135deg, rgba(255, 209, 102, 0.34), rgba(255, 177, 94, 0.14) 50%, transparent 82%),
-        #211b12;
-    border-color: rgba(255, 209, 102, 0.7);
-}
-
-body.theme-dark .achievement-card.rarity-mythic,
-body.theme-dark .featured-achievement-card.rarity-mythic {
-    color: #ffe6e3;
-    background:
-        repeating-linear-gradient(135deg, rgba(255, 117, 109, 0.14) 0 4px, transparent 4px 18px),
-        radial-gradient(circle at top right, rgba(255, 177, 94, 0.16), transparent 32%),
-        linear-gradient(135deg, rgba(255, 117, 109, 0.36), rgba(163, 35, 58, 0.18) 48%, transparent 82%),
-        #24121b;
-    border-color: rgba(255, 117, 109, 0.74);
-}
-
-body.theme-dark .achievement-card.locked,
-body.theme-dark .featured-achievement-card.locked {
-    opacity: 0.9;
-}
-
-body.theme-dark .achievement-card.locked .achievement-medal,
-body.theme-dark .featured-achievement-card.locked .featured-medal {
-    color: #91a1b8;
-    background: #0f1928;
-    border-color: rgba(203, 215, 232, 0.18);
-    box-shadow: none;
-}
-
-body.theme-dark .achievement-rarity,
-body.theme-dark .featured-rarity,
-body.theme-dark .achievement-category,
-body.theme-dark .achievement-repeat {
-    color: var(--dark-text-strong);
-    background: rgba(11, 20, 33, 0.78);
-    border: 1px solid rgba(203, 215, 232, 0.16);
-}
-
-body.theme-dark .achievement-card.rarity-common .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-common .featured-rarity {
-    color: var(--dark-text-soft);
-    background: #26364a;
-}
-
-body.theme-dark .achievement-card.rarity-uncommon .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-uncommon .featured-rarity {
-    color: #071b14;
-    background: var(--dark-complete);
-}
-
-body.theme-dark .achievement-card.rarity-rare .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-rare .featured-rarity {
-    color: #071522;
-    background: var(--dark-info);
-}
-
-body.theme-dark .achievement-card.rarity-epic .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-epic .featured-rarity {
-    color: #ffffff;
-    background: linear-gradient(135deg, #8f5cff, #d196ff);
-}
-
-body.theme-dark .achievement-card.rarity-legendary .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-legendary .featured-rarity {
-    color: #071522;
-    background: linear-gradient(135deg, var(--dark-review), var(--dark-warning));
-}
-
-body.theme-dark .achievement-card.rarity-mythic .achievement-rarity,
-body.theme-dark .featured-achievement-card.rarity-mythic .featured-rarity {
-    color: #ffffff;
-    background: linear-gradient(135deg, #ff756d, #a3233a);
 }
 
 body.theme-dark .todo-item {
@@ -2898,11 +2012,6 @@ body.theme-light .tasks-panel {
     border-color: var(--state-warning);
 }
 
-.progress-tab[data-progress-view="achievements"].active {
-    background: linear-gradient(135deg, #7657f0, #9a62e8);
-    border-color: #7657f0;
-}
-
 .expired-tasks-panel:not(.empty) {
     background: var(--surface-warning-soft);
     border-color: rgba(255, 159, 28, 0.24);
@@ -3031,14 +2140,20 @@ body.theme-dark .progress-tab[data-progress-view="streak"].active {
     border-color: var(--dark-warning);
 }
 
-body.theme-dark .progress-tab[data-progress-view="achievements"].active {
-    color: #ffffff;
-    background: linear-gradient(135deg, #7657f0, #b66df1);
-    border-color: #9d70ff;
-}
-
 body.theme-dark .expired-tasks-panel:not(.empty) {
     background: #2b2418;
     border-color: rgba(255, 177, 94, 0.26);
     border-left-color: var(--section-learning-accent);
+}
+
+body.theme-dark .expired-tasks-panel.empty {
+    background: #13283a;
+    border-color: rgba(46, 227, 155, 0.2);
+    border-left-color: var(--dark-complete);
+}
+
+body.theme-dark .empty-state {
+    color: var(--dark-text-soft);
+    background: #17263a;
+    border-color: rgba(91, 215, 255, 0.24);
 }

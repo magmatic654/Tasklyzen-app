@@ -12,13 +12,17 @@
 (function exposeTasklyzenSettings(global) {
     const defaultSettings = Object.freeze({
         theme: 'light',
-        notifications: true,
-        sound: false,
+        notifications: false,
+        sound: true,
         soundVolume: 0.7,
         animations: true,
-        simplifiedAnalytics: false
+        simplifiedAnalytics: false,
+        progressMode: 'tasks',
+        dailyFocusGoalMinutes: 50,
+        backgroundTimer: true
     });
     const themeValues = Object.freeze(['light', 'dark']);
+    const progressModeValues = Object.freeze(['tasks', 'focus', 'balanced']);
 
     function normalizeSettingsVolume(value) {
         const number = Number(value);
@@ -33,6 +37,10 @@
     function normalizeAppSettings(settings) {
         const source = settings && typeof settings === 'object' ? settings : {};
         const theme = themeValues.includes(source.theme) ? source.theme : defaultSettings.theme;
+        const progressMode = progressModeValues.includes(source.progressMode)
+            ? source.progressMode
+            : defaultSettings.progressMode;
+        const focusGoal = Math.round(Number(source.dailyFocusGoalMinutes));
 
         return {
             theme,
@@ -40,7 +48,14 @@
             sound: typeof source.sound === 'boolean' ? source.sound : defaultSettings.sound,
             soundVolume: normalizeSettingsVolume(source.soundVolume),
             animations: typeof source.animations === 'boolean' ? source.animations : defaultSettings.animations,
-            simplifiedAnalytics: typeof source.simplifiedAnalytics === 'boolean' ? source.simplifiedAnalytics : defaultSettings.simplifiedAnalytics
+            simplifiedAnalytics: typeof source.simplifiedAnalytics === 'boolean' ? source.simplifiedAnalytics : defaultSettings.simplifiedAnalytics,
+            progressMode,
+            dailyFocusGoalMinutes: Number.isFinite(focusGoal)
+                ? Math.min(Math.max(focusGoal, 15), 240)
+                : defaultSettings.dailyFocusGoalMinutes,
+            backgroundTimer: typeof source.backgroundTimer === 'boolean'
+                ? source.backgroundTimer
+                : defaultSettings.backgroundTimer
         };
     }
 
@@ -161,6 +176,24 @@
 
             if (dom.settingsSimplifiedAnalytics) {
                 dom.settingsSimplifiedAnalytics.checked = currentSettings.simplifiedAnalytics;
+            }
+
+            if (dom.settingsProgressModeInputs) {
+                dom.settingsProgressModeInputs.forEach(input => {
+                    input.checked = input.value === currentSettings.progressMode;
+                });
+            }
+
+            if (dom.settingsFocusGoal) {
+                dom.settingsFocusGoal.value = currentSettings.dailyFocusGoalMinutes;
+            }
+
+            if (dom.settingsFocusGoalValue) {
+                dom.settingsFocusGoalValue.textContent = currentSettings.dailyFocusGoalMinutes + ' min';
+            }
+
+            if (dom.settingsBackgroundTimer) {
+                dom.settingsBackgroundTimer.checked = currentSettings.backgroundTimer;
             }
 
         }
@@ -329,16 +362,27 @@
             dom.confirmDeleteData.disabled = dom.deleteConfirmInput.value !== deleteConfirmationCode;
         }
 
-        function deleteAllData() {
+        async function deleteAllData() {
             if (!dom.deleteConfirmInput || dom.deleteConfirmInput.value !== deleteConfirmationCode) {
                 closeDeleteDataDialog();
                 showToast('El texto no coincidió. Eliminación cancelada.', 'error');
                 return;
             }
 
-            getStorageKeys().forEach(key => storage.remove(key));
-            closeDeleteDataDialog();
-            onAfterDelete();
+            const keys = getStorageKeys();
+
+            try {
+                if (typeof storage.removeMany === 'function') {
+                    await storage.removeMany(keys);
+                } else {
+                    keys.forEach(key => storage.remove(key));
+                }
+                closeDeleteDataDialog();
+                onAfterDelete();
+            } catch (_error) {
+                showToast('No se pudieron eliminar todos los datos. Intenta de nuevo.', 'error');
+                return;
+            }
             showToast('Todos los datos fueron eliminados.', 'info');
         }
 
@@ -381,6 +425,24 @@
             update({ simplifiedAnalytics: Boolean(event.target.checked) }, event.target.checked ? 'Analítica simplificada activada.' : 'Analítica completa activada.');
         }
 
+        function handleProgressModeChange(event) {
+            if (!event.target || !event.target.matches('input[name="settings-progress-mode"]')) {
+                return;
+            }
+
+            update({ progressMode: event.target.value });
+        }
+
+        function handleFocusGoalInput(event) {
+            update({
+                dailyFocusGoalMinutes: Number(event.target.value)
+            });
+        }
+
+        function handleBackgroundTimerChange(event) {
+            update({ backgroundTimer: Boolean(event.target.checked) });
+        }
+
         return {
             load,
             save,
@@ -405,13 +467,17 @@
             handleSoundChange,
             handleSoundVolumeInput,
             handleAnimationsChange,
-            handleSimplifiedAnalyticsChange
+            handleSimplifiedAnalyticsChange,
+            handleProgressModeChange,
+            handleFocusGoalInput,
+            handleBackgroundTimerChange
         };
     }
 
     global.TasklyzenSettings = {
         defaultSettings,
         themeValues,
+        progressModeValues,
         normalizeSettingsVolume,
         normalizeAppSettings,
         createSettingsController

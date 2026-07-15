@@ -16,7 +16,7 @@
         <div class="onboarding-card">
             <img src="assets/tasklyzen-icon.svg" alt="Tasklyzen Logo" class="onboarding-logo">
             <h1 class="onboarding-title">Bienvenido a Tasklyzen</h1>
-            <p class="onboarding-subtitle">Organiza tus tareas, consigue logros y sincroniza tu progreso en todos tus dispositivos.</p>
+            <p class="onboarding-subtitle">Organiza tus tareas y sincroniza tu progreso en todos tus dispositivos.</p>
             
             <button type="button" id="onboarding-login-btn" class="google-btn-chunky">
                 <svg class="google-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
@@ -50,7 +50,7 @@
                     Iniciar Sesión
                 </button>
             </div>
-            <p class="settings-help-text">Al iniciar sesión, tus tareas, logros y progreso se guardarán en la nube y podrás acceder desde cualquier dispositivo.</p>
+            <p class="settings-help-text">Al iniciar sesión, tus tareas y progreso se guardarán en la nube y podrás acceder desde cualquier dispositivo.</p>
         </section>
 
         <section class="settings-section" aria-labelledby="settings-personalization-title">
@@ -60,6 +60,40 @@
                 <label><input type="radio" name="settings-theme" value="light"> Claro</label>
                 <label><input type="radio" name="settings-theme" value="dark"> Oscuro</label>
             </fieldset>
+        </section>
+
+        <section class="settings-section settings-progress-preferences" aria-labelledby="settings-progress-title">
+            <h3 id="settings-progress-title">Tu forma de avanzar</h3>
+            <p class="settings-help-text">Elige qué debe pesar más en tu progreso diario. Puedes cambiarlo cuando tu rutina cambie.</p>
+            <fieldset class="settings-progress-modes">
+                <legend class="sr-only">Medida principal de progreso</legend>
+                <label>
+                    <input type="radio" name="settings-progress-mode" value="tasks">
+                    <span><strong>Avances</strong><small>Tareas y pasos cerrados</small></span>
+                </label>
+                <label>
+                    <input type="radio" name="settings-progress-mode" value="focus">
+                    <span><strong>Enfoque</strong><small>Tiempo confirmado</small></span>
+                </label>
+                <label>
+                    <input type="radio" name="settings-progress-mode" value="balanced">
+                    <span><strong>Equilibrado</strong><small>Avance y tiempo</small></span>
+                </label>
+            </fieldset>
+            <label class="settings-range-control" for="settings-focus-goal">
+                <span>
+                    <strong>Meta diaria de enfoque</strong>
+                    <small><span id="settings-focus-goal-value">50 min</span> de trabajo intencional</small>
+                </span>
+                <input type="range" id="settings-focus-goal" min="15" max="240" step="5" value="50">
+            </label>
+            <label class="settings-switch" for="settings-background-timer">
+                <span>
+                    <strong>Continuar en segundo plano</strong>
+                    <small>La Carrera sigue mientras estudias en otras pestañas o aplicaciones.</small>
+                </span>
+                <input type="checkbox" id="settings-background-timer">
+            </label>
         </section>
 
         <section class="settings-section" aria-labelledby="settings-notifications-title">
@@ -127,6 +161,14 @@
             </label>
         </section>
 
+        <section class="settings-section settings-experience" aria-labelledby="settings-experience-title">
+            <h3 id="settings-experience-title">Guía de uso</h3>
+            <p class="settings-help-text">Consulta cómo funcionan tareas, hitos, Modo Carrera, progreso, racha y preferencias.</p>
+            <button type="button" id="settings-experience-button" class="settings-secondary-button">
+                Ver guía completa
+            </button>
+        </section>
+
         <section class="settings-section settings-security" aria-labelledby="settings-security-title">
             <h3 id="settings-security-title">Seguridad</h3>
             <div class="settings-actions">
@@ -152,6 +194,32 @@
                 <button type="button" id="confirm-delete-data" class="settings-danger-button" disabled>Eliminar definitivamente</button>
             </div>
         </div>
+    </dialog>
+
+    <dialog id="experience-dialog" class="experience-dialog" aria-labelledby="experience-title" aria-describedby="experience-body">
+        <section class="experience-shell">
+            <header class="experience-header">
+                <div class="experience-brand">
+                    <img src="assets/tasklyzen-icon.svg" alt="" aria-hidden="true">
+                    <div>
+                        <p id="experience-kicker" class="section-kicker">Tu espacio, a tu ritmo</p>
+                        <h2 id="experience-title" tabindex="-1">Bienvenido a Tasklyzen</h2>
+                    </div>
+                </div>
+                <button type="button" class="experience-close" data-experience-action="secondary" aria-label="Cerrar guía">
+                    <span aria-hidden="true"></span>
+                </button>
+            </header>
+
+            <div id="experience-progress" class="experience-progress" aria-label="Progreso de la guía"></div>
+            <div id="experience-body" class="experience-body"></div>
+
+            <footer class="experience-actions">
+                <button type="button" id="experience-back" class="experience-action experience-action--back" data-experience-action="back">Atrás</button>
+                <button type="button" id="experience-secondary" class="experience-action experience-action--secondary" data-experience-action="secondary">Ahora no</button>
+                <button type="button" id="experience-next" class="experience-action experience-action--primary" data-experience-action="next">Continuar</button>
+            </footer>
+        </section>
     </dialog>
 
     <dialog id="data-conflict-dialog" class="conflict-dialog-modal" aria-labelledby="data-conflict-title" aria-modal="true">
@@ -276,18 +344,17 @@
                     </span>
                     <span id="compact-progress-week-status" class="compact-progress-row-status">0/21</span>
                 </button>
-                <button type="button" id="compact-achievement-news" class="compact-progress-menu-item compact-achievement-news" data-progress-shortcut="achievements" role="menuitem" hidden>
-                    <span class="compact-progress-menu-icon compact-progress-menu-achievement" aria-hidden="true"></span>
-                    <span>
-                        <strong>Nuevos logros</strong>
-                        <small id="compact-achievement-news-note">Tienes progreso por descubrir</small>
-                    </span>
-                    <span id="compact-achievement-news-count" class="achievement-new-count">0</span>
-                </button>
             </div>
         </section>
 
         <section id="task-create-panel" class="input-panel" aria-label="Crear nueva tarea">
+            <div class="task-create-panel-access">
+                <p class="task-create-escape-hint">Presiona <kbd>Esc</kbd> para cerrar</p>
+                <button type="button" id="task-create-close" class="task-create-close" aria-label="Cerrar creación de tareas">
+                    <span class="task-create-close-icon" aria-hidden="true"></span>
+                    <span>Cerrar</span>
+                </button>
+            </div>
             <form id="todo-form" class="todo-form task-creation-bar">
                 <div class="task-title-field">
                     <label class="sr-only" for="todo-input">Nueva tarea</label>
@@ -351,9 +418,11 @@
                 </section>
             </form>
         </section>
-        <button type="button" id="task-create-toggle" class="task-create-toggle" aria-expanded="false" aria-controls="task-create-panel" aria-label="Crear nueva tarea">
-            <span aria-hidden="true"></span>
-        </button>
+        <div class="task-create-trigger-slot">
+            <button type="button" id="task-create-toggle" class="task-create-toggle" aria-expanded="false" aria-controls="task-create-panel" aria-label="Crear nueva tarea">
+                <span aria-hidden="true"></span>
+            </button>
+        </div>
 
         <section class="tasks-panel" aria-label="Tareas por completar">
             <div class="tasks-heading">
@@ -422,9 +491,6 @@
                 <button type="button" class="progress-tab active" data-progress-view="today" role="tab" aria-selected="true">Hoy</button>
                 <button type="button" class="progress-tab" data-progress-view="analytics" role="tab" aria-selected="false">Rendimiento</button>
                 <button type="button" class="progress-tab" data-progress-view="streak" role="tab" aria-selected="false">Racha</button>
-                <button type="button" class="progress-tab" data-progress-view="achievements" role="tab" aria-selected="false">
-                    Logros <span id="achievement-tab-new-count" class="achievement-new-count" hidden>0</span>
-                </button>
             </div>
 
             <div class="motivation-card" data-progress-section="today" aria-live="polite">
@@ -435,15 +501,21 @@
                 </div>
                 <div class="daily-goal">
                     <span id="daily-goal-count">0/3</span>
-                    <p>meta diaria</p>
+                    <p id="daily-goal-label">meta diaria</p>
                     <div class="goal-track" aria-hidden="true">
                         <span id="daily-goal-bar"></span>
                     </div>
-                    <label class="goal-setting" for="daily-goal-input">
-                        <span>Meta</span>
-                        <input type="number" id="daily-goal-input" min="1" max="20" value="3">
-                    </label>
-                    <div class="recommended-goal">
+                    <div class="daily-goal-settings">
+                        <label id="daily-task-goal-setting" class="goal-setting" for="daily-goal-input">
+                            <span>Tareas</span>
+                            <input type="number" id="daily-goal-input" min="1" max="20" value="3">
+                        </label>
+                        <label id="daily-focus-goal-setting" class="goal-setting" for="daily-focus-goal-input" hidden>
+                            <span>Minutos</span>
+                            <input type="number" id="daily-focus-goal-input" min="15" max="240" step="5" value="50">
+                        </label>
+                    </div>
+                    <div id="recommended-task-goal" class="recommended-goal">
                         <span id="recommended-goal-text">Meta sugerida: 1</span>
                         <button type="button" id="apply-recommended-goal">Usar</button>
                     </div>
@@ -465,7 +537,7 @@
 
                 <article class="performance-overview" aria-live="polite">
                     <div class="performance-score">
-                        <span>Tareas completadas</span>
+                        <span id="analytics-primary-label">Tareas completadas</span>
                         <strong id="analytics-completion-rate">0%</strong>
                         <p id="analytics-completion-detail">0 de 0 tareas del periodo</p>
                     </div>
@@ -488,22 +560,20 @@
                     <div id="weekly-flow-chart" class="weekly-flow-chart"></div>
                 </section>
 
-                <section class="performance-balance" aria-labelledby="performance-balance-title">
+                <section class="performance-focus" aria-labelledby="performance-focus-title">
                     <div class="performance-section-heading">
                         <div>
-                            <p class="section-kicker">Balance</p>
-                            <h4 id="performance-balance-title">Resultado del periodo</h4>
+                            <p class="section-kicker">Enfoque</p>
+                            <h4 id="performance-focus-title">Tiempo que sí produjo avance</h4>
                         </div>
-                        <span id="analytics-balance-label">Sin actividad</span>
+                        <span class="performance-focus-key">Tiempo confirmado</span>
                     </div>
-                    <div class="performance-balance-track" role="img" aria-label="Distribución de tareas completadas y sin completar">
-                        <span id="analytics-balance-completed" class="balance-completed"></span>
-                        <span id="analytics-balance-pending" class="balance-pending"></span>
+                    <div class="performance-focus-metrics" aria-live="polite">
+                        <span><strong id="analytics-focus-total">0 min</strong><small>Enfoque</small></span>
+                        <span><strong id="analytics-focus-sessions">0</strong><small>Sesiones sostenibles</small></span>
+                        <span><strong id="analytics-focus-average">0 min</strong><small>Promedio activo</small></span>
                     </div>
-                    <div class="performance-balance-legend" aria-hidden="true">
-                        <span><i class="legend-completed"></i> Completadas</span>
-                        <span><i class="legend-pending"></i> Sin completar</span>
-                    </div>
+                    <div id="focus-flow-chart" class="focus-flow-chart"></div>
                 </section>
 
                 <article class="performance-advice" aria-live="polite">
@@ -533,6 +603,11 @@
                             <span>Hábitos completados</span>
                             <small id="analytics-habit-count">0 de 0 hábitos</small>
                         </article>
+                        <article id="race-analytics-summary" class="performance-focus-summary" hidden>
+                            <strong id="race-analytics-minutes">0 min</strong>
+                            <span id="race-analytics-sessions">0 sesiones</span>
+                            <small id="race-analytics-targets">Sin metas de tiempo</small>
+                        </article>
                     </div>
                 </details>
             </section>
@@ -551,7 +626,6 @@
                     <p class="section-kicker">Cierre diario</p>
                     <h3 id="daily-close-title">Meta cumplida</h3>
                     <p id="daily-close-summary">Buen avance de hoy.</p>
-                    <ul id="daily-close-achievements" class="daily-close-achievements"></ul>
                 </div>
             </article>
 
@@ -611,21 +685,6 @@
                 </div>
                 <button type="button" id="rescue-button" class="rescue-button" disabled>Rescatar ayer</button>
             </article>
-
-            <section class="achievement-overview" data-progress-section="achievements" aria-labelledby="achievement-overview-title">
-                <div class="achievement-overview-heading">
-                    <div>
-                        <p class="section-kicker">Progreso personal</p>
-                        <h3 id="achievement-overview-title">Tus logros</h3>
-                    </div>
-                    <a class="collection-link" href="achievements.html">Abrir colección</a>
-                </div>
-                <p id="achievement-overview-count" class="achievement-overview-count">Empieza con una tarea para construir tu recorrido.</p>
-                <div class="achievement-overview-grid" aria-live="polite">
-                    <div id="achievement-latest-card"></div>
-                    <div id="achievement-next-card"></div>
-                </div>
-            </section>
 
             <div class="contribution-panel" data-progress-section="streak">
                 <div class="contribution-heading">
@@ -710,22 +769,11 @@
         </div>
     </div>
 
-    <div id="achievement-showcase" class="achievement-showcase" aria-hidden="true" role="status" aria-live="polite">
-        <div class="achievement-showcase-card">
-            <span id="showcase-rarity" class="showcase-rarity">Común</span>
-            <div class="showcase-medal" aria-hidden="true">
-                <span id="showcase-mark">A</span>
-            </div>
-            <p class="section-kicker">Logro desbloqueado</p>
-            <strong id="showcase-title">Primer impulso</strong>
-            <p id="showcase-message">Completa una tarea y enciende el día.</p>
-        </div>
-    </div>
-
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="tasklyzen-config.js"></script>
+    <script src="tasklyzen-data-migration.js"></script>
     <script src="firebase-env.js"></script>
     <script src="tasklyzen-auth.js"></script>
     <script src="tasklyzen-storage.js"></script>
@@ -737,11 +785,13 @@
     <script src="tasklyzen-overdue-review.js"></script>
     <script src="components/tasklyzen-task-creation-ui.js"></script>
     <script src="tasklyzen-settings.js"></script>
+    <script src="tasklyzen-experience.js"></script>
+    <script src="tasklyzen-audio.js"></script>
     <script src="tasklyzen-notifications.js"></script>
     <script src="tasklyzen-task-ui.js"></script>
 
+    <script src="tasklyzen-sustainable-progress.js"></script>
     <script src="tasklyzen-analytics-progress.js"></script>
-    <script src="tasklyzen-achievements.js"></script>
     <script src="tasklyzen-gamification.js"></script>
     <script src="tasklyzen-gamification-ui.js"></script>
     <script src="tasklyzen-features.js"></script>

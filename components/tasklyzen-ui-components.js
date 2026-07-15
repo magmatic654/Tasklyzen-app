@@ -811,150 +811,51 @@
         return chart;
     }
 
-    function createAchievementCard(options) {
+    function createFocusFlowChart(options) {
         const config = options || {};
-        const achievement = config.achievement || {};
-        const progress = Math.round(Number(config.progressPercent !== undefined ? config.progressPercent : achievement.progress * 100) || 0);
-        const item = createElement('article', {
-            documentRef: config.documentRef,
-            className: [
-                'achievement-card',
-                achievement.collected ? 'collected' : 'locked',
-                achievement.pending ? 'pending' : '',
-                achievement.repeatable ? 'repeatable' : '',
-                achievement.rarity ? 'rarity-' + achievement.rarity : '',
-                achievement.type
-            ]
+        const documentRef = getDocumentRef(config.documentRef);
+        const entries = Array.isArray(config.entries) ? config.entries : [];
+        const maximumMinutes = Math.max(
+            Number(config.goalMinutes) || 1,
+            ...entries.map(entry => Number(entry.minutes) || 0)
+        );
+        const chart = createElement('div', {
+            documentRef,
+            className: 'focus-flow-chart',
+            attributes: {
+                role: 'img',
+                'aria-label': config.ariaLabel || 'Minutos de enfoque confirmados por día'
+            }
         });
-        const topRow = createElement('div', { documentRef: config.documentRef, className: 'achievement-card-top' });
-        const track = createElement('div', { documentRef: config.documentRef, className: 'achievement-track' });
-        const bar = createElement('span', { documentRef: config.documentRef });
 
-        topRow.append(
-            createElement('span', { documentRef: config.documentRef, className: 'achievement-rarity', text: config.rarityText || achievement.rarityLabel || '' }),
-            createElement('span', { documentRef: config.documentRef, className: 'achievement-category', text: achievement.categoryLabel || '' }),
-            createElement('span', { documentRef: config.documentRef, className: 'achievement-status', text: achievement.statusLabel || '' })
-        );
-        bar.style.width = progress + '%';
-        track.appendChild(bar);
-        item.append(
-            topRow,
-            createElement('div', { documentRef: config.documentRef, className: 'achievement-medal', text: achievement.mark || '' }),
-            createElement('h4', { documentRef: config.documentRef, text: achievement.title || '' }),
-            createElement('p', { documentRef: config.documentRef, text: achievement.message || '' }),
-            track
-        );
+        entries.forEach(entry => {
+            const minutes = Math.max(Math.round(Number(entry.minutes) || 0), 0);
+            const item = createElement('span', {
+                documentRef,
+                className: entry.goalHit ? 'focus-flow-day goal-hit' : 'focus-flow-day',
+                attributes: {
+                    title: (entry.label || entry.dateKey || '') + ': ' + minutes + ' min'
+                }
+            });
+            const bar = createElement('i', {
+                documentRef,
+                className: 'focus-flow-bar',
+                attributes: { 'aria-hidden': 'true' }
+            });
 
-        if (achievement.repeatable && achievement.repeatTotal > 0) {
-            item.appendChild(createElement('span', {
-                documentRef: config.documentRef,
-                className: 'achievement-repeat',
-                text: 'x' + achievement.repeatTotal
-            }));
+            bar.style.setProperty('--focus-bar-height', Math.max((minutes / maximumMinutes) * 100, minutes ? 8 : 3) + '%');
+            item.append(
+                bar,
+                createElement('small', { documentRef, text: entry.label || '' })
+            );
+            chart.appendChild(item);
+        });
+
+        if (!entries.some(entry => Number(entry.minutes) > 0)) {
+            chart.dataset.empty = 'true';
         }
 
-        if (config.showFeatureButton) {
-            const actions = createElement('div', { documentRef: config.documentRef, className: 'achievement-actions' });
-
-            actions.appendChild(createButton({
-                documentRef: config.documentRef,
-                className: achievement.featured ? 'feature-button selected' : 'feature-button',
-                text: config.featureButtonText || 'Bloqueado',
-                disabled: !config.canFeature,
-                dataset: { featureAchievement: achievement.id }
-            }));
-            item.appendChild(actions);
-        }
-
-        return item;
-    }
-
-    function createAchievementSpotlight(options) {
-        const config = options || {};
-        const achievement = config.achievement || {};
-        const progress = Math.min(Math.max(Math.round(Number(achievement.progress || 0) * 100), 0), 100);
-        const item = createElement('article', {
-            documentRef: config.documentRef,
-            className: [
-                'achievement-spotlight',
-                config.kind ? 'achievement-spotlight-' + config.kind : '',
-                achievement.collected ? 'collected' : 'locked',
-                achievement.pending ? 'pending' : '',
-                achievement.unseen ? 'unseen' : '',
-                achievement.rarity ? 'rarity-' + achievement.rarity : ''
-            ]
-        });
-        const copy = createElement('div', { documentRef: config.documentRef, className: 'achievement-spotlight-copy' });
-        const heading = createElement('div', { documentRef: config.documentRef, className: 'achievement-spotlight-heading' });
-
-        heading.append(
-            createElement('span', {
-                documentRef: config.documentRef,
-                className: 'achievement-spotlight-kicker',
-                text: config.kicker || achievement.rarityLabel || ''
-            }),
-            createElement('span', {
-                documentRef: config.documentRef,
-                className: 'achievement-spotlight-status',
-                text: config.statusText || achievement.statusLabel || ''
-            })
-        );
-        copy.append(
-            heading,
-            createElement('h4', { documentRef: config.documentRef, text: achievement.title || '' }),
-            createElement('p', { documentRef: config.documentRef, text: config.message || achievement.message || '' })
-        );
-        item.append(
-            createElement('span', {
-                documentRef: config.documentRef,
-                className: 'achievement-spotlight-medal',
-                text: achievement.mark || ''
-            }),
-            copy
-        );
-
-        if (!achievement.collected) {
-            const track = createElement('div', { documentRef: config.documentRef, className: 'achievement-spotlight-track' });
-            const bar = createElement('span', { documentRef: config.documentRef });
-
-            bar.style.width = progress + '%';
-            track.setAttribute('role', 'progressbar');
-            track.setAttribute('aria-label', 'Progreso de ' + (achievement.title || 'logro'));
-            track.setAttribute('aria-valuemin', '0');
-            track.setAttribute('aria-valuemax', '100');
-            track.setAttribute('aria-valuenow', String(progress));
-            track.appendChild(bar);
-            item.appendChild(track);
-        }
-
-        return item;
-    }
-
-    function createFeaturedAchievementCard(options) {
-        const config = options || {};
-        const achievement = config.achievement || {};
-        const item = createElement('article', {
-            documentRef: config.documentRef,
-            className: [
-                'featured-achievement-card',
-                achievement.collected ? 'collected' : 'locked',
-                achievement.pending ? 'pending' : '',
-                achievement.rarity ? 'rarity-' + achievement.rarity : ''
-            ]
-        });
-        const copy = createElement('div', { documentRef: config.documentRef, className: 'featured-copy' });
-
-        copy.append(
-            createElement('span', { documentRef: config.documentRef, className: 'featured-rarity', text: config.rarityText || achievement.rarityLabel || '' }),
-            createElement('h4', { documentRef: config.documentRef, text: achievement.title || '' }),
-            createElement('p', { documentRef: config.documentRef, text: config.statusText || '' })
-        );
-        item.append(
-            createElement('div', { documentRef: config.documentRef, className: 'featured-medal', text: achievement.mark || '' }),
-            copy
-        );
-
-        return item;
+        return chart;
     }
 
     function createPrestigeStep(options) {
@@ -1132,9 +1033,7 @@
         createMonthlyCompletionDonut,
         renderMonthlyCompletionDonut,
         createWeeklyFlowChart,
-        createAchievementCard,
-        createAchievementSpotlight,
-        createFeaturedAchievementCard,
+        createFocusFlowChart,
         createPrestigeStep,
         createPrestigeChapter,
         createContributionDay,

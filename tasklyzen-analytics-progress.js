@@ -11,12 +11,11 @@
  */
 (function exposeTasklyzenAnalyticsProgress(global) {
     const FLOW_PERIODS = ['weekly', 'monthly', 'quarterly'];
-    const PROGRESS_VIEWS = ['today', 'analytics', 'streak', 'achievements'];
+    const PROGRESS_VIEWS = ['today', 'analytics', 'streak'];
     const PROGRESS_VIEW_HEADINGS = {
         today: { kicker: 'Enfoque diario', title: 'Progreso de hoy' },
         analytics: { kicker: 'Lectura útil', title: 'Rendimiento' },
-        streak: { kicker: 'Constancia', title: 'Tu racha' },
-        achievements: { kicker: 'Colección', title: 'Logros' }
+        streak: { kicker: 'Constancia', title: 'Tu racha' }
     };
 
     function normalizeFlowPeriod(value) {
@@ -55,7 +54,6 @@
         const getPriorityLabel = fn(config.getPriorityLabel, () => 'Normal');
         const getPriorityRank = fn(config.getPriorityRank, () => 1);
         const getLifecycleAnalyticsForRange = fn(config.getLifecycleAnalyticsForRange, () => emptyLifecycle());
-        const getAllAchievements = fn(config.getAllAchievements, () => []);
         const getRescueState = fn(config.getRescueState, () => ({}));
         const getCurrentStreak = fn(config.getCurrentStreak, () => 0);
         const getStreakBeforeToday = fn(config.getStreakBeforeToday, () => 0);
@@ -63,6 +61,12 @@
         const getCompletedPriorityCount = fn(config.getCompletedPriorityCount, () => 0);
         const getTodayCompletedPriorityCount = fn(config.getTodayCompletedPriorityCount, () => 0);
         const getTodayCompletedHabitCount = fn(config.getTodayCompletedHabitCount, () => 0);
+        const getSustainableMissionSnapshot = fn(config.getSustainableMissionSnapshot, () => null);
+        const getSustainableDaySnapshot = fn(config.getSustainableDaySnapshot, () => null);
+        const getSustainableRangeSummary = fn(config.getSustainableRangeSummary, () => ({ days: [] }));
+        const getProgressMode = fn(config.getProgressMode, () => 'tasks');
+        const getDailyFocusGoalMinutes = fn(config.getDailyFocusGoalMinutes, () => 50);
+        const setDailyFocusGoalMinutes = fn(config.setDailyFocusGoalMinutes, () => {});
         const getTodoDeadlineState = fn(config.getTodoDeadlineState, () => null);
         const isTodoAvailableToday = fn(config.isTodoAvailableToday, todo => Boolean(todo && !todo.completed));
         const isProtectedDate = fn(config.isProtectedDate, () => false);
@@ -71,10 +75,6 @@
         const renderStreakPrestigeRoad = fn(config.renderStreakPrestigeRoad, () => {});
         const renderStreakSafety = fn(config.renderStreakSafety, () => {});
         const renderNextReward = fn(config.renderNextReward, () => {});
-        const renderFeaturedAchievements = fn(config.renderFeaturedAchievements, () => {});
-        const renderAchievementSurfaces = fn(config.renderAchievementSurfaces, () => {});
-        const onAchievementsViewed = fn(config.onAchievementsViewed, () => {});
-        const syncAchievementCollection = fn(config.syncAchievementCollection, () => {});
         const showToast = fn(config.showToast, () => {});
         const saveDailyGoal = fn(config.saveDailyGoal, () => {});
         const logAnalyticsEvent = fn(config.logAnalyticsEvent, () => {});
@@ -350,6 +350,95 @@
 
         function getFlowPeriodAnalytics(period) {
             return getFlowAnalyticsForRange(getAnalyticsPeriodRange(period));
+        }
+
+        function formatFocusDuration(milliseconds) {
+            const minutes = Math.max(Math.round((Number(milliseconds) || 0) / 60000), 0);
+
+            if (minutes < 60) {
+                return minutes + ' min';
+            }
+
+            const hours = Math.floor(minutes / 60);
+            const remainder = minutes % 60;
+
+            return hours + ' h' + (remainder ? ' ' + remainder + ' min' : '');
+        }
+
+        function getFocusPeriodAnalytics(period) {
+            const range = getAnalyticsPeriodRange(period);
+            const summary = getSustainableRangeSummary(range.startKey, range.endKey) || {};
+            const days = Array.isArray(summary.days) ? summary.days : [];
+            const dayMap = new Map(days.map(day => [day.dateKey, day]));
+            const dailyEntries = getDailyStatsForRange(range.start, range.end).map(entry => {
+                const day = dayMap.get(entry.dateKey) || {};
+
+                return {
+                    date: entry.date,
+                    dateKey: entry.dateKey,
+                    focusMs: Math.max(Number(day.focusMs) || 0, 0),
+                    rewardedFocusMs: Math.max(Number(day.rewardedFocusMs) || 0, 0),
+                    focusGoalMinutes: Math.max(Number(day.focusGoalMinutes) || Number(getDailyFocusGoalMinutes()) || 50, 15)
+                };
+            });
+            const buckets = [];
+
+            dailyEntries.forEach((entry, index) => {
+                const key = range.period === 'quarterly'
+                    ? entry.dateKey.slice(0, 7)
+                    : range.period === 'monthly'
+                        ? 'week-' + Math.floor(index / 7)
+                        : entry.dateKey;
+                let bucket = buckets.find(item => item.key === key);
+
+                if (!bucket) {
+                    bucket = { key, entries: [], focusMs: 0, rewardedFocusMs: 0, goalMinutes: 0 };
+                    buckets.push(bucket);
+                }
+
+                bucket.entries.push(entry);
+                bucket.focusMs += entry.focusMs;
+                bucket.rewardedFocusMs += entry.rewardedFocusMs;
+                bucket.goalMinutes += entry.focusGoalMinutes;
+            });
+
+            const chartEntries = buckets.map((bucket, index) => {
+                const first = bucket.entries[0];
+                const minutes = Math.round(bucket.focusMs / 60000);
+                const rewardedMinutes = Math.round(bucket.rewardedFocusMs / 60000);
+                const label = range.period === 'quarterly'
+                    ? first.date.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '').toUpperCase()
+                    : range.period === 'monthly'
+                        ? 'S' + (index + 1)
+                        : first.date.toLocaleDateString('es-MX', { weekday: 'short' }).replace('.', '').toUpperCase();
+
+                return {
+                    dateKey: first.dateKey,
+                    label,
+                    minutes,
+                    goalHit: rewardedMinutes >= bucket.goalMinutes
+                };
+            });
+            const focusMs = Math.max(Number(summary.focusMs) || 0, 0);
+            const rewardedFocusMs = Math.max(Number(summary.rewardedFocusMs) || 0, 0);
+            const activeDays = dailyEntries.filter(entry => entry.focusMs > 0).length;
+            const goalMinutes = dailyEntries.reduce((total, entry) => total + entry.focusGoalMinutes, 0);
+            const goalPercent = goalMinutes > 0
+                ? Math.min(Math.round((rewardedFocusMs / 60000 / goalMinutes) * 100), 100)
+                : 0;
+
+            return {
+                ...range,
+                days,
+                chartEntries,
+                focusMs,
+                rewardedFocusMs,
+                activeDays,
+                averageFocusMs: activeDays ? Math.round(focusMs / activeDays) : 0,
+                sustainableSessions: Math.max(Number(summary.sustainableSessions) || 0, 0),
+                goalMinutes,
+                goalPercent
+            };
         }
 
         function getPreviousAnalyticsPeriodRange(period) {
@@ -945,26 +1034,6 @@
             };
         }
 
-        function getClosestAchievements(limit) {
-            return getAllAchievements()
-                .filter(achievement => !achievement.collected)
-                .sort((first, second) => {
-                    const firstProgress = first.target > 0 ? first.current / first.target : 0;
-                    const secondProgress = second.target > 0 ? second.current / second.target : 0;
-
-                    if (firstProgress !== secondProgress) {
-                        return secondProgress - firstProgress;
-                    }
-
-                    if (first.remaining !== second.remaining) {
-                        return first.remaining - second.remaining;
-                    }
-
-                    return second.rarityWeight - first.rarityWeight;
-                })
-                .slice(0, Math.max(Math.round(Number(limit) || 3), 1));
-        }
-
         function getConsistencyAnalytics(days) {
             const entries = getDailyStatEntries(days, 0);
             const activeDays = entries.filter(entry => entry.completed > 0).length;
@@ -1097,6 +1166,69 @@
 
         function getRecommendedDailyGoal() {
             return getAdaptiveGoalRecommendation().goal;
+        }
+
+        function getAdaptiveFocusGoalRecommendation() {
+            const currentGoal = Math.min(Math.max(Math.round(Number(getDailyFocusGoalMinutes()) || 50), 15), 240);
+            const today = getStartOfDay(new Date());
+            const range = getSustainableRangeSummary(
+                formatDateKey(addDays(today, -13)),
+                formatDateKey(today)
+            );
+            const activeMinutes = (Array.isArray(range.days) ? range.days : [])
+                .map(day => Math.floor((Number(day.rewardedFocusMs) || 0) / 60000))
+                .filter(minutes => minutes >= 15)
+                .sort((first, second) => first - second);
+
+            if (!activeMinutes.length) {
+                return {
+                    goal: 25,
+                    tone: 'start',
+                    message: 'Sugerencia: 25 min para crear tu primer bloque'
+                };
+            }
+
+            const median = activeMinutes[Math.floor((activeMinutes.length - 1) / 2)];
+            const goal = Math.min(Math.max(Math.round(median / 5) * 5, 15), 240);
+
+            return {
+                goal,
+                tone: goal > currentGoal ? 'challenge' : goal < currentGoal ? 'protect' : 'steady',
+                message: goal === currentGoal
+                    ? 'Tu meta de ' + goal + ' min se ajusta a tu ritmo'
+                    : 'Sugerencia: ' + goal + ' min según tus días activos'
+            };
+        }
+
+        function getProgressGoalRecommendation() {
+            const mode = getProgressMode();
+            const taskRecommendation = getAdaptiveGoalRecommendation();
+            const focusRecommendation = getAdaptiveFocusGoalRecommendation();
+
+            if (mode === 'focus') {
+                return {
+                    mode,
+                    taskGoal: getDailyGoal(),
+                    focusGoal: focusRecommendation.goal,
+                    message: focusRecommendation.message
+                };
+            }
+
+            if (mode === 'balanced') {
+                return {
+                    mode,
+                    taskGoal: taskRecommendation.goal,
+                    focusGoal: focusRecommendation.goal,
+                    message: 'Sugerencia: ' + taskRecommendation.goal + ' tareas + ' + focusRecommendation.goal + ' min'
+                };
+            }
+
+            return {
+                mode: 'tasks',
+                taskGoal: taskRecommendation.goal,
+                focusGoal: getDailyFocusGoalMinutes(),
+                message: taskRecommendation.message.replace('Meta sugerida:', 'Sugerencia:')
+            };
         }
 
         function getProductivityProfile() {
@@ -1406,8 +1538,13 @@
                 saludPendientes: clarity.backlog,
                 embudo: getMonthlyFunnelAnalytics(monthAnalytics),
                 consistencia: getConsistencyAnalytics(30),
-                logrosCercanos: getClosestAchievements(3),
-                metaSugerida: getAdaptiveGoalRecommendation(),
+                enfoque: {
+                    modo: getProgressMode(),
+                    semanal: getFocusPeriodAnalytics('weekly'),
+                    mensual: getFocusPeriodAnalytics('monthly'),
+                    trimestral: getFocusPeriodAnalytics('quarterly')
+                },
+                metaSugerida: getProgressGoalRecommendation(),
                 riesgoRacha: getStreakRiskInsight(),
                 perfil: getProductivityProfile(),
                 accion: getAnalyticsNextAction(),
@@ -1437,8 +1574,6 @@
                     nextGoal
                 });
             }
-            syncAchievementCollection(shouldNotify);
-
             if (shouldNotify) {
                 showToast('Meta diaria actualizada a ' + nextGoal + '.', 'info');
             }
@@ -1446,7 +1581,35 @@
             if (dom.todoForm) {
                 renderProgressDashboard();
             }
-            renderAchievementSurfaces();
+        }
+
+        function updateFocusGoal(value, shouldNotify) {
+            const parsedGoal = Number(value);
+
+            if (!Number.isFinite(parsedGoal) || value === '') {
+                return;
+            }
+
+            const nextGoal = Math.min(Math.max(Math.round(parsedGoal / 5) * 5, 15), 240);
+            const previousGoal = Math.min(Math.max(Math.round(Number(getDailyFocusGoalMinutes()) || 50), 15), 240);
+
+            setDailyFocusGoalMinutes(nextGoal);
+            if (dom.dailyFocusGoalInput && documentRef.activeElement !== dom.dailyFocusGoalInput) {
+                dom.dailyFocusGoalInput.value = nextGoal;
+            }
+            if (previousGoal !== nextGoal) {
+                logAnalyticsEvent('focus_goal_changed', {
+                    previousGoal,
+                    nextGoal
+                });
+            }
+            if (shouldNotify) {
+                showToast('Meta de enfoque actualizada a ' + nextGoal + ' min.', 'info');
+            }
+
+            if (dom.todoForm) {
+                renderProgressDashboard();
+            }
         }
 
         function renderRecommendedGoal() {
@@ -1454,12 +1617,19 @@
                 return;
             }
 
-            const recommendation = getAdaptiveGoalRecommendation();
-            const recommendedGoal = recommendation.goal;
+            const recommendation = getProgressGoalRecommendation();
+            const taskMatches = recommendation.taskGoal === getDailyGoal();
+            const focusMatches = recommendation.focusGoal === getDailyFocusGoalMinutes();
 
             dom.recommendedGoalText.textContent = recommendation.message;
-            dom.applyRecommendedGoalButton.disabled = recommendedGoal === getDailyGoal();
-            dom.applyRecommendedGoalButton.dataset.goal = recommendedGoal;
+            dom.applyRecommendedGoalButton.disabled = recommendation.mode === 'tasks'
+                ? taskMatches
+                : recommendation.mode === 'focus'
+                    ? focusMatches
+                    : taskMatches && focusMatches;
+            dom.applyRecommendedGoalButton.dataset.mode = recommendation.mode;
+            dom.applyRecommendedGoalButton.dataset.taskGoal = recommendation.taskGoal;
+            dom.applyRecommendedGoalButton.dataset.focusGoal = recommendation.focusGoal;
         }
 
         function createInfoTooltip(text) {
@@ -1739,6 +1909,42 @@
             renderWeeklyFlowChart(flowAnalytics || getFlowPeriodAnalytics('weekly'));
         }
 
+        function renderFocusAnalytics(focusAnalytics) {
+            if (!focusAnalytics) {
+                return;
+            }
+
+            if (dom.analyticsFocusTotal) {
+                dom.analyticsFocusTotal.textContent = formatFocusDuration(focusAnalytics.focusMs);
+            }
+
+            if (dom.analyticsFocusSessions) {
+                dom.analyticsFocusSessions.textContent = String(focusAnalytics.sustainableSessions);
+            }
+
+            if (dom.analyticsFocusAverage) {
+                dom.analyticsFocusAverage.textContent = formatFocusDuration(focusAnalytics.averageFocusMs);
+            }
+
+            if (dom.focusFlowChart && components && typeof components.createFocusFlowChart === 'function') {
+                const chart = components.createFocusFlowChart({
+                    documentRef,
+                    entries: focusAnalytics.chartEntries,
+                    goalMinutes: Math.max(Number(getDailyFocusGoalMinutes()) || 50, 15),
+                    ariaLabel: 'Tiempo de enfoque confirmado en el periodo'
+                });
+
+                dom.focusFlowChart.innerHTML = '';
+                dom.focusFlowChart.className = chart.className;
+                Array.from(chart.children || []).forEach(child => dom.focusFlowChart.appendChild(child));
+                if (chart.dataset && chart.dataset.empty) {
+                    dom.focusFlowChart.dataset.empty = chart.dataset.empty;
+                } else {
+                    delete dom.focusFlowChart.dataset.empty;
+                }
+            }
+        }
+
         function renderAnalyticsPanel() {
             if (!dom.analyticsCompletionRate || !dom.weeklyFlowChart) {
                 return;
@@ -1748,9 +1954,48 @@
             const previousFlow = getPreviousFlowPeriodAnalytics(getActiveFlowPeriod());
             const comparison = getPeriodComparison(flowAnalytics, previousFlow);
             const rhythm = getReliableRhythm(flowAnalytics);
-            const action = getPerformanceAdvice(flowAnalytics, previousFlow);
-            const completedPercent = flowAnalytics.eligible > 0 ? flowAnalytics.completionRate : 0;
+            let action = getPerformanceAdvice(flowAnalytics, previousFlow);
+            const focusAnalytics = getFocusPeriodAnalytics(getActiveFlowPeriod());
+            const progressMode = getProgressMode();
+            const taskPercent = flowAnalytics.eligible > 0 ? flowAnalytics.completionRate : 0;
+            const completedPercent = progressMode === 'focus'
+                ? focusAnalytics.goalPercent
+                : progressMode === 'balanced'
+                    ? Math.round((taskPercent + focusAnalytics.goalPercent) / 2)
+                    : taskPercent;
             const pendingPercent = flowAnalytics.eligible > 0 ? 100 - completedPercent : 0;
+
+            if (progressMode === 'focus') {
+                const bestFocusEntry = focusAnalytics.chartEntries.reduce((best, entry) => (
+                    !best || entry.minutes > best.minutes ? entry : best
+                ), null);
+
+                action = focusAnalytics.focusMs === 0
+                    ? {
+                        title: 'Empieza con 15 minutos reales',
+                        message: 'Abre Modo Carrera, trabaja a tu ritmo y confirma el resultado al terminar.'
+                    }
+                    : {
+                        title: 'Protege tu ritmo de enfoque',
+                        message: 'Promedias ' + formatFocusDuration(focusAnalytics.averageFocusMs)
+                            + ' por día activo' + (bestFocusEntry && bestFocusEntry.minutes > 0 ? '. Tu mejor tramo fue ' + bestFocusEntry.label + '.' : '.')
+                    };
+            } else if (progressMode === 'balanced') {
+                action = taskPercent > focusAnalytics.goalPercent + 15
+                    ? {
+                        title: 'Dale espacio a tus tareas',
+                        message: 'Cierras avances con facilidad; reserva ahora un bloque de enfoque sin interrupciones.'
+                    }
+                    : focusAnalytics.goalPercent > taskPercent + 15
+                        ? {
+                            title: 'Convierte enfoque en un cierre',
+                            message: 'El tiempo ya está. Elige una tarea concreta para terminar dentro de tu próxima Carrera.'
+                        }
+                        : {
+                            title: 'Mantén este equilibrio',
+                            message: 'Tu tiempo y tus avances crecen a un ritmo parecido. Repite una sesión sostenible.'
+                        };
+            }
 
             if (dom.analyticsPeriodButtons && typeof dom.analyticsPeriodButtons.forEach === 'function') {
                 dom.analyticsPeriodButtons.forEach(button => {
@@ -1763,8 +2008,20 @@
 
             dom.analyticsCompletionRate.textContent = completedPercent + '%';
 
+            if (dom.analyticsPrimaryLabel) {
+                dom.analyticsPrimaryLabel.textContent = progressMode === 'focus'
+                    ? 'Meta de enfoque'
+                    : progressMode === 'balanced'
+                        ? 'Progreso equilibrado'
+                        : 'Tareas completadas';
+            }
+
             if (dom.analyticsCompletionDetail) {
-                dom.analyticsCompletionDetail.textContent = flowAnalytics.completed + ' de ' + flowAnalytics.eligible + ' tarea' + (flowAnalytics.eligible === 1 ? '' : 's') + ' del periodo';
+                dom.analyticsCompletionDetail.textContent = progressMode === 'focus'
+                    ? formatFocusDuration(focusAnalytics.rewardedFocusMs) + ' de enfoque válido'
+                    : progressMode === 'balanced'
+                        ? taskPercent + '% en tareas · ' + focusAnalytics.goalPercent + '% en enfoque'
+                        : flowAnalytics.completed + ' de ' + flowAnalytics.eligible + ' tarea' + (flowAnalytics.eligible === 1 ? '' : 's') + ' del periodo';
             }
 
             if (dom.analyticsPeriodComparison) {
@@ -1834,6 +2091,7 @@
             }
 
             renderDataAnalyticsSurfaces(null, null, flowAnalytics);
+            renderFocusAnalytics(focusAnalytics);
         }
 
         function getDayOfYear() {
@@ -1844,41 +2102,59 @@
         }
 
         function getDailyMission() {
+            const sustainableMission = getSustainableMissionSnapshot(getTodayKey());
+
+            if (sustainableMission && sustainableMission.id) {
+                return {
+                    id: sustainableMission.id,
+                    title: sustainableMission.title,
+                    message: sustainableMission.message,
+                    current: () => sustainableMission.current,
+                    target: () => sustainableMission.target,
+                    statusText: () => sustainableMission.statusText
+                };
+            }
+
             const missions = [
                 {
                     id: 'start',
                     title: 'Enciende el día',
                     message: 'Completa cualquier tarea para activar tu racha.',
                     current: () => getHistoryCount(getTodayKey()),
-                    target: () => 1
+                    target: () => 1,
+                    unit: 'tarea'
                 },
                 {
                     id: 'important',
                     title: 'Avance importante',
                     message: 'Completa una tarea importante antes de cerrar el día.',
                     current: () => getTodayCompletedPriorityCount('important'),
-                    target: () => 1
+                    target: () => 1,
+                    unit: 'importante'
                 },
                 {
                     id: 'urgent',
                     title: 'Quita presión',
                     message: 'Completa una tarea urgente y libera espacio mental.',
                     current: () => getTodayCompletedPriorityCount('urgent'),
-                    target: () => 1
+                    target: () => 1,
+                    unit: 'urgente'
                 },
                 {
                     id: 'habit',
                     title: 'Ritual pequeño',
                     message: 'Completa un hábito para fortalecer tu continuidad.',
                     current: () => getTodayCompletedHabitCount(),
-                    target: () => 1
+                    target: () => 1,
+                    unit: 'hábito'
                 },
                 {
                     id: 'goal',
                     title: 'Meta del día',
                     message: 'Cumple tu meta diaria y activa el cierre.',
                     current: () => getHistoryCount(getTodayKey()),
-                    target: () => getDailyGoal()
+                    target: () => getDailyGoal(),
+                    unit: 'tareas'
                 },
                 {
                     id: 'clean',
@@ -1888,7 +2164,8 @@
                         const stats = getTaskStats();
                         return stats.available === 0 && getHistoryCount(getTodayKey()) > 0 ? 1 : 0;
                     },
-                    target: () => 1
+                    target: () => 1,
+                    unit: 'tablero'
                 }
             ];
 
@@ -1899,6 +2176,9 @@
             const mission = getDailyMission();
             const current = Math.max(Number(mission.current()) || 0, 0);
             const target = Math.max(Number(mission.target()) || 1, 1);
+            const statusText = typeof mission.statusText === 'function'
+                ? mission.statusText()
+                : Math.min(current, target) + '/' + target + ' ' + (mission.unit || 'avance');
 
             return {
                 id: mission.id,
@@ -1906,6 +2186,7 @@
                 message: mission.message,
                 current,
                 target,
+                statusText,
                 complete: current >= target
             };
         }
@@ -1919,18 +2200,18 @@
 
             dom.dailyMissionTitle.textContent = mission.title;
             dom.dailyMissionMessage.textContent = mission.complete ? 'Misión cumplida. Ese pequeño extra hace que volver sea más fácil.' : mission.message;
-            dom.dailyMissionStatus.textContent = mission.complete ? 'Cumplida' : Math.min(mission.current, mission.target) + '/' + mission.target;
+            dom.dailyMissionStatus.textContent = mission.complete ? 'Cumplida' : mission.statusText;
             dom.dailyMissionCard.classList.toggle('complete', mission.complete);
         }
 
         function renderDailyClose() {
-            if (!dom.dailyCloseCard || !dom.dailyCloseSummary || !dom.dailyCloseAchievements) {
+            if (!dom.dailyCloseCard || !dom.dailyCloseSummary) {
                 return;
             }
 
-            const todayCount = getHistoryCount(getTodayKey());
-            const reachedGoal = todayCount >= getDailyGoal();
-            const pendingAchievements = getAllAchievements().filter(achievement => achievement.pending).slice(0, 3);
+            const day = getSustainableDaySnapshot(getTodayKey());
+            const todayCount = day ? day.meaningfulActions : getHistoryCount(getTodayKey());
+            const reachedGoal = day ? day.goalReached : todayCount >= getDailyGoal();
 
             dom.dailyCloseCard.hidden = !reachedGoal;
 
@@ -1939,24 +2220,16 @@
             }
 
             if (dom.dailyCloseTitle) {
-                dom.dailyCloseTitle.textContent = todayCount > getDailyGoal() ? 'Cierre legendario' : 'Meta cumplida';
+                dom.dailyCloseTitle.textContent = day && day.legendary
+                    ? 'Cierre legendario'
+                    : 'Meta cumplida';
             }
 
-            dom.dailyCloseSummary.textContent = 'Hoy completaste ' + todayCount + ' de ' + getDailyGoal() + ' tareas. Tu racha queda protegida para volver con menos fricción.';
-            dom.dailyCloseAchievements.innerHTML = '';
-
-            if (pendingAchievements.length === 0) {
-                const item = documentRef.createElement('li');
-                item.textContent = 'Sin logros nuevos en revisión, pero el día ya cuenta para tu racha.';
-                dom.dailyCloseAchievements.appendChild(item);
-                return;
-            }
-
-            pendingAchievements.forEach(achievement => {
-                const item = documentRef.createElement('li');
-                item.textContent = achievement.title + ' - ' + achievement.rarityLabel;
-                dom.dailyCloseAchievements.appendChild(item);
-            });
+            dom.dailyCloseSummary.textContent = day && day.progressMode === 'focus'
+                ? 'Confirmaste ' + Math.floor(day.rewardedFocusMs / 60000) + ' minutos de enfoque. Tu constancia queda protegida sin premiar tiempo vacío.'
+                : day && day.progressMode === 'balanced'
+                    ? 'Combinaste ' + todayCount + ' avances con ' + Math.floor(day.rewardedFocusMs / 60000) + ' minutos de enfoque real.'
+                    : 'Hoy completaste ' + todayCount + ' de ' + getDailyGoal() + ' avances. Tu racha queda protegida para volver con menos fricción.';
         }
 
         function renderMotivationPanel() {
@@ -1964,17 +2237,78 @@
                 return;
             }
 
-            const todayCount = getHistoryCount(getTodayKey());
+            const sustainableDay = getSustainableDaySnapshot(getTodayKey());
+            const progressMode = sustainableDay && sustainableDay.progressMode ? sustainableDay.progressMode : getProgressMode();
+            const todayCount = sustainableDay ? sustainableDay.meaningfulActions : getHistoryCount(getTodayKey());
             const previousStreak = getStreakBeforeToday();
             const remainingTasks = Math.max(getDailyGoal() - todayCount, 0);
-            const goalProgress = Math.min((todayCount / getDailyGoal()) * 100, 100);
+            const focusMinutes = sustainableDay ? Math.floor(sustainableDay.rewardedFocusMs / 60000) : 0;
+            const focusGoalMinutes = sustainableDay ? sustainableDay.focusGoalMinutes : Math.max(Number(getDailyFocusGoalMinutes()) || 50, 15);
+            const goalProgress = sustainableDay ? sustainableDay.goalPercent : Math.min((todayCount / getDailyGoal()) * 100, 100);
             const rescueState = getRescueState();
 
             if (documentRef.activeElement !== dom.dailyGoalInput) {
                 dom.dailyGoalInput.value = getDailyGoal();
             }
-            dom.dailyGoalCount.textContent = todayCount + '/' + getDailyGoal();
+            if (dom.dailyFocusGoalInput && documentRef.activeElement !== dom.dailyFocusGoalInput) {
+                dom.dailyFocusGoalInput.value = focusGoalMinutes;
+            }
+            dom.dailyGoalCount.textContent = progressMode === 'focus'
+                ? focusMinutes + '/' + focusGoalMinutes + ' min'
+                : progressMode === 'balanced'
+                    ? goalProgress + '%'
+                    : todayCount + '/' + getDailyGoal();
             dom.dailyGoalBar.style.width = goalProgress + '%';
+
+            if (dom.dailyGoalLabel) {
+                dom.dailyGoalLabel.textContent = progressMode === 'focus'
+                    ? 'enfoque diario'
+                    : progressMode === 'balanced'
+                        ? 'meta equilibrada'
+                        : 'meta diaria';
+            }
+
+            if (dom.dailyTaskGoalSetting) {
+                dom.dailyTaskGoalSetting.hidden = progressMode === 'focus';
+            }
+
+            if (dom.dailyFocusGoalSetting) {
+                dom.dailyFocusGoalSetting.hidden = progressMode === 'tasks';
+            }
+
+            const goalSettings = dom.dailyGoalInput && dom.dailyGoalInput.closest
+                ? dom.dailyGoalInput.closest('.daily-goal-settings')
+                : null;
+            if (goalSettings) {
+                goalSettings.dataset.mode = progressMode;
+            }
+
+            if (progressMode === 'focus') {
+                dom.motivationTitle.textContent = sustainableDay && sustainableDay.goalReached
+                    ? 'Enfoque completo'
+                    : focusMinutes > 0 ? 'Tu concentración ya cuenta' : 'Reserva un bloque para ti';
+                dom.motivationMessage.textContent = sustainableDay && sustainableDay.goalReached
+                    ? 'Cumpliste tu meta con tiempo confirmado, no solo con el reloj abierto.'
+                    : focusMinutes > 0
+                        ? 'Llevas ' + focusMinutes + ' min. Faltan ' + Math.max(focusGoalMinutes - focusMinutes, 0) + ' min de enfoque válido.'
+                        : 'Inicia una Carrera y confirma el avance al terminar.';
+                return;
+            }
+
+            if (progressMode === 'balanced') {
+                const taskReady = sustainableDay && sustainableDay.taskGoalReached;
+                const focusReady = sustainableDay && sustainableDay.focusGoalReached;
+
+                dom.motivationTitle.textContent = taskReady && focusReady ? 'Día equilibrado' : 'Une intención y avance';
+                dom.motivationMessage.textContent = taskReady && focusReady
+                    ? 'Completaste tareas y protegiste tiempo real para hacerlas.'
+                    : !taskReady && !focusReady
+                        ? 'Avanza en tus tareas y suma enfoque confirmado para cerrar el día.'
+                        : taskReady
+                            ? 'Las tareas van bien. Ahora protege un bloque de enfoque.'
+                            : 'El enfoque ya está. Cierra ' + remainingTasks + ' avance' + (remainingTasks === 1 ? '' : 's') + ' más.';
+                return;
+            }
 
             if (rescueState.eligible) {
                 dom.motivationTitle.textContent = 'Racha lista para rescate';
@@ -2047,10 +2381,6 @@
 
             renderProgressSections();
 
-            if (nextView === 'achievements') {
-                onAchievementsViewed();
-            }
-
             if (nextView === 'streak') {
                 scheduleContributionGridRender();
             }
@@ -2093,7 +2423,6 @@
             renderDailyMission();
             renderDailyClose();
             renderNextReward();
-            renderFeaturedAchievements();
             renderProgressSections();
 
             if (getActiveProgressView() === 'streak') {
@@ -2123,6 +2452,7 @@
             getDailyStat,
             getDailyStatsForRange,
             getFlowPeriodAnalytics,
+            getFocusPeriodAnalytics,
             getPreviousAnalyticsPeriodRange,
             getPreviousFlowPeriodAnalytics,
             isDateKeyInRange,
@@ -2147,11 +2477,12 @@
             getWeeklyLifecycleAnalytics,
             getMonthlyFunnelAnalytics,
             getClarityAnalytics,
-            getClosestAchievements,
             getConsistencyAnalytics,
             getRecentHistoryCounts,
             getWeeklyActivities,
             getAdaptiveGoalRecommendation,
+            getAdaptiveFocusGoalRecommendation,
+            getProgressGoalRecommendation,
             getRecommendedDailyGoal,
             getProductivityProfile,
             getStreakRiskInsight,
@@ -2161,6 +2492,7 @@
             getMonthlyRecap,
             getAnalyticsSnapshot,
             updateDailyGoal,
+            updateFocusGoal,
             renderRecommendedGoal,
             renderPerformanceSummary,
             renderMonthlyCompletionDonut,
@@ -2201,7 +2533,6 @@
             edited: 0,
             snoozed: 0,
             goalChanges: 0,
-            achievements: 0,
             usageEvents: 0,
             completionValue: 0
         };

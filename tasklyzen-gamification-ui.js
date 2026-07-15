@@ -1,13 +1,9 @@
-﻿/*
- * Modulo: UI de gamificacion
- * Proposito:
- * - Renderizar rachas, escudos, logros, vitrina, showcase y cuadricula de progreso.
- * Entradas:
- * - DOM, estado calculado por el motor de gamificacion y utilidades de fecha.
- * Salidas:
- * - window.TasklyzenGamificationUi con createGamificationUiController.
- * Dependencias:
- * - TasklyzenUiComponents por inyeccion o global; el resto llega por callbacks.
+/*
+ * Módulo: UI de rachas
+ * Propósito: renderizar rachas, escudos, niveles y cuadrícula de progreso.
+ * Entradas: DOM, estado calculado por el motor de rachas y utilidades de fecha.
+ * Salidas: window.TasklyzenGamificationUi con createGamificationUiController.
+ * Dependencias: TasklyzenUiComponents por inyección.
  */
 (function exposeTasklyzenGamificationUi(global) {
     const PRESTIGE_CHAPTERS = ['Inicio', 'Disciplina', 'Prestigio', 'Legado'];
@@ -19,13 +15,7 @@
         const components = config.components || global.TasklyzenUiComponents;
         const windowRef = config.windowRef || global;
         const prestigeLevels = Array.isArray(config.prestigeLevels) ? config.prestigeLevels : [];
-        const featuredLimit = Math.max(Math.round(Number(config.featuredLimit) || 3), 1);
         const utils = config.utils || {};
-        const getGamification = fn(config.getGamification, () => ({ featuredAchievements: [] }));
-        const getAllAchievements = fn(config.getAllAchievements, () => []);
-        const getUnseenAchievements = fn(config.getUnseenAchievements, () => []);
-        const getFilteredAchievementCollection = fn(config.getFilteredAchievementCollection, () => []);
-        const getFeaturedAchievements = fn(config.getFeaturedAchievements, () => []);
         const getCurrentStreak = fn(config.getCurrentStreak, () => 0);
         const getPerfectStreak = fn(config.getPerfectStreak, () => 0);
         const getLegendaryStreak = fn(config.getLegendaryStreak, () => 0);
@@ -40,8 +30,6 @@
         const getContributionLevel = fn(config.getContributionLevel, () => 0);
         const getHistoryCount = fn(config.getHistoryCount, () => 0);
         const isProtectedDate = fn(config.isProtectedDate, () => false);
-        const getRarityRankLabel = fn(config.getRarityRankLabel, () => 'Rango 1');
-        const toggleFeaturedAchievement = fn(config.toggleFeaturedAchievement, () => {});
         const getTodayKey = fn(utils.getTodayKey, () => new Date().toISOString().slice(0, 10));
         const getStartOfDay = fn(utils.getStartOfDay, value => {
             const date = value ? new Date(value) : new Date();
@@ -54,332 +42,9 @@
             next.setDate(next.getDate() + days);
             return next;
         });
-        let achievementTimer = null;
-        let achievementQueue = [];
-        let achievementShowcaseActive = false;
         let contributionGridFrame = null;
         let contributionResizeObserver = null;
         let lastVisibleContributionWeeks = 12;
-
-        function getFeaturedAchievementIds() {
-            const state = getGamification();
-            return Array.isArray(state.featuredAchievements) ? state.featuredAchievements : [];
-        }
-
-        function getAchievementShowcaseDuration(rarity) {
-            if (rarity === 'mythic') {
-                return 4300;
-            }
-
-            if (rarity === 'legendary') {
-                return 3900;
-            }
-
-            if (rarity === 'epic') {
-                return 3400;
-            }
-
-            if (rarity === 'rare') {
-                return 3000;
-            }
-
-            if (rarity === 'uncommon') {
-                return 2600;
-            }
-
-            return 2200;
-        }
-
-        function queueAchievementShowcase(achievements) {
-            if (!dom.achievementShowcase || !dom.showcaseRarity || !dom.showcaseMark || !dom.showcaseTitle || !dom.showcaseMessage) {
-                return;
-            }
-
-            const sortedAchievements = achievements.slice().sort((first, second) => second.rarityWeight - first.rarityWeight);
-
-            achievementQueue = achievementQueue.concat(sortedAchievements);
-
-            if (!achievementShowcaseActive) {
-                showNextAchievement();
-            }
-        }
-
-        function showNextAchievement() {
-            const achievement = achievementQueue.shift();
-
-            if (!achievement) {
-                achievementShowcaseActive = false;
-                return;
-            }
-
-            if (!dom.achievementShowcase || !dom.showcaseRarity || !dom.showcaseMark || !dom.showcaseTitle || !dom.showcaseMessage) {
-                achievementShowcaseActive = false;
-                return;
-            }
-
-            achievementShowcaseActive = true;
-            windowRef.clearTimeout(achievementTimer);
-            dom.achievementShowcase.className = 'achievement-showcase rarity-' + achievement.rarity;
-            dom.showcaseRarity.textContent = achievement.rarityLabel + ' · ' + getRarityRankLabel(achievement.rarity);
-            dom.showcaseMark.textContent = achievement.mark;
-            dom.showcaseTitle.textContent = achievement.title;
-            dom.showcaseMessage.textContent = achievement.message;
-            dom.achievementShowcase.setAttribute('aria-hidden', 'false');
-            void dom.achievementShowcase.offsetWidth;
-            dom.achievementShowcase.classList.add('show');
-
-            achievementTimer = windowRef.setTimeout(() => {
-                dom.achievementShowcase.classList.remove('show');
-                dom.achievementShowcase.setAttribute('aria-hidden', 'true');
-                achievementTimer = windowRef.setTimeout(showNextAchievement, 260);
-            }, getAchievementShowcaseDuration(achievement.rarity));
-        }
-
-        function createAchievementCard(achievement, options) {
-            const progress = Math.round(achievement.progress * 100);
-            const isFeatureable = achievement.collected;
-            const featuredLimitReached = getFeaturedAchievementIds().length >= featuredLimit;
-            const canFeature = isFeatureable && (achievement.featured || !featuredLimitReached);
-
-            return components.createAchievementCard({
-                documentRef,
-                achievement,
-                progressPercent: progress,
-                rarityText: achievement.rarityLabel + ' · ' + getRarityRankLabel(achievement.rarity),
-                showFeatureButton: options && options.showFeatureButton,
-                canFeature,
-                featureButtonText: achievement.featured ? 'Quitar vitrina' : isFeatureable ? 'Mostrar' : 'Bloqueado'
-            });
-        }
-
-        function createFeaturedAchievementCard(achievement) {
-            return components.createFeaturedAchievementCard({
-                documentRef,
-                achievement,
-                rarityText: achievement.rarityLabel + ' · ' + getRarityRankLabel(achievement.rarity),
-                statusText: achievement.collected ? achievement.statusLabel : achievement.current + '/' + achievement.target
-            });
-        }
-        function renderFeaturedAchievements() {
-            if (!dom.featuredAchievementList || !dom.featuredAchievementHint) {
-                return;
-            }
-
-            const featuredAchievements = getFeaturedAchievements();
-            const selectedCount = getFeaturedAchievementIds().length;
-
-            dom.featuredAchievementList.innerHTML = '';
-            dom.featuredAchievementHint.textContent = selectedCount > 0
-                ? 'Mostrando ' + selectedCount + ' elegido' + (selectedCount === 1 ? '' : 's') + ' por ti.'
-                : 'Selección automática: logros conseguidos y próximos desbloqueos.';
-
-            featuredAchievements.forEach(achievement => {
-                dom.featuredAchievementList.appendChild(createFeaturedAchievementCard(achievement));
-            });
-        }
-
-        function getBestCollectedRarityLabel(achievements) {
-            const collectedAchievements = achievements.filter(achievement => achievement.collected);
-
-            if (collectedAchievements.length === 0) {
-                return 'Común';
-            }
-
-            return collectedAchievements
-                .sort((first, second) => second.rarityWeight - first.rarityWeight)[0]
-                .rarityLabel;
-        }
-
-        function getLatestAchievement(achievements) {
-            return achievements
-                .filter(achievement => achievement.collected)
-                .slice()
-                .sort((first, second) => {
-                    const dateDifference = String(second.unlockedAt || '').localeCompare(String(first.unlockedAt || ''));
-                    return dateDifference || second.rarityWeight - first.rarityWeight || first.title.localeCompare(second.title);
-                })[0] || null;
-        }
-
-        function getNextAchievement(achievements) {
-            return achievements
-                .filter(achievement => !achievement.collected)
-                .slice()
-                .sort((first, second) => {
-                    const progressDifference = second.progress - first.progress;
-                    const firstRemaining = Math.max(first.target - first.current, 0);
-                    const secondRemaining = Math.max(second.target - second.current, 0);
-                    return progressDifference || firstRemaining - secondRemaining || second.rarityWeight - first.rarityWeight;
-                })[0] || null;
-        }
-
-        function createAchievementSpotlight(achievement, kind) {
-            if (!achievement) {
-                return components.createEmptyState({
-                    documentRef,
-                    tagName: 'article',
-                    className: 'achievement-spotlight-empty',
-                    message: kind === 'latest'
-                        ? 'Tu primer logro aparecerá al completar una tarea.'
-                        : 'Crea una tarea para descubrir tu siguiente objetivo.'
-                });
-            }
-
-            const remaining = Math.max(achievement.target - achievement.current, 0);
-            const statusText = achievement.collected
-                ? achievement.pending ? 'Se confirma mañana' : 'Conseguido'
-                : remaining + ' por completar';
-
-            return components.createAchievementSpotlight({
-                documentRef,
-                achievement,
-                kind,
-                kicker: kind === 'latest' ? achievement.rarityLabel : 'Siguiente objetivo',
-                statusText,
-                message: kind === 'latest' ? achievement.message : achievement.current + ' de ' + achievement.target
-            });
-        }
-
-        function renderAchievementNews(unseenCount) {
-            const countText = String(unseenCount);
-
-            if (dom.achievementTabNewCount) {
-                dom.achievementTabNewCount.textContent = countText;
-                dom.achievementTabNewCount.hidden = unseenCount === 0;
-            }
-
-            if (dom.compactAchievementNews) {
-                dom.compactAchievementNews.hidden = unseenCount === 0;
-            }
-
-            if (dom.compactAchievementNewsCount) {
-                dom.compactAchievementNewsCount.textContent = countText;
-            }
-
-            if (dom.compactAchievementNewsNote) {
-                dom.compactAchievementNewsNote.textContent = unseenCount === 1
-                    ? 'Hay un avance nuevo por descubrir'
-                    : 'Hay ' + unseenCount + ' avances nuevos por descubrir';
-            }
-        }
-
-        function renderAchievementOverview() {
-            const achievements = getAllAchievements();
-            const collected = achievements.filter(achievement => achievement.collected);
-            const unseenCount = getUnseenAchievements().length;
-            const latest = getLatestAchievement(achievements);
-            const next = getNextAchievement(achievements);
-
-            renderAchievementNews(unseenCount);
-
-            if (dom.achievementOverviewCount) {
-                dom.achievementOverviewCount.textContent = collected.length === 0
-                    ? 'Empieza con una tarea para construir tu recorrido.'
-                    : collected.length + ' de ' + achievements.length + ' conseguidos' + (unseenCount ? ' · ' + unseenCount + ' nuevo' + (unseenCount === 1 ? '' : 's') : '');
-            }
-
-            if (dom.achievementLatestCard) {
-                dom.achievementLatestCard.replaceChildren(createAchievementSpotlight(latest, 'latest'));
-            }
-
-            if (dom.achievementNextCard) {
-                dom.achievementNextCard.replaceChildren(createAchievementSpotlight(next, 'next'));
-            }
-        }
-
-        function renderAchievementMilestones(achievements) {
-            if (!dom.achievementMilestonesList) {
-                return;
-            }
-
-            const milestones = achievements
-                .filter(achievement => achievement.collected)
-                .slice()
-                .sort((first, second) => second.rarityWeight - first.rarityWeight || String(second.unlockedAt || '').localeCompare(String(first.unlockedAt || '')))
-                .slice(0, 3);
-
-            dom.achievementMilestonesList.innerHTML = '';
-
-            if (milestones.length === 0) {
-                dom.achievementMilestonesList.appendChild(components.createEmptyState({
-                    documentRef,
-                    tagName: 'article',
-                    className: 'achievement-milestones-empty',
-                    message: 'Aquí aparecerán los logros que mejor representen tu recorrido.'
-                }));
-                return;
-            }
-
-            milestones.forEach(achievement => {
-                dom.achievementMilestonesList.appendChild(createAchievementSpotlight(achievement, 'milestone'));
-            });
-        }
-
-        function renderAchievementsPage() {
-            if (!dom.achievementPageList) {
-                return;
-            }
-
-            const allAchievements = getAllAchievements();
-            const achievements = getFilteredAchievementCollection();
-            const collectedCount = allAchievements.filter(achievement => achievement.collected).length;
-            const pendingCount = allAchievements.filter(achievement => achievement.pending).length;
-            const unseenCount = getUnseenAchievements().length;
-
-            if (dom.achievementPageLatest) {
-                dom.achievementPageLatest.replaceChildren(createAchievementSpotlight(getLatestAchievement(allAchievements), 'latest'));
-            }
-
-            if (dom.achievementPageNext) {
-                dom.achievementPageNext.replaceChildren(createAchievementSpotlight(getNextAchievement(allAchievements), 'next'));
-            }
-
-            renderAchievementMilestones(allAchievements);
-
-            dom.achievementPageList.innerHTML = '';
-
-            if (achievements.length === 0) {
-                dom.achievementPageList.appendChild(components.createEmptyState({
-                    documentRef,
-                    tagName: 'article',
-                    className: 'achievement-empty-state',
-                    message: 'No hay logros visibles con este filtro.'
-                }));
-            } else {
-                achievements.forEach(achievement => {
-                    dom.achievementPageList.appendChild(createAchievementCard(achievement, { showFeatureButton: false }));
-                });
-            }
-
-            if (dom.achievementPageHint) {
-                dom.achievementPageHint.textContent = collectedCount + '/' + allAchievements.length + ' conseguidos - ' + achievements.length + ' visibles';
-            }
-
-            if (dom.collectionEarnedTotal) {
-                dom.collectionEarnedTotal.textContent = collectedCount;
-            }
-
-            if (dom.collectionPendingTotal) {
-                dom.collectionPendingTotal.textContent = pendingCount;
-            }
-
-            if (dom.collectionFeaturedTotal) {
-                dom.collectionFeaturedTotal.textContent = getFeaturedAchievementIds().length + '/' + featuredLimit;
-            }
-
-            if (dom.collectionNewTotal) {
-                dom.collectionNewTotal.textContent = unseenCount;
-            }
-
-            if (dom.collectionRarityTotal) {
-                dom.collectionRarityTotal.textContent = getBestCollectedRarityLabel(allAchievements);
-            }
-        }
-
-        function renderAchievementSurfaces() {
-            renderAchievementOverview();
-            renderFeaturedAchievements();
-            renderAchievementsPage();
-        }
 
         function renderNextReward() {
             const streak = getCurrentStreak();
@@ -392,17 +57,9 @@
                 dom.nextRewardCard.classList.add(getStreakPrestigeLevel(streak).className);
             }
 
-            if (dom.rewardTitle) {
-                dom.rewardTitle.textContent = nextReward.title;
-            }
-
-            if (dom.rewardMessage) {
-                dom.rewardMessage.textContent = nextReward.message;
-            }
-
-            if (dom.rewardCount) {
-                dom.rewardCount.textContent = streak + '/' + nextReward.target;
-            }
+            setText(dom.rewardTitle, nextReward.title);
+            setText(dom.rewardMessage, nextReward.message);
+            setText(dom.rewardCount, streak + '/' + nextReward.target);
 
             if (dom.rewardBar) {
                 dom.rewardBar.style.width = progress + '%';
@@ -464,10 +121,7 @@
             }
 
             [dom.streakHeroCard, dom.streakHeroEmblem].forEach(element => {
-                if (!element) {
-                    return;
-                }
-
+                if (!element) return;
                 element.classList.remove(...getStreakPrestigeClassNames());
                 element.classList.add(prestigeLevel.className);
             });
@@ -486,9 +140,7 @@
         }
 
         function renderStreakPrestigeRoad() {
-            if (!dom.streakPrestigeRoad) {
-                return;
-            }
+            if (!dom.streakPrestigeRoad) return;
 
             const streak = getCurrentStreak();
             const levels = prestigeLevels.filter(level => level.min > 0);
@@ -500,9 +152,7 @@
             PRESTIGE_CHAPTERS.forEach((title, chapterIndex) => {
                 const chapterLevels = levels.slice(chapterIndex * 3, chapterIndex * 3 + 3);
 
-                if (chapterLevels.length === 0) {
-                    return;
-                }
+                if (chapterLevels.length === 0) return;
 
                 const steps = chapterLevels.map(level => {
                     const levelIndex = levels.indexOf(level);
@@ -532,7 +182,6 @@
 
             if (dom.streakRouteSummary) {
                 const reachedCount = levels.filter(level => streak >= level.min).length;
-
                 dom.streakRouteSummary.textContent = currentLevel
                     ? 'Nivel ' + reachedCount + ' de ' + levels.length + ' · ' + currentLevel.label
                     : 'Tu primer nivel empieza en 1 día';
@@ -544,45 +193,24 @@
             const availableShields = getAvailableShields();
             const shouldShowSafety = rescueState.eligible || rescueState.waitingForToday || availableShields > 0;
 
-            if (dom.streakSafetyCard) {
-                dom.streakSafetyCard.hidden = !shouldShowSafety;
-            }
-
-            if (dom.rescueButton) {
-                dom.rescueButton.disabled = !rescueState.eligible;
-            }
-
-            if (!dom.shieldMessage) {
-                return;
-            }
+            if (dom.streakSafetyCard) dom.streakSafetyCard.hidden = !shouldShowSafety;
+            if (dom.rescueButton) dom.rescueButton.disabled = !rescueState.eligible;
+            if (!dom.shieldMessage) return;
 
             if (rescueState.eligible) {
                 dom.shieldMessage.textContent = 'Ayer quedó vacío, pero hoy volviste. Puedes gastar 1 escudo para unir la racha.';
-                return;
-            }
-
-            if (rescueState.waitingForToday) {
+            } else if (rescueState.waitingForToday) {
                 dom.shieldMessage.textContent = 'Completa una tarea hoy y podrás rescatar la racha de ayer con 1 escudo.';
-                return;
-            }
-
-            if (availableShields > 0) {
+            } else if (availableShields > 0) {
                 dom.shieldMessage.textContent = 'Tienes ' + availableShields + ' escudo disponible para un día difícil.';
-                return;
+            } else {
+                dom.shieldMessage.textContent = 'Gana 1 escudo por cada 5 días activos reales.';
             }
-
-            dom.shieldMessage.textContent = 'Gana 1 escudo por cada 5 días activos reales.';
         }
 
         function isContributionGridMeasurable() {
-            if (!dom.contributionGrid || !dom.contributionGrid.parentElement) {
-                return false;
-            }
-
-            if (typeof dom.contributionGrid.closest === 'function' && dom.contributionGrid.closest('.progress-section-hidden')) {
-                return false;
-            }
-
+            if (!dom.contributionGrid || !dom.contributionGrid.parentElement) return false;
+            if (typeof dom.contributionGrid.closest === 'function' && dom.contributionGrid.closest('.progress-section-hidden')) return false;
             return dom.contributionGrid.parentElement.clientWidth > 0;
         }
 
@@ -593,22 +221,16 @@
             const viewportPadding = 16;
             const viewportWidth = contributionViewport ? contributionViewport.clientWidth - viewportPadding : 0;
 
-            if (!isContributionGridMeasurable() || viewportWidth <= 0) {
-                return lastVisibleContributionWeeks;
-            }
+            if (!isContributionGridMeasurable() || viewportWidth <= 0) return lastVisibleContributionWeeks;
 
             const weeksThatFit = Math.floor((viewportWidth + cellGap) / (cellSize + cellGap));
             const visibleWeeks = Math.max(4, Math.min(53, weeksThatFit || lastVisibleContributionWeeks));
-
             lastVisibleContributionWeeks = visibleWeeks;
-
             return visibleWeeks;
         }
 
         function renderContributionGrid() {
-            if (!dom.contributionGrid || !isContributionGridMeasurable()) {
-                return;
-            }
+            if (!dom.contributionGrid || !isContributionGridMeasurable()) return;
 
             const today = getStartOfDay(new Date());
             const endDate = addDays(today, 6 - today.getDay());
@@ -644,21 +266,15 @@
         }
 
         function scheduleContributionGridRender() {
-            if (!dom.contributionGrid) {
-                return;
-            }
+            if (!dom.contributionGrid) return;
 
-            const requestFrame = windowRef.requestAnimationFrame || function(callback) {
-                return windowRef.setTimeout(callback, 16);
-            };
+            const requestFrame = windowRef.requestAnimationFrame || (callback => windowRef.setTimeout(callback, 16));
             const cancelFrame = windowRef.cancelAnimationFrame || windowRef.clearTimeout;
 
-            if (contributionGridFrame) {
-                cancelFrame(contributionGridFrame);
-            }
+            if (contributionGridFrame) cancelFrame(contributionGridFrame);
 
-            contributionGridFrame = requestFrame(function() {
-                contributionGridFrame = requestFrame(function() {
+            contributionGridFrame = requestFrame(() => {
+                contributionGridFrame = requestFrame(() => {
                     contributionGridFrame = null;
                     renderContributionGrid();
                 });
@@ -666,37 +282,20 @@
         }
 
         function installContributionGridObserver() {
-            if (!dom.contributionGrid || contributionResizeObserver || !windowRef.ResizeObserver) {
-                return;
-            }
+            if (!dom.contributionGrid || contributionResizeObserver || !windowRef.ResizeObserver) return;
 
             const contributionViewport = dom.contributionGrid.parentElement;
-
-            if (!contributionViewport) {
-                return;
-            }
+            if (!contributionViewport) return;
 
             contributionResizeObserver = new windowRef.ResizeObserver(scheduleContributionGridRender);
             contributionResizeObserver.observe(contributionViewport);
         }
 
         function setText(element, value) {
-            if (element) {
-                element.textContent = value;
-            }
+            if (element) element.textContent = value;
         }
 
         return {
-            getAchievementShowcaseDuration,
-            queueAchievementShowcase,
-            showNextAchievement,
-            createAchievementCard,
-            createFeaturedAchievementCard,
-            renderFeaturedAchievements,
-            renderAchievementOverview,
-            getBestCollectedRarityLabel,
-            renderAchievementsPage,
-            renderAchievementSurfaces,
             renderNextReward,
             renderStreakStats,
             renderStreakPrestigeRoad,
@@ -705,8 +304,7 @@
             getVisibleContributionWeeks,
             renderContributionGrid,
             scheduleContributionGridRender,
-            installContributionGridObserver,
-            toggleFeaturedAchievement
+            installContributionGridObserver
         };
     }
 

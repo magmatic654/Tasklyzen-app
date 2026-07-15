@@ -23,9 +23,14 @@
         settingsSoundVolumeValue: byId('settings-sound-volume-value'),
         settingsAnimations: byId('settings-animations'),
         settingsSimplifiedAnalytics: byId('settings-simplified-analytics'),
+        settingsProgressModeInputs: selectAll('input[name="settings-progress-mode"]'),
+        settingsFocusGoal: byId('settings-focus-goal'),
+        settingsFocusGoalValue: byId('settings-focus-goal-value'),
+        settingsBackgroundTimer: byId('settings-background-timer'),
         settingsExportData: byId('settings-export-data'),
         settingsImportData: byId('settings-import-data'),
         settingsImportFile: byId('settings-import-file'),
+        settingsExperienceButton: byId('settings-experience-button'),
         settingsDeleteData: byId('settings-delete-data'),
         deleteDataDialog: byId('delete-data-dialog'),
         deleteConfirmCode: byId('delete-confirm-code'),
@@ -46,6 +51,7 @@
     const tasks = {
         taskCreatePanel: byId('task-create-panel'),
         taskCreateToggle: byId('task-create-toggle'),
+        taskCreateClose: byId('task-create-close'),
         todoForm: byId('todo-form'),
         todoInput: byId('todo-input'),
         taskTypeInput: byId('task-type-input'),
@@ -125,10 +131,6 @@
         compactProgressWeekItem: byId('compact-progress-week-item'),
         compactProgressWeekNote: byId('compact-progress-week-note'),
         compactProgressWeekStatus: byId('compact-progress-week-status'),
-        compactAchievementNews: byId('compact-achievement-news'),
-        compactAchievementNewsNote: byId('compact-achievement-news-note'),
-        compactAchievementNewsCount: byId('compact-achievement-news-count'),
-        achievementTabNewCount: byId('achievement-tab-new-count'),
         progressToggle: byId('progress-toggle'),
         progressDetailLayer: byId('progress-detail-layer'),
         progressHeadingKicker: byId('progress-heading-kicker'),
@@ -144,7 +146,12 @@
         motivationMessage: byId('motivation-message'),
         dailyGoalCount: byId('daily-goal-count'),
         dailyGoalBar: byId('daily-goal-bar'),
+        dailyGoalLabel: byId('daily-goal-label'),
         dailyGoalInput: byId('daily-goal-input'),
+        dailyTaskGoalSetting: byId('daily-task-goal-setting'),
+        dailyFocusGoalInput: byId('daily-focus-goal-input'),
+        dailyFocusGoalSetting: byId('daily-focus-goal-setting'),
+        recommendedTaskGoal: byId('recommended-task-goal'),
         dailyMissionCard: byId('daily-mission-card'),
         dailyMissionTitle: byId('daily-mission-title'),
         dailyMissionMessage: byId('daily-mission-message'),
@@ -152,7 +159,6 @@
         dailyCloseCard: byId('daily-close-card'),
         dailyCloseTitle: byId('daily-close-title'),
         dailyCloseSummary: byId('daily-close-summary'),
-        dailyCloseAchievements: byId('daily-close-achievements'),
         recommendedGoalText: byId('recommended-goal-text'),
         applyRecommendedGoalButton: byId('apply-recommended-goal'),
         contributionGrid: byId('contribution-grid')
@@ -162,11 +168,16 @@
         analyticsPeriodControl: byId('analytics-period-control'),
         analyticsPeriodButtons: selectAll('[data-analytics-period]'),
         analyticsCompletionRate: byId('analytics-completion-rate'),
+        analyticsPrimaryLabel: byId('analytics-primary-label'),
         analyticsCompletionDetail: byId('analytics-completion-detail'),
         analyticsPeriodComparison: byId('analytics-period-comparison'),
         analyticsCompletionBar: byId('analytics-completion-bar'),
         analyticsProgressBar: select('.performance-progress'),
         weeklyFlowChart: byId('weekly-flow-chart'),
+        focusFlowChart: byId('focus-flow-chart'),
+        analyticsFocusTotal: byId('analytics-focus-total'),
+        analyticsFocusSessions: byId('analytics-focus-sessions'),
+        analyticsFocusAverage: byId('analytics-focus-average'),
         analyticsBalanceLabel: byId('analytics-balance-label'),
         analyticsBalanceTrack: select('.performance-balance-track'),
         analyticsBalanceCompleted: byId('analytics-balance-completed'),
@@ -179,6 +190,10 @@
         analyticsHabitDetail: byId('analytics-habit-detail'),
         analyticsHabitRate: byId('analytics-habit-rate'),
         analyticsHabitCount: byId('analytics-habit-count'),
+        raceAnalyticsSummary: byId('race-analytics-summary'),
+        raceAnalyticsMinutes: byId('race-analytics-minutes'),
+        raceAnalyticsSessions: byId('race-analytics-sessions'),
+        raceAnalyticsTargets: byId('race-analytics-targets'),
         analyticsInsights: byId('analytics-insights'),
         analyticsRings: byId('analytics-rings'),
         analyticsClarityBoard: byId('analytics-clarity-board'),
@@ -187,7 +202,6 @@
         backlogHealthTitle: byId('backlog-health-title'),
         backlogHealthMessage: byId('backlog-health-message'),
         taskFunnel: byId('task-funnel'),
-        achievementRankingList: byId('achievement-ranking-list'),
         consistencyStrip: byId('consistency-strip')
     };
 
@@ -221,37 +235,22 @@
         streakCelebrationEmblem: byId('streak-celebration-emblem'),
         streakCelebrationKicker: byId('streak-celebration-kicker'),
         streakCelebrationTitle: byId('streak-celebration-title'),
-        streakCelebrationMessage: byId('streak-celebration-message'),
-        featuredAchievementHint: byId('featured-achievement-hint'),
-        featuredAchievementList: byId('featured-achievement-list'),
-        achievementOverviewCount: byId('achievement-overview-count'),
-        achievementLatestCard: byId('achievement-latest-card'),
-        achievementNextCard: byId('achievement-next-card'),
-        achievementShowcase: byId('achievement-showcase'),
-        showcaseRarity: byId('showcase-rarity'),
-        showcaseMark: byId('showcase-mark'),
-        showcaseTitle: byId('showcase-title'),
-        showcaseMessage: byId('showcase-message')
-    };
-
-    const achievements = {
-        achievementPageHint: byId('achievement-page-hint'),
-        achievementPageList: byId('achievement-page-list'),
-        collectionEarnedTotal: byId('collection-earned-total'),
-        collectionPendingTotal: byId('collection-pending-total'),
-        collectionFeaturedTotal: byId('collection-featured-total'),
-        collectionNewTotal: byId('collection-new-total'),
-        collectionRarityTotal: byId('collection-rarity-total'),
-        achievementPageLatest: byId('achievement-page-latest'),
-        achievementPageNext: byId('achievement-page-next'),
-        achievementMilestonesList: byId('achievement-milestones-list'),
-        achievementCategoryFilter: byId('achievement-category-filter'),
-        achievementRarityFilter: byId('achievement-rarity-filter'),
-        achievementSortInput: byId('achievement-sort-input')
+        streakCelebrationMessage: byId('streak-celebration-message')
     };
 
     const features = {
         focusModeButton: byId('focus-mode-button')
+    };
+
+    const experience = {
+        dialog: byId('experience-dialog'),
+        body: byId('experience-body'),
+        kicker: byId('experience-kicker'),
+        title: byId('experience-title'),
+        progress: byId('experience-progress'),
+        back: byId('experience-back'),
+        next: byId('experience-next'),
+        secondary: byId('experience-secondary')
     };
 
     const dev = {
@@ -269,8 +268,8 @@
         progress,
         analytics,
         gamification,
-        achievements,
         features,
+        experience,
         dev
-    }, settings, notifications, tasks, feedback, overdueReview, progress, analytics, gamification, achievements, features);
+    }, settings, notifications, tasks, feedback, overdueReview, progress, analytics, gamification, features, experience);
 })(window);

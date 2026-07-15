@@ -156,18 +156,11 @@
     --task-due-soon: var(--state-warning);
     --task-expired: var(--state-danger);
 
-    /* Streaks and achievements. */
     --streak-base: var(--brand-primary);
     --streak-advanced: var(--brand-secondary);
     --streak-epic: #7657f0;
     --streak-legendary: var(--gold);
     --streak-mythic: #ff4f6d;
-    --achievement-common: var(--soft-gray);
-    --achievement-uncommon: var(--green-2);
-    --achievement-rare: var(--blue);
-    --achievement-epic: #7657f0;
-    --achievement-legendary: var(--gold);
-    --achievement-mythic: #ff3f5f;
 
     /* Shared gradients and motion. */
     --app-background: #f7fbff;

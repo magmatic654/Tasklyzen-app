@@ -1,7 +1,7 @@
 /*
  * Módulo: runtime principal
  * Propósito:
- * - Coordinar tareas, analítica, rachas, logros y modo desarrollador.
+ * - Coordinar tareas, analítica, rachas y modo desarrollador.
  * Entradas:
  * - TasklyzenConfig, TasklyzenStorage, TasklyzenUtils, TasklyzenTasks, TasklyzenDom y TasklyzenOOP.
  * Salidas:
@@ -20,8 +20,9 @@ const ANALYTICS_FLOW_PERIOD_KEY = TASKLYZEN_CONFIG.storageKeys.analyticsFlowPeri
 const FEATURES_KEY = TASKLYZEN_CONFIG.storageKeys.features;
 const SETTINGS_KEY = TASKLYZEN_CONFIG.storageKeys.settings;
 const OVERDUE_REVIEW_KEY = TASKLYZEN_CONFIG.storageKeys.overdueReview;
+const SUSTAINABLE_PROGRESS_KEY = TASKLYZEN_CONFIG.storageKeys.sustainableProgress;
+const EXPERIENCE_KEY = TASKLYZEN_CONFIG.storageKeys.experience;
 const DEFAULT_DAILY_GOAL = TASKLYZEN_CONFIG.defaults.dailyGoal;
-const FEATURED_ACHIEVEMENTS_LIMIT = TASKLYZEN_CONFIG.defaults.featuredAchievementsLimit;
 const TASK_EXPIRATION_DAYS = TASKLYZEN_CONFIG.defaults.taskExpirationDays;
 const TASK_TIME_LIMIT_DEFAULT_DAYS = TASKLYZEN_CONFIG.defaults.taskTimeLimitDefaultDays;
 const TASK_TIME_LIMIT_MAX_DAYS = TASKLYZEN_CONFIG.defaults.taskTimeLimitMaxDays;
@@ -29,14 +30,12 @@ const TASK_DEADLINE_SOON_HOURS = TASKLYZEN_CONFIG.defaults.taskDeadlineSoonHours
 const OVERDUE_REVIEW_INTERVAL_DAYS = TASKLYZEN_CONFIG.defaults.overdueReviewIntervalDays;
 const OVERDUE_AUTO_DELETE_DAYS = TASKLYZEN_CONFIG.defaults.overdueAutoDeleteDays;
 const STREAK_PRESTIGE_LEVELS = TASKLYZEN_CONFIG.streakPrestigeLevels;
-const ACHIEVEMENT_RARITY_KEYS = TASKLYZEN_CONFIG.achievementRarityKeys;
-const ACHIEVEMENT_CATEGORY_KEYS = TASKLYZEN_CONFIG.achievementCategoryKeys;
-const ACHIEVEMENT_RARITIES = TASKLYZEN_CONFIG.achievementRarities;
-const ACHIEVEMENT_CATEGORIES = TASKLYZEN_CONFIG.achievementCategories;
 const TASKLYZEN_STORAGE = window.TasklyzenStorage;
 const TASKLYZEN_UI_COMPONENTS = window.TasklyzenUiComponents;
 const TASKLYZEN_TASK_CREATION_UI = window.TasklyzenTaskCreationUi;
 const TASKLYZEN_SETTINGS = window.TasklyzenSettings;
+const TASKLYZEN_EXPERIENCE = window.TasklyzenExperience;
+const TASKLYZEN_AUDIO = window.TasklyzenAudio;
 const TASKLYZEN_NOTIFICATIONS = window.TasklyzenNotifications;
 const TASKLYZEN_TASK_UI = window.TasklyzenTaskUi;
 const TASKLYZEN_OVERDUE_REVIEW = window.TasklyzenOverdueReview || {
@@ -56,33 +55,16 @@ const TASKLYZEN_OVERDUE_REVIEW = window.TasklyzenOverdueReview || {
 };
 
 const TASKLYZEN_ANALYTICS_PROGRESS = window.TasklyzenAnalyticsProgress;
-const TASKLYZEN_ACHIEVEMENTS = window.TasklyzenAchievements;
 const TASKLYZEN_GAMIFICATION = window.TasklyzenGamification;
 const TASKLYZEN_GAMIFICATION_UI = window.TasklyzenGamificationUi;
+const TASKLYZEN_SUSTAINABLE_PROGRESS = window.TasklyzenSustainableProgress;
 const TASKLYZEN_FEATURES = window.TasklyzenFeatures;
 const TASKLYZEN_DEVELOPER = window.TasklyzenDeveloper;
-const ACHIEVEMENT_DEFINITIONS = TASKLYZEN_ACHIEVEMENTS.createAchievementDefinitions({
-    getTodayHistory: () => getHistoryCount(getTodayKey()),
-    getDailyGoal: () => dailyGoal,
-    getCleanDayProgress: () => {
-        const stats = getTaskStats();
-        return stats.total > 0 && stats.available === 0 && getHistoryCount(getTodayKey()) > 0 ? 1 : 0;
-    },
-    getCurrentStreak,
-    getPerfectStreak,
-    getLegendaryStreak,
-    getTotalCompletedTasks,
-    getBestDayTotal,
-    getCompletedPriorityCount,
-    getEarnedShields,
-    getActiveDaysTotal,
-    getUsedShields: () => gamification.usedShields
-});
-
 const TASKLYZEN_DOM = window.TasklyzenDom;
 const {
     taskCreatePanel,
     taskCreateToggle,
+    taskCreateClose,
     todoForm,
     settingsButton,
     settingsPanel,
@@ -99,10 +81,15 @@ const {
     settingsSoundVolumeValue,
     settingsAnimations,
     settingsSimplifiedAnalytics,
+    settingsProgressModeInputs,
+    settingsFocusGoal,
+    settingsFocusGoalValue,
+    settingsBackgroundTimer,
     focusModeButton,
     settingsExportData,
     settingsImportData,
     settingsImportFile,
+    settingsExperienceButton,
     settingsDeleteData,
     deleteDataDialog,
     deleteConfirmCode,
@@ -188,6 +175,7 @@ const {
     dailyGoalCount,
     dailyGoalBar,
     dailyGoalInput,
+    dailyFocusGoalInput,
     dailyMissionCard,
     dailyMissionTitle,
     dailyMissionMessage,
@@ -195,7 +183,6 @@ const {
     dailyCloseCard,
     dailyCloseTitle,
     dailyCloseSummary,
-    dailyCloseAchievements,
     recommendedGoalText,
     applyRecommendedGoalButton,
     analyticsPeriodControl,
@@ -230,7 +217,6 @@ const {
     backlogHealthTitle,
     backlogHealthMessage,
     taskFunnel,
-    achievementRankingList,
     consistencyStrip,
     activeStreakTotal,
     perfectStreakTotal,
@@ -253,22 +239,6 @@ const {
     streakCelebrationKicker,
     streakCelebrationTitle,
     streakCelebrationMessage,
-    featuredAchievementHint,
-    featuredAchievementList,
-    achievementPageHint,
-    achievementPageList,
-    collectionEarnedTotal,
-    collectionPendingTotal,
-    collectionFeaturedTotal,
-    collectionRarityTotal,
-    achievementCategoryFilter,
-    achievementRarityFilter,
-    achievementSortInput,
-    achievementShowcase,
-    showcaseRarity,
-    showcaseMark,
-    showcaseTitle,
-    showcaseMessage,
     contributionGrid
 } = TASKLYZEN_DOM;
 const TASKLYZEN_UTILS = window.TasklyzenUtils;
@@ -359,12 +329,14 @@ let completionHistory = buildCompletionHistory(todos, analyticsEvents);
 let gamification = loadGamification();
 let dailyStats = loadDailyStats();
 let appSettings = settingsController.load();
+const audioController = TASKLYZEN_AUDIO.createAudioController({
+    windowRef: window,
+    getSettings: () => appSettings
+});
 let dailyGoal = loadDailyGoal();
+let experienceController = null;
 let activeProgressView = loadProgressView();
 let activeFlowPeriod = loadAnalyticsFlowPeriod();
-let achievementCategoryFilterValue = 'all';
-let achievementRarityFilterValue = 'all';
-let achievementSortMode = 'smart';
 let celebrationTimer;
 let streakCelebrationTimer;
 let taskStateRefreshTimer = null;
@@ -474,13 +446,20 @@ const overdueReviewController = TASKLYZEN_OVERDUE_REVIEW.createOverdueReviewCont
 });
 window.TasklyzenRuntime.overdueReviewController = overdueReviewController;
 
+const sustainableProgressController = TASKLYZEN_SUSTAINABLE_PROGRESS.createSustainableProgressController({
+    storage: TASKLYZEN_STORAGE,
+    storageKey: SUSTAINABLE_PROGRESS_KEY,
+    getNowTimestamp,
+    getTodayKey,
+    getDateKeyFromTimestamp,
+    getDailyGoal: () => dailyGoal,
+    getProgressMode: () => appSettings.progressMode,
+    getDailyFocusGoalMinutes: () => appSettings.dailyFocusGoalMinutes
+});
+window.TasklyzenRuntime.sustainableProgressController = sustainableProgressController;
+
 const gamificationController = TASKLYZEN_GAMIFICATION.createGamificationController({
-    definitions: ACHIEVEMENT_DEFINITIONS,
-    rarities: ACHIEVEMENT_RARITIES,
-    categories: ACHIEVEMENT_CATEGORIES,
-    rarityKeys: ACHIEVEMENT_RARITY_KEYS,
     prestigeLevels: STREAK_PRESTIGE_LEVELS,
-    featuredLimit: FEATURED_ACHIEVEMENTS_LIMIT,
     utils: TASKLYZEN_UTILS,
     getGamification: () => gamification,
     setGamification: value => {
@@ -489,11 +468,9 @@ const gamificationController = TASKLYZEN_GAMIFICATION.createGamificationControll
     saveGamification,
     getCompletionHistory: () => completionHistory,
     getDailyGoal: () => dailyGoal,
-    showToast,
-    renderCurrentPage,
-    renderAchievementSurfaces,
-    queueAchievementShowcase,
-    logAnalyticsEvent
+    getMeaningfulDay: dateKey => sustainableProgressController.getDaySnapshot(dateKey),
+    getMeaningfulDateKeys: () => sustainableProgressController.getDateKeys(),
+    renderCurrentPage
 });
 window.TasklyzenRuntime.gamificationController = gamificationController;
 const gamificationUiController = TASKLYZEN_GAMIFICATION_UI.createGamificationUiController({
@@ -502,13 +479,7 @@ const gamificationUiController = TASKLYZEN_GAMIFICATION_UI.createGamificationUiC
     components: TASKLYZEN_UI_COMPONENTS,
     windowRef: window,
     prestigeLevels: STREAK_PRESTIGE_LEVELS,
-    featuredLimit: FEATURED_ACHIEVEMENTS_LIMIT,
     utils: TASKLYZEN_UTILS,
-    getGamification: () => gamification,
-    getAllAchievements,
-    getUnseenAchievements: () => gamificationController.getUnseenAchievements(),
-    getFilteredAchievementCollection,
-    getFeaturedAchievements,
     getCurrentStreak,
     getPerfectStreak,
     getLegendaryStreak,
@@ -522,9 +493,7 @@ const gamificationUiController = TASKLYZEN_GAMIFICATION_UI.createGamificationUiC
     getNextStreakReward,
     getContributionLevel,
     getHistoryCount,
-    isProtectedDate,
-    getRarityRankLabel,
-    toggleFeaturedAchievement
+    isProtectedDate
 });
 window.TasklyzenRuntime.gamificationUiController = gamificationUiController;
 const analyticsProgressController = TASKLYZEN_ANALYTICS_PROGRESS.createAnalyticsProgressController({
@@ -562,7 +531,6 @@ const analyticsProgressController = TASKLYZEN_ANALYTICS_PROGRESS.createAnalytics
     getPriorityLabel,
     getPriorityRank,
     getLifecycleAnalyticsForRange,
-    getAllAchievements,
     getRescueState,
     getCurrentStreak,
     getStreakBeforeToday,
@@ -570,6 +538,16 @@ const analyticsProgressController = TASKLYZEN_ANALYTICS_PROGRESS.createAnalytics
     getCompletedPriorityCount,
     getTodayCompletedPriorityCount,
     getTodayCompletedHabitCount,
+    getSustainableMissionSnapshot: dateKey => sustainableProgressController.getMissionSnapshot(dateKey),
+    getSustainableDaySnapshot: dateKey => sustainableProgressController.getDaySnapshot(dateKey),
+    getSustainableRangeSummary: (startKey, endKey) => sustainableProgressController.getRangeSummary(startKey, endKey),
+    getProgressMode: () => appSettings.progressMode,
+    getDailyFocusGoalMinutes: () => appSettings.dailyFocusGoalMinutes,
+    setDailyFocusGoalMinutes: value => settingsController.update({
+        dailyFocusGoalMinutes: value
+    }, null, {
+        apply: false
+    }),
     getTodoDeadlineState,
     isTodoAvailableToday,
     isProtectedDate,
@@ -578,14 +556,6 @@ const analyticsProgressController = TASKLYZEN_ANALYTICS_PROGRESS.createAnalytics
     renderStreakPrestigeRoad,
     renderStreakSafety,
     renderNextReward,
-    renderFeaturedAchievements,
-    renderAchievementSurfaces,
-    onAchievementsViewed: () => {
-        if (gamificationController.markAchievementsSeen()) {
-            gamificationUiController.renderAchievementSurfaces();
-        }
-    },
-    syncAchievementCollection,
     showToast,
     saveDailyGoal,
     logAnalyticsEvent,
@@ -614,9 +584,78 @@ const betaFeatureControllers = TASKLYZEN_FEATURES.createBetaFeatureControllers({
     onCompleteTodo: completeTodoFromFeature,
     onToggleSubtask: toggleSubtaskFromFeature,
     onSessionComplete: handleFocusSessionComplete,
+    evaluateSession: record => sustainableProgressController.evaluateSession(record),
+    onStateChange: renderRaceModeButton,
+    onResumePromptClosed: reason => {
+        if (reason === 'defer') {
+            scheduleStartupExperience();
+        }
+    },
+    onTimerCue: type => audioController.playRaceCue(type),
+    unlockAudio: () => audioController.unlock(),
+    shouldRunInBackground: () => appSettings.backgroundTimer !== false,
+    analyticsDom: {
+        card: TASKLYZEN_DOM.analytics.raceAnalyticsSummary,
+        minutes: TASKLYZEN_DOM.analytics.raceAnalyticsMinutes,
+        sessions: TASKLYZEN_DOM.analytics.raceAnalyticsSessions,
+        targets: TASKLYZEN_DOM.analytics.raceAnalyticsTargets
+    },
     alwaysEnabled: true
 });
 window.TasklyzenRuntime.beta = betaFeatureControllers;
+experienceController = TASKLYZEN_EXPERIENCE.createExperienceController({
+    storage: TASKLYZEN_STORAGE,
+    storageKey: EXPERIENCE_KEY,
+    dom: TASKLYZEN_DOM.experience,
+    documentRef: document,
+    normalizeSettings: TASKLYZEN_SETTINGS.normalizeAppSettings,
+    defaultSettings: TASKLYZEN_SETTINGS.defaultSettings,
+    defaultDailyGoal: DEFAULT_DAILY_GOAL,
+    getSettings: () => appSettings,
+    applySettings: settings => {
+        appSettings = settingsController.update(settings, null, {
+            render: false
+        });
+    },
+    getDailyGoal: () => dailyGoal,
+    applyDailyGoal: value => updateDailyGoal(value, false),
+    getNowTimestamp,
+    onOpen: () => {
+        settingsController.setPanelOpen(false);
+        if (progressPanelExpanded) {
+            setProgressPanelExpanded(false, false);
+        }
+        syncAppLayerState();
+        if (completionCelebration && TASKLYZEN_DOM.experience.dialog) {
+            TASKLYZEN_DOM.experience.dialog.appendChild(completionCelebration);
+        }
+    },
+    onClose: () => {
+        syncAppLayerState();
+        if (completionCelebration) {
+            document.body.appendChild(completionCelebration);
+        }
+    },
+    onComplete: renderCurrentPage,
+    onPreviewSound: () => {
+        audioController.unlock();
+        audioController.playCompletion('regular');
+    },
+    onPreviewAnimation: () => {
+        showCompletionAnimation('regular');
+    },
+    onRequestNotificationPermission: () => {
+        return requestBrowserNotificationPermission().then(permission => {
+            if (permission === 'granted') {
+                sendNotificationReadyConfirmation();
+            }
+            return permission;
+        });
+    }
+
+});
+experienceController.init();
+window.TasklyzenRuntime.experienceController = experienceController;
 let developerController = null;
 
 function getDeveloperController() {
@@ -659,7 +698,6 @@ function getDeveloperController() {
             gamification = value;
         },
         getAnalyticsSnapshot,
-        getAllAchievements,
         getDailyMission,
         getCurrentStreak,
         getPerfectStreak,
@@ -674,24 +712,45 @@ function getDeveloperController() {
         createNextHabitOccurrence,
         removeNextHabitOccurrence,
         updateDailyGoal,
-        queueAchievementShowcase,
         showCompletionAnimation,
         showStreakDayCelebration,
+        previewRaceState: state => {
+            if (!todos.some(todo => todo && !todo.completed)) {
+                addTodoItem('Sesión de prueba de Modo Carrera', 'normal');
+            }
+
+            return betaFeatureControllers.focus.previewForDeveloper(state);
+        },
+        getSustainableProgress: () => sustainableProgressController.getSnapshot(),
+        replaceSustainableProgress: value => sustainableProgressController.replace(value),
+        clearSustainableProgress: () => sustainableProgressController.clear(),
+        recordSustainableTaskCompletion: todo => sustainableProgressController.recordTaskCompletion(todo, {
+            dateKey: getCompletionDateKey(todo) || getTodayKey(),
+            completedAt: todo && todo.completedAt,
+            source: 'developer'
+        }),
+        simulateSustainableSession: simulateSustainableSessionForDev,
+        playRaceCue: cue => {
+            audioController.unlock();
+            return audioController.playRaceCue(cue);
+        },
+        enableAppSound: () => {
+            audioController.unlock();
+            settingsController.update({
+                sound: true,
+                soundVolume: appSettings.soundVolume > 0 ? appSettings.soundVolume : 0.6
+            }, 'Sonido activado para las demos de Modo Carrera.');
+            return true;
+        },
         showToast,
         saveTodoList,
         saveCompletionHistory,
         saveDailyGoal,
         saveGamification,
         syncCompletionHistory,
-        syncAchievementCollection,
         renderCurrentPage,
         taskUiController,
         gamificationController,
-        grantAchievement: (achievementId, shouldAnimate) => gamificationController.grantAchievement(achievementId, shouldAnimate),
-        removeAchievement: achievementId => gamificationController.removeAchievement(achievementId),
-        resetAchievements: () => gamificationController.resetAchievements(),
-        unlockAllAchievements: options => gamificationController.unlockAllAchievements(options),
-        forceFinalizePendingAchievements: () => gamificationController.forceFinalizePendingAchievements(),
         normalizeGamification,
         normalizeStoredTodoText,
         normalizeTaskTimeLimit,
@@ -721,7 +780,6 @@ normalizeGamification();
 overdueReviewController.init();
 processOverdueRetention(true);
 if (!todoForm) {
-    syncAchievementCollection(false);
     saveCompletionHistory();
     saveGamification();
     syncAnalyticsData();
@@ -737,7 +795,8 @@ TASKLYZEN_STORAGE.subscribe([
     ANALYTICS_FLOW_PERIOD_KEY,
     FEATURES_KEY,
     SETTINGS_KEY,
-    OVERDUE_REVIEW_KEY
+    OVERDUE_REVIEW_KEY,
+    SUSTAINABLE_PROGRESS_KEY
 ], handleExternalStorageChange);
 
 function saveTodoList() {
@@ -810,13 +869,17 @@ function restoreRuntimeFromStorage() {
     appSettings = settingsController.load();
     taskUiController.clearEditingTodo(false);
     notificationController.resetExternalState();
-    normalizeGamification();
     settingsController.apply(false);
     settingsController.syncControls();
+    sustainableProgressController.reload();
     featureRegistry.reload();
+    if (experienceController) {
+        experienceController.reload();
+    }
+    syncRaceHistoryIntoSustainableProgress();
+    normalizeGamification();
     overdueReviewController.reload({ refresh: false });
     processOverdueRetention(false);
-    syncAchievementCollection(false);
     renderCurrentPage();
 }
 
@@ -836,9 +899,16 @@ function resetRuntimeAfterDataDeletion() {
     notificationController.resetExternalState();
     settingsController.apply(false);
     settingsController.syncControls();
+    sustainableProgressController.reload();
     featureRegistry.reload();
+    if (experienceController) {
+        experienceController.reload();
+    }
     overdueReviewController.reload({ refresh: false });
     renderCurrentPage();
+    if (experienceController) {
+        experienceController.openAfterReset();
+    }
 }
 
 function createEmptyDailyStat(dateKey) {
@@ -856,7 +926,6 @@ function createEmptyDailyStat(dateKey) {
         edited: 0,
         snoozed: 0,
         goalChanges: 0,
-        achievements: 0,
         usageEvents: 0,
         completionValue: 0
     };
@@ -953,8 +1022,6 @@ function buildDailyStats(todoItems, events) {
             stat.snoozed += 1;
         } else if (event.type === 'goal_changed') {
             stat.goalChanges += 1;
-        } else if (event.type === 'achievement_unlocked') {
-            stat.achievements += 1;
         }
     });
 
@@ -996,8 +1063,10 @@ function handleExternalStorageChange() {
     appSettings = settingsController.load();
     settingsController.apply(false);
     settingsController.syncControls();
-    normalizeGamification();
+    sustainableProgressController.reload();
     featureRegistry.reload();
+    syncRaceHistoryIntoSustainableProgress();
+    normalizeGamification();
     overdueReviewController.reload({ refresh: false });
     processOverdueRetention(false);
     renderCurrentPage();
@@ -1081,18 +1150,6 @@ function loadDailyGoal() {
     }
 
     return DEFAULT_DAILY_GOAL;
-}
-
-function createAchievementState() {
-    return TASKLYZEN_GAMIFICATION.createAchievementState();
-}
-
-function normalizeAchievementState(state) {
-    return TASKLYZEN_GAMIFICATION.normalizeAchievementState(state);
-}
-
-function getAchievementState(achievementId) {
-    return gamificationController.getAchievementState(achievementId);
 }
 
 function loadGamification() {
@@ -1535,36 +1592,7 @@ function showToast(message, type, options) {
 }
 
 function playCompletionSound(type) {
-    if (!appSettings.sound) {
-        return;
-    }
-
-    const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
-
-    if (!AudioContextConstructor) {
-        return;
-    }
-
-    try {
-        const audioContext = new AudioContextConstructor();
-        const oscillator = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        const baseFrequency = type === 'legendary' ? 660 : type === 'goal' ? 540 : 420;
-        const targetGain = Math.max(appSettings.soundVolume * 0.16, 0.0001);
-
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(baseFrequency, audioContext.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(baseFrequency * 1.28, audioContext.currentTime + 0.12);
-        gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
-        gain.gain.exponentialRampToValueAtTime(targetGain, audioContext.currentTime + 0.03);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.22);
-        oscillator.connect(gain);
-        gain.connect(audioContext.destination);
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.24);
-    } catch (error) {
-        settingsController.update({ sound: false }, null, { apply: false, render: false });
-    }
+    audioController.playCompletion(type);
 }
 
 function getCompletionCelebrationCopy(type) {
@@ -1854,10 +1882,6 @@ function getMonthlyFunnelAnalytics(monthAnalytics) {
 function getClarityAnalytics() {
     return analyticsProgressController.getClarityAnalytics();
 }
-function getClosestAchievements(limit) {
-    return analyticsProgressController.getClosestAchievements(limit);
-}
-
 function getConsistencyAnalytics(days) {
     return analyticsProgressController.getConsistencyAnalytics(days);
 }
@@ -1998,23 +2022,39 @@ function renderCompactProgressWidget() {
         return;
     }
 
-    const todayCount = getHistoryCount(getTodayKey());
+    const todayKey = getTodayKey();
+    const todayProgress = sustainableProgressController.getDaySnapshot(todayKey);
+    const todayCount = todayProgress.meaningfulActions;
     const safeDailyGoal = Math.max(Number(dailyGoal) || DEFAULT_DAILY_GOAL, 1);
     const streak = getCurrentStreak();
     const streakLevel = getStreakPrestigeLevel(streak);
-    const todayKey = getTodayKey();
-    const streakProtectedToday = getHistoryCount(todayKey) > 0 || isProtectedDate(todayKey);
+    const streakProtectedToday = todayProgress.active || isProtectedDate(todayKey);
     const streakRescueState = getRescueState();
     const weekDateKeys = getWeekDateKeysForCompactProgress();
-    const weekCompleted = weekDateKeys.reduce((total, dateKey) => total + getHistoryCount(dateKey), 0);
-    const weekTarget = Math.max(safeDailyGoal * 7, 1);
-    const weekPercent = Math.min(Math.round((weekCompleted / weekTarget) * 100), 100);
-    const todayPercent = Math.min(Math.round((todayCount / safeDailyGoal) * 100), 100);
+    const weekDays = weekDateKeys.map(dateKey => sustainableProgressController.getDaySnapshot(dateKey));
+    const weekCompleted = weekDays.reduce((total, day) => total + day.meaningfulActions, 0);
+    const weekFocusMinutes = Math.floor(weekDays.reduce((total, day) => total + day.rewardedFocusMs, 0) / 60000);
+    const weekTaskTarget = Math.max(safeDailyGoal * 7, 1);
+    const weekFocusTarget = Math.max(todayProgress.focusGoalMinutes * 7, 1);
+    const weekTaskPercent = Math.min(Math.round((weekCompleted / weekTaskTarget) * 100), 100);
+    const weekFocusPercent = Math.min(Math.round((weekFocusMinutes / weekFocusTarget) * 100), 100);
+    const weekPercent = todayProgress.progressMode === 'focus'
+        ? weekFocusPercent
+        : todayProgress.progressMode === 'balanced'
+            ? Math.round((weekTaskPercent + weekFocusPercent) / 2)
+            : weekTaskPercent;
+    const todayPercent = todayProgress.goalPercent;
     const missionSnapshot = analyticsProgressController.getDailyMissionSnapshot();
     const streakTodayState = streakProtectedToday ? 'protected' : streak > 0 ? 'pending' : 'empty';
+    const focusMinutes = Math.floor(todayProgress.rewardedFocusMs / 60000);
+    const todayComplete = todayProgress.goalReached;
 
     if (compactProgressToday) {
-        compactProgressToday.textContent = 'Hoy ' + todayCount + '/' + safeDailyGoal;
+        compactProgressToday.textContent = todayProgress.progressMode === 'focus'
+            ? 'Hoy ' + focusMinutes + '/' + todayProgress.focusGoalMinutes + 'm'
+            : todayProgress.progressMode === 'balanced'
+                ? 'Hoy ' + todayPercent + '%'
+                : 'Hoy ' + todayCount + '/' + safeDailyGoal;
     }
 
     if (compactProgressTodayBar) {
@@ -2022,19 +2062,27 @@ function renderCompactProgressWidget() {
     }
 
     if (compactProgressTodayNote) {
-        compactProgressTodayNote.textContent = todayCount === 0
-            ? 'Empieza con 1 tarea'
-            : todayCount >= safeDailyGoal ? 'Meta completa de hoy' : 'Faltan ' + (safeDailyGoal - todayCount) + ' para cerrar Hoy';
+        compactProgressTodayNote.textContent = todayProgress.progressMode === 'focus'
+            ? (todayComplete ? 'Meta de enfoque completa' : focusMinutes + ' de ' + todayProgress.focusGoalMinutes + ' min confirmados')
+            : todayProgress.progressMode === 'balanced'
+                ? todayCount + '/' + safeDailyGoal + ' avances · ' + focusMinutes + '/' + todayProgress.focusGoalMinutes + ' min'
+                : todayCount === 0
+                    ? 'Empieza con 1 tarea'
+                    : todayComplete ? 'Meta completa de hoy' : 'Faltan ' + (safeDailyGoal - todayCount) + ' para cerrar Hoy';
     }
 
     if (compactProgressTodayStatus) {
-        compactProgressTodayStatus.textContent = todayCount >= safeDailyGoal
+        compactProgressTodayStatus.textContent = todayComplete
             ? 'Cumplida'
-            : Math.min(todayCount, safeDailyGoal) + '/' + safeDailyGoal;
+            : todayProgress.progressMode === 'focus'
+                ? focusMinutes + '/' + todayProgress.focusGoalMinutes + ' min'
+                : todayProgress.progressMode === 'balanced'
+                    ? todayPercent + '%'
+                    : Math.min(todayCount, safeDailyGoal) + '/' + safeDailyGoal;
     }
 
     if (compactProgressTodayItem) {
-        compactProgressTodayItem.classList.toggle('is-complete', todayCount >= safeDailyGoal);
+        compactProgressTodayItem.classList.toggle('is-complete', todayComplete);
     }
 
     if (compactProgressMissionTitle) {
@@ -2050,7 +2098,7 @@ function renderCompactProgressWidget() {
     if (compactProgressMissionStatus) {
         compactProgressMissionStatus.textContent = missionSnapshot.complete
             ? 'Cumplida'
-            : Math.min(missionSnapshot.current, missionSnapshot.target) + '/' + missionSnapshot.target;
+            : missionSnapshot.statusText;
     }
 
     if (compactProgressMissionItem) {
@@ -2062,7 +2110,7 @@ function renderCompactProgressWidget() {
         compactProgressMissionItem.classList.toggle('is-complete', missionSnapshot.complete);
         compactProgressMissionItem.dataset.missionState = missionSnapshot.complete ? 'complete' : 'pending';
         compactProgressMissionItem.setAttribute('aria-label', 'Misión diaria: ' + missionSnapshot.title + '. '
-            + (missionSnapshot.complete ? 'Cumplida.' : missionSnapshot.current + ' de ' + missionSnapshot.target + '.'));
+            + (missionSnapshot.complete ? 'Cumplida.' : missionSnapshot.statusText + '.'));
 
         if (missionAdvanced) {
             replayCompactFeedback(compactProgressMissionItem, 'mission-progressed');
@@ -2117,19 +2165,27 @@ function renderCompactProgressWidget() {
     }
 
     if (compactProgressWeekNote) {
-        compactProgressWeekNote.textContent = weekCompleted >= weekTarget
+        compactProgressWeekNote.textContent = weekPercent >= 100
             ? 'Objetivo semanal completado'
-            : weekCompleted > 0 ? 'Sigue construyendo tu ritmo' : 'Completa una tarea para empezar';
+            : todayProgress.progressMode === 'focus'
+                ? weekFocusMinutes + ' de ' + weekFocusTarget + ' min de enfoque'
+                : todayProgress.progressMode === 'balanced'
+                    ? weekCompleted + ' avances · ' + weekFocusMinutes + ' min'
+                    : weekCompleted > 0 ? 'Sigue construyendo tu ritmo' : 'Completa una tarea para empezar';
     }
 
     if (compactProgressWeekStatus) {
-        compactProgressWeekStatus.textContent = weekCompleted >= weekTarget
+        compactProgressWeekStatus.textContent = weekPercent >= 100
             ? 'Cumplida'
-            : weekCompleted + '/' + weekTarget;
+            : todayProgress.progressMode === 'focus'
+                ? weekFocusMinutes + '/' + weekFocusTarget + ' min'
+                : todayProgress.progressMode === 'balanced'
+                    ? weekPercent + '%'
+                    : weekCompleted + '/' + weekTaskTarget;
     }
 
     if (compactProgressWeekItem) {
-        compactProgressWeekItem.classList.toggle('is-complete', weekCompleted >= weekTarget);
+        compactProgressWeekItem.classList.toggle('is-complete', weekPercent >= 100);
     }
 
     if (compactProgressButtons) {
@@ -2218,7 +2274,9 @@ function syncAppLayerState() {
         return;
     }
 
-    const hasOpenLayer = progressPanelExpanded || isSettingsPanelOpen();
+    const hasOpenLayer = progressPanelExpanded
+        || isSettingsPanelOpen()
+        || Boolean(experienceController && experienceController.isOpen());
 
     document.body.classList.toggle('settings-panel-open', isSettingsPanelOpen());
     document.body.classList.remove('modal-panel-open');
@@ -2540,7 +2598,6 @@ function hydrateProgressDashboard(reason) {
     progressHydrationScheduled = false;
     disconnectProgressHydrationObserver();
     renderProgressDashboard(reason);
-    renderAchievementSurfaces();
 }
 
 function scheduleProgressHydration() {
@@ -2555,7 +2612,6 @@ function scheduleProgressHydration() {
 
 function runDeferredStartupWork() {
     deferredStartupScheduled = false;
-    syncAchievementCollection(false);
     saveCompletionHistory();
     saveGamification();
     ensureAnalyticsDataFresh();
@@ -2563,12 +2619,9 @@ function runDeferredStartupWork() {
     if (todoForm) {
         if (progressDashboardHydrated) {
             renderProgressDashboard('startup');
-            renderAchievementSurfaces();
         } else {
             hydrateProgressDashboard('startup');
         }
-    } else {
-        renderAchievementSurfaces();
     }
 
     startBrowserReminderLoop();
@@ -2585,7 +2638,7 @@ function scheduleDeferredStartupWork() {
 
 function getLocalFeatureContext() {
     return {
-        page: todoForm ? 'main' : achievementPageList ? 'achievements' : 'unknown',
+        page: todoForm ? 'main' : 'unknown',
         dom: TASKLYZEN_DOM,
         settings: appSettings,
         getTodos: () => todos.slice(),
@@ -2594,7 +2647,6 @@ function getLocalFeatureContext() {
         getAnalyticsSnapshot,
         getDailyMission,
         getCurrentStreak,
-        getFeaturedAchievements,
         showToast,
         renderCurrentPage
     };
@@ -2606,91 +2658,102 @@ function renderFeatureSurfaces() {
 }
 
 function renderRaceModeButton() {
-    if (focusModeButton) {
-        focusModeButton.hidden = false;
-        focusModeButton.setAttribute('aria-label', 'Iniciar Modo Carrera');
+    if (!focusModeButton) {
+        return;
+    }
+
+    const launchState = betaFeatureControllers.focus.getLaunchState();
+    const textNode = focusModeButton.querySelector('span:last-child');
+
+    focusModeButton.hidden = false;
+    focusModeButton.classList.toggle('has-resumable-session', launchState.resumable);
+    focusModeButton.setAttribute('aria-label', launchState.resumable
+        ? launchState.buttonLabel + ' para ' + launchState.todoTitle
+        : 'Iniciar Modo Carrera');
+
+    if (textNode) {
+        textNode.textContent = launchState.buttonLabel;
     }
 }
 
 function startFocusModeFromApp() {
-    const result = betaFeatureControllers.focus.start();
+    const result = betaFeatureControllers.focus.openLauncher();
 
     if (result && result.status === 'empty') {
         showToast(result.message || 'No hay tareas disponibles para iniciar Modo Carrera.', 'info', { key: 'focus-mode-empty' });
     }
 }
 
-function handleFocusSessionComplete() {
+function handleFocusSessionComplete(record) {
+    if (record) {
+        sustainableProgressController.recordSession(record);
+        normalizeGamification();
+    }
+
     renderCurrentPage();
-    showToast('Carrera terminada. Tu lista queda al dia.', 'success', { key: 'focus-mode-complete' });
 }
 
-function getRarityMeta(rarity) {
-    return gamificationController.getRarityMeta(rarity);
+function syncRaceHistoryIntoSustainableProgress() {
+    const focusState = featureRegistry.getFeatureState('focus-mode');
+    const history = Array.isArray(focusState && focusState.history) ? focusState.history : [];
+    const storedIds = new Set(
+        sustainableProgressController.getDateKeys().flatMap(dateKey => (
+            sustainableProgressController.getDaySnapshot(dateKey).sessions.map(session => session.id)
+        ))
+    );
+
+    history.forEach(session => {
+        if (!session || !session.id || storedIds.has(session.id)) {
+            return;
+        }
+
+        sustainableProgressController.recordSession({
+            ...session,
+            focusMs: Number.isFinite(Number(session.focusMs)) ? session.focusMs : session.elapsedMs,
+            selectedCount: Number(session.selectedCount) || (Array.isArray(session.sessionTodoIds) ? session.sessionTodoIds.length : 0)
+        });
+    });
 }
 
-function getRarityRank(rarity) {
-    return gamificationController.getRarityRank(rarity);
-}
+function simulateSustainableSessionForDev(type) {
+    const simulationType = ['meaningful', 'sustainable', 'suspicious', 'advanced', 'blocked', 'background'].includes(type)
+        ? type
+        : 'meaningful';
+    const existingCount = sustainableProgressController.getDaySnapshot(getTodayKey()).sessions.length;
+    const completedAtMs = Date.now() - ((existingCount + 1) * 2 * 60 * 60 * 1000);
+    const sustainable = simulationType === 'sustainable';
+    const suspicious = simulationType === 'suspicious';
+    const advanced = simulationType === 'advanced';
+    const blocked = simulationType === 'blocked';
+    const background = simulationType === 'background';
+    const focusMs = sustainable ? 50 * 60 * 1000 : suspicious ? 60 * 60 * 1000 : 25 * 60 * 1000;
+    const breakMs = sustainable ? 5 * 60 * 1000 : 0;
+    const record = {
+        id: 'dev-sustainable-' + Date.now().toString(36) + '-' + simulationType,
+        startedAt: new Date(completedAtMs - focusMs - breakMs).toISOString(),
+        completedAt: new Date(completedAtMs).toISOString(),
+        mode: 'free',
+        result: 'manual',
+        selectedCount: 1,
+        completedCount: suspicious || advanced || blocked ? 0 : 1,
+        completedSubtaskCount: 0,
+        focusMs,
+        breakMs,
+        pausedMs: 0,
+        awayMs: suspicious ? 55 * 60 * 1000 : 0,
+        backgroundMs: background ? 20 * 60 * 1000 : 0,
+        confirmedAwayMs: suspicious ? 55 * 60 * 1000 : 0,
+        completedBreaks: sustainable ? 1 : 0,
+        longBreaks: 0,
+        pomodoroEnabled: sustainable,
+        integrityFlags: [],
+        outcome: advanced ? 'advanced' : blocked ? 'blocked' : undefined
+    };
+    const day = sustainableProgressController.recordSession(record);
 
-function getRarityRankLabel(rarity) {
-    return gamificationController.getRarityRankLabel(rarity);
-}
-
-function getCategoryMeta(category) {
-    return gamificationController.getCategoryMeta(category);
-}
-
-function finalizePendingAchievements() {
-    return gamificationController.finalizePendingAchievements();
-}
-
-function resolveAchievement(definition) {
-    return gamificationController.resolveAchievement(definition);
-}
-
-function getAllAchievements() {
-    return gamificationController.getAllAchievements();
-}
-
-function sortAchievements(achievements, mode) {
-    return gamificationController.sortAchievements(achievements, mode);
-}
-
-function getAchievementCollection() {
-    return gamificationController.getAchievementCollection();
-}
-
-function getFilteredAchievementCollection() {
-    return gamificationController.getFilteredAchievementCollection(achievementCategoryFilterValue, achievementRarityFilterValue, achievementSortMode);
-}
-
-function syncAchievementCollection(shouldShow) {
-    gamificationController.syncAchievementCollection(shouldShow);
-}
-
-function getAutomaticFeaturedAchievements() {
-    return gamificationController.getAutomaticFeaturedAchievements();
-}
-
-function getFeaturedAchievements() {
-    return gamificationController.getFeaturedAchievements();
-}
-
-function toggleFeaturedAchievement(achievementId) {
-    gamificationController.toggleFeaturedAchievement(achievementId);
-}
-
-function queueAchievementShowcase(achievements) {
-    gamificationUiController.queueAchievementShowcase(achievements);
-}
-
-function getAchievementShowcaseDuration(rarity) {
-    return gamificationUiController.getAchievementShowcaseDuration(rarity);
-}
-
-function showNextAchievement() {
-    gamificationUiController.showNextAchievement();
+    normalizeGamification();
+    renderCurrentPage();
+    return day;
 }
 
 function getStreakPrestigeLevel(streak) {
@@ -2766,29 +2829,6 @@ function renderDailyMission() {
 
 function renderDailyClose() {
     analyticsProgressController.renderDailyClose();
-}
-function createAchievementCard(achievement, options) {
-    return gamificationUiController.createAchievementCard(achievement, options);
-}
-
-function createFeaturedAchievementCard(achievement) {
-    return gamificationUiController.createFeaturedAchievementCard(achievement);
-}
-
-function renderFeaturedAchievements() {
-    gamificationUiController.renderFeaturedAchievements();
-}
-
-function getBestCollectedRarityLabel(achievements) {
-    return gamificationUiController.getBestCollectedRarityLabel(achievements);
-}
-
-function renderAchievementsPage() {
-    gamificationUiController.renderAchievementsPage();
-}
-
-function renderAchievementSurfaces() {
-    gamificationUiController.renderAchievementSurfaces();
 }
 
 function renderNextReward() {
@@ -2905,10 +2945,6 @@ function renderCurrentPage() {
         notifyDeadlineRisks();
     }
 
-    if (!todoForm || progressDashboardHydrated) {
-        renderAchievementSurfaces();
-    }
-
     renderFeatureSurfaces();
     refreshDeveloperPanel();
 }
@@ -2983,7 +3019,6 @@ function saveEditedTodoItem(id) {
         textChanged: previousText !== cleanText
     });
     syncCompletionHistory();
-    syncAchievementCollection(false);
     processOverdueRetention(true);
     renderCurrentPage();
 }
@@ -3028,7 +3063,6 @@ function removeOverdueTasks(taskItems, eventType) {
         todos = todos.filter(todo => !requestedIds.has(todo.id));
         saveTodoList();
         syncCompletionHistory();
-        syncAchievementCollection(false);
         return true;
     } catch (error) {
         showToast('No se pudieron eliminar las tareas vencidas. Intenta de nuevo.', 'error', {
@@ -3081,15 +3115,43 @@ function clearCompletedTodos() {
     todos = cleanableResult.todos;
     saveTodoList();
     syncCompletionHistory();
-    syncAchievementCollection(false);
     renderCurrentPage();
 }
 
 function reactivateTodoForToday(todo) {
-    return taskManager.reactivate(todo).reactivatedAt;
+    const completedOn = getCompletionDateKey(todo);
+    const reactivatedAt = taskManager.reactivate(todo).reactivatedAt;
+
+    if (todo && completedOn === getTodayKey()) {
+        sustainableProgressController.revokeTaskCompletion(todo.id, completedOn);
+    }
+
+    return reactivatedAt;
 }
 
-function toggleTodoItem(id) {
+function getCompletionDateKey(item) {
+    return item && (item.completedOn || getDateKeyFromTimestamp(item.completedAt));
+}
+
+function revokeTodaySustainableCredits(todo) {
+    if (!todo) return;
+    const todayKey = getTodayKey();
+
+    if (getCompletionDateKey(todo) === todayKey) {
+        sustainableProgressController.revokeTaskCompletion(todo.id, todayKey);
+    }
+
+    if (Array.isArray(todo.subtasks)) {
+        todo.subtasks.forEach(subtask => {
+            if (!subtask.optional && subtask.completed && getDateKeyFromTimestamp(subtask.completedAt) === todayKey) {
+                sustainableProgressController.revokeSubtaskCompletion(todo.id, subtask.id, todayKey);
+            }
+        });
+    }
+}
+
+function toggleTodoItem(id, options) {
+    const actionContext = options || {};
     const todo = todos.find(item => item.id === id);
     const wasCompleted = todo ? todo.completed : false;
     let streakCelebrationContext = null;
@@ -3101,6 +3163,10 @@ function toggleTodoItem(id) {
     if (TASKLYZEN_COMPOSITE_TASKS.isCompositeTask(todo)) {
         taskUiController.setExpandedTodo(todo.id, true, true);
         return;
+    }
+
+    if (!wasCompleted) {
+        audioController.unlock();
     }
 
     if (todo.completed) {
@@ -3130,6 +3196,12 @@ function toggleTodoItem(id) {
         let celebrationType = 'regular';
 
         taskManager.complete(todo, { completedOn: todayKey, completedAt });
+        sustainableProgressController.recordTaskCompletion(todo, {
+            dateKey: todayKey,
+            completedAt,
+            source: actionContext.source || 'tasks',
+            sessionId: actionContext.sessionId || null
+        });
 
         if (previousTodayCount === 0 && !gamificationController.hasCelebratedStreakDate(todayKey)) {
             streakCelebrationContext = { todayKey, previousRecord };
@@ -3141,7 +3213,9 @@ function toggleTodoItem(id) {
             celebrationType = 'legendary';
         }
 
-        if (celebrationType !== 'regular') {
+        if (celebrationType === 'regular') {
+            playCompletionSound(celebrationType);
+        } else {
             showCompletionAnimation(celebrationType);
         }
 
@@ -3165,7 +3239,6 @@ function toggleTodoItem(id) {
 
     saveTodoList();
     syncCompletionHistory();
-    syncAchievementCollection(!wasCompleted);
 
     if (streakCelebrationContext) {
         const updatedStreak = getCurrentStreak();
@@ -3184,6 +3257,7 @@ function removeTodoItem(id) {
     const removedTodo = removalResult.removedTodo;
 
     if (removedTodo) {
+        revokeTodaySustainableCredits(removedTodo);
         removeNextHabitOccurrence(removedTodo);
         logTodoRemoval(removedTodo, 'task_deleted');
     }
@@ -3193,9 +3267,6 @@ function removeTodoItem(id) {
 
     if (removedTodo && removedTodo.completed) {
         syncCompletionHistory();
-        syncAchievementCollection(false);
-    } else {
-        syncAchievementCollection(false);
     }
 
     renderCurrentPage();
@@ -3238,17 +3309,29 @@ function logCompositeTransition(todo, transition) {
     }
 }
 
-function commitCompositeChange(todo, previousCompleted) {
+function commitCompositeChange(todo, previousCompleted, options) {
     if (!todo) return false;
+    const actionContext = options || {};
     const todayKey = getTodayKey();
     const previousTodayCount = getHistoryCount(todayKey);
     const previousRecord = getLongestActiveStreak();
     todo.completed = Boolean(previousCompleted);
     const transition = TASKLYZEN_COMPOSITE_TASKS.synchronizeCompositeTask(todo, { dateKey: todayKey });
+
+    if (transition.completedNow) {
+        sustainableProgressController.recordTaskCompletion(todo, {
+            dateKey: todayKey,
+            completedAt: todo.completedAt,
+            source: actionContext.source || 'tasks',
+            sessionId: actionContext.sessionId || null
+        });
+    } else if (transition.reactivatedNow) {
+        sustainableProgressController.revokeTaskCompletion(todo.id, todayKey);
+    }
+
     logCompositeTransition(todo, transition);
     saveTodoList();
     syncCompletionHistory();
-    syncAchievementCollection(Boolean(transition.completedNow));
 
     if (transition.completedNow && previousTodayCount === 0 && !gamificationController.hasCelebratedStreakDate(todayKey)) {
         const updatedStreak = getCurrentStreak();
@@ -3302,18 +3385,38 @@ function addSubtaskToTodo(todoId, title, optional, options) {
     return commitCompositeChange(todo, previousCompleted);
 }
 
-function toggleTodoSubtask(todoId, subtaskId) {
+function toggleTodoSubtask(todoId, subtaskId, options) {
+    const actionContext = options || {};
     const todo = todos.find(item => item.id === todoId);
     const subtask = todo && Array.isArray(todo.subtasks) ? todo.subtasks.find(item => item.id === subtaskId) : null;
     if (!subtask) return false;
+    const wasCompleted = Boolean(subtask.completed);
+    const previousCompletedAt = subtask.completedAt;
+    if (!subtask.completed) {
+        audioController.unlock();
+    }
     const previousCompleted = Boolean(todo.completed);
     subtask.completed = !subtask.completed;
     subtask.completedAt = subtask.completed ? getNowTimestamp() : null;
     subtask.updatedAt = getNowTimestamp();
-    return commitCompositeChange(todo, previousCompleted);
+    const committed = commitCompositeChange(todo, previousCompleted, actionContext);
+
+    if (committed && !subtask.optional) {
+        if (!wasCompleted && subtask.completed) {
+            sustainableProgressController.recordSubtaskCompletion(todo.id, subtask.id, {
+                completedAt: subtask.completedAt,
+                source: actionContext.source || 'tasks',
+                sessionId: actionContext.sessionId || null
+            });
+        } else if (wasCompleted && !subtask.completed && getDateKeyFromTimestamp(previousCompletedAt) === getTodayKey()) {
+            sustainableProgressController.revokeSubtaskCompletion(todo.id, subtask.id, getTodayKey());
+        }
+    }
+
+    return committed;
 }
 
-function completeTodoFromFeature(todoId) {
+function completeTodoFromFeature(todoId, context) {
     const todo = todos.find(item => item.id === todoId);
 
     if (!todo) {
@@ -3328,12 +3431,18 @@ function completeTodoFromFeature(todoId) {
         return TASKLYZEN_COMPOSITE_TASKS.isCompositeTaskCompleted(todo);
     }
 
-    toggleTodoItem(todoId);
+    toggleTodoItem(todoId, {
+        source: 'race',
+        sessionId: context && context.sessionId
+    });
     return Boolean(todos.find(item => item.id === todoId && item.completed));
 }
 
-function toggleSubtaskFromFeature(todoId, subtaskId) {
-    return toggleTodoSubtask(todoId, subtaskId);
+function toggleSubtaskFromFeature(todoId, subtaskId, context) {
+    return toggleTodoSubtask(todoId, subtaskId, {
+        source: 'race',
+        sessionId: context && context.sessionId
+    });
 }
 
 function saveTodoSubtaskEdit(todoId, subtaskId, title, optional) {
@@ -3388,14 +3497,27 @@ function deleteTodoSubtask(todoId, subtaskId, strategy) {
     const todo = todos.find(item => item.id === todoId);
     const subtask = todo && Array.isArray(todo.subtasks) ? todo.subtasks.find(item => item.id === subtaskId) : null;
     if (!subtask) return false;
+    const todayKey = getTodayKey();
+
+    if (!subtask.optional && subtask.completed && getDateKeyFromTimestamp(subtask.completedAt) === todayKey) {
+        sustainableProgressController.revokeSubtaskCompletion(todo.id, subtask.id, todayKey);
+    }
 
     if (strategy === 'promote-optional') {
         const optionalReplacement = todo.subtasks.find(item => item.id !== subtaskId && item.optional);
         if (!optionalReplacement) return false;
         optionalReplacement.optional = false;
+        if (optionalReplacement.completed && getDateKeyFromTimestamp(optionalReplacement.completedAt) === todayKey) {
+            sustainableProgressController.recordSubtaskCompletion(todo.id, optionalReplacement.id, {
+                dateKey: todayKey,
+                completedAt: optionalReplacement.completedAt,
+                source: 'tasks'
+            });
+        }
     }
 
     if (strategy === 'convert-normal') {
+        revokeTodaySustainableCredits(todo);
         todo.type = 'normal';
         delete todo.subtasks;
         delete todo.compositeStatus;
@@ -3431,6 +3553,7 @@ function moveTodoSubtask(todoId, subtaskId, direction) {
 function convertCompositeTodoToNormal(todoId) {
     const todo = todos.find(item => item.id === todoId);
     if (!TASKLYZEN_COMPOSITE_TASKS.isCompositeTask(todo)) return;
+    revokeTodaySustainableCredits(todo);
     todo.type = 'normal';
     delete todo.subtasks;
     delete todo.compositeStatus;
@@ -3527,14 +3650,18 @@ function handleTaskCreationKeydown(event) {
         return;
     }
 
-    const hasDraftText = Boolean(todoInput && todoInput.value.trim());
-    const hasCompositeDraft = Array.isArray(compositeDraftSubtasks) && compositeDraftSubtasks.length > 0;
+    const isModalOpen = Boolean(
+        (deleteDataDialog && deleteDataDialog.open)
+        || (overdueReviewDialog && overdueReviewDialog.open)
+        || (settingsPanel && settingsPanel.hidden === false)
+    );
 
-    if (hasDraftText || hasCompositeDraft) {
+    if (isModalOpen) {
         return;
     }
 
     event.preventDefault();
+    event.stopImmediatePropagation();
     closeTaskCreationAfterCreate();
 }
 
@@ -3825,8 +3952,35 @@ function handleDailyGoalInput(event) {
     updateDailyGoal(event.target.value, false);
 }
 
+function handleFocusGoalChange(event) {
+    if (event.target.value === '') {
+        dailyFocusGoalInput.value = appSettings.dailyFocusGoalMinutes;
+        return;
+    }
+
+    analyticsProgressController.updateFocusGoal(event.target.value, true);
+}
+
+function handleFocusGoalInput(event) {
+    analyticsProgressController.updateFocusGoal(event.target.value, false);
+}
+
 function handleRecommendedGoalClick() {
-    updateDailyGoal(applyRecommendedGoalButton.dataset.goal, true);
+    const mode = applyRecommendedGoalButton.dataset.mode || 'tasks';
+
+    if (mode === 'tasks') {
+        updateDailyGoal(applyRecommendedGoalButton.dataset.taskGoal, true);
+        return;
+    }
+
+    if (mode === 'focus') {
+        analyticsProgressController.updateFocusGoal(applyRecommendedGoalButton.dataset.focusGoal, true);
+        return;
+    }
+
+    updateDailyGoal(applyRecommendedGoalButton.dataset.taskGoal, false);
+    analyticsProgressController.updateFocusGoal(applyRecommendedGoalButton.dataset.focusGoal, false);
+    showToast('Meta equilibrada actualizada.', 'info');
 }
 
 function handleProgressTabClick(event) {
@@ -3901,32 +4055,6 @@ function installDeveloperModeCommand() {
     }
 }
 
-function handleAchievementPageClick(event) {
-    const featureButton = event.target.closest('[data-feature-achievement]');
-
-    if (!featureButton) {
-        return;
-    }
-
-    toggleFeaturedAchievement(featureButton.dataset.featureAchievement);
-}
-
-function handleAchievementCategoryFilterChange(event) {
-    achievementCategoryFilterValue = ACHIEVEMENT_CATEGORY_KEYS.includes(event.target.value) ? event.target.value : 'all';
-    renderAchievementsPage();
-}
-
-function handleAchievementRarityFilterChange(event) {
-    achievementRarityFilterValue = ACHIEVEMENT_RARITY_KEYS.includes(event.target.value) ? event.target.value : 'all';
-    renderAchievementsPage();
-}
-
-function handleAchievementSortChange(event) {
-    const sortModes = ['smart', 'rarity-desc', 'rarity-asc', 'progress-desc', 'collected-first', 'title-asc'];
-    achievementSortMode = sortModes.includes(event.target.value) ? event.target.value : 'smart';
-    renderAchievementsPage();
-}
-
 function handleNotificationsChange(event) {
     notificationController.handlePreferenceChange(event);
 }
@@ -3942,12 +4070,15 @@ function handleNotificationTestClick() {
 if (todoForm) {
     todoForm.addEventListener('submit', handleFormSubmit);
     todoForm.addEventListener('click', handleDueDatePresetClick);
-    todoForm.addEventListener('keydown', handleTaskCreationKeydown);
     setTaskCreationOpen(false, { focus: false });
 }
 
 if (taskCreateToggle) {
     taskCreateToggle.addEventListener('click', toggleTaskCreationPanel);
+}
+
+if (taskCreateClose) {
+    taskCreateClose.addEventListener('click', closeTaskCreationAfterCreate);
 }
 
 if (timeLimitInput) {
@@ -4022,6 +4153,20 @@ if (settingsSimplifiedAnalytics) {
     settingsSimplifiedAnalytics.addEventListener('change', settingsController.handleSimplifiedAnalyticsChange);
 }
 
+if (settingsProgressModeInputs) {
+    settingsProgressModeInputs.forEach(input => {
+        input.addEventListener('change', settingsController.handleProgressModeChange);
+    });
+}
+
+if (settingsFocusGoal) {
+    settingsFocusGoal.addEventListener('input', settingsController.handleFocusGoalInput);
+}
+
+if (settingsBackgroundTimer) {
+    settingsBackgroundTimer.addEventListener('change', settingsController.handleBackgroundTimerChange);
+}
+
 if (focusModeButton) {
     focusModeButton.addEventListener('click', startFocusModeFromApp);
 }
@@ -4036,6 +4181,13 @@ if (settingsImportData) {
 
 if (settingsImportFile) {
     settingsImportFile.addEventListener('change', settingsController.handleImportFileChange);
+}
+
+if (settingsExperienceButton) {
+    settingsExperienceButton.addEventListener('click', () => {
+        settingsController.setPanelOpen(false);
+        experienceController.openManual();
+    });
 }
 
 if (settingsDeleteData) {
@@ -4125,6 +4277,7 @@ function handleGlobalKeydownForTaskInput(event) {
     }
 }
 document.addEventListener('keydown', handleGlobalKeydownForTaskInput);
+document.addEventListener('keydown', handleTaskCreationKeydown, true);
 
 document.addEventListener('pointerdown', handleAppLayerPointerDown, true);
 
@@ -4153,22 +4306,6 @@ if (rescueButton) {
     rescueButton.addEventListener('click', handleRescueClick);
 }
 
-if (achievementPageList) {
-    achievementPageList.addEventListener('click', handleAchievementPageClick);
-}
-
-if (achievementCategoryFilter) {
-    achievementCategoryFilter.addEventListener('change', handleAchievementCategoryFilterChange);
-}
-
-if (achievementRarityFilter) {
-    achievementRarityFilter.addEventListener('change', handleAchievementRarityFilterChange);
-}
-
-if (achievementSortInput) {
-    achievementSortInput.addEventListener('change', handleAchievementSortChange);
-}
-
 
 setProgressPanelExpanded(false, false);
 
@@ -4184,52 +4321,156 @@ window.addEventListener('resize', function() {
 
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
+        betaFeatureControllers.focus.handleVisibilityChange(true);
         sendBrowserTaskReminder(false);
         return;
     }
 
+    betaFeatureControllers.focus.handleVisibilityChange(false);
     refreshTimeSensitiveTaskState();
 });
 
 window.addEventListener('focus', refreshTimeSensitiveTaskState);
 
-if (achievementPageList) {
-    window.addEventListener('pagehide', () => {
-        gamificationController.markAchievementsSeen();
-    }, { once: true });
-}
-
-// Onboarding Logic
-const loginStrategy = localStorage.getItem('tasklyzen-login-strategy');
+// Entrada de usuario y recuperación de sesión
 const onboardingOverlay = document.getElementById('onboarding-overlay');
 const onboardingSkipBtn = document.getElementById('onboarding-skip-btn');
 
 let appStarted = false;
+let startupRacePromptHandled = false;
+let startupExperienceHandled = false;
+let startupDataCoordinatorStarted = false;
+let startupExperienceTimer = null;
+
+function hasExistingExperienceData() {
+    return todos.length > 0
+        || analyticsEvents.length > 0
+        || Object.keys(completionHistory || {}).length > 0
+        || Boolean(TASKLYZEN_STORAGE.readText(SETTINGS_KEY, null))
+        || Boolean(TASKLYZEN_STORAGE.readText(SUSTAINABLE_PROGRESS_KEY, null));
+}
+
+function hasBlockingStartupLayer() {
+    if (onboardingOverlay && !onboardingOverlay.hidden) {
+        return true;
+    }
+
+    const openDialog = document.querySelector('dialog[open]:not(#experience-dialog)');
+    const focusLayer = document.querySelector('.beta-focus-shell, .beta-focus-setup-shell, .beta-focus-resume-shell');
+    return Boolean(openDialog || focusLayer || progressPanelExpanded || isSettingsPanelOpen());
+}
+
+function scheduleStartupExperience() {
+    if (!appStarted || startupExperienceHandled || !experienceController) {
+        return;
+    }
+
+    window.clearTimeout(startupExperienceTimer);
+    startupExperienceTimer = window.setTimeout(() => {
+        startupExperienceTimer = null;
+
+        if (hasBlockingStartupLayer()) {
+            scheduleStartupExperience();
+            return;
+        }
+
+        const result = experienceController.maybeOpen({
+            hasExistingData: hasExistingExperienceData()
+        });
+        startupExperienceHandled = true;
+        if (result.opened) {
+            syncAppLayerState();
+        }
+    }, 220);
+}
+
+function openStartupRacePrompt() {
+    if (!appStarted || startupRacePromptHandled || (onboardingOverlay && !onboardingOverlay.hidden)) {
+        return false;
+    }
+
+    const launchState = betaFeatureControllers.focus.getLaunchState();
+
+    if (!launchState.resumable) {
+        return false;
+    }
+
+    startupRacePromptHandled = true;
+    betaFeatureControllers.focus.openResumePrompt();
+    return true;
+}
+
+async function coordinateStartupExperience() {
+    if (startupDataCoordinatorStarted) {
+        return;
+    }
+    startupDataCoordinatorStarted = true;
+
+    if (TASKLYZEN_STORAGE && typeof TASKLYZEN_STORAGE.whenReady === 'function') {
+        await TASKLYZEN_STORAGE.whenReady();
+    }
+
+    if (!appStarted) {
+        return;
+    }
+
+    restoreRuntimeFromStorage();
+    if (!openStartupRacePrompt()) {
+        scheduleStartupExperience();
+    }
+}
+
+if (dailyFocusGoalInput) {
+    dailyFocusGoalInput.addEventListener('change', handleFocusGoalChange);
+    dailyFocusGoalInput.addEventListener('input', handleFocusGoalInput);
+}
+
 function startApp() {
     if (appStarted) return;
     appStarted = true;
     installDeveloperModeCommand();
     featureRegistry.init();
+    syncRaceHistoryIntoSustainableProgress();
+    normalizeGamification();
+    betaFeatureControllers.focus.prepareForEntry();
     renderCurrentPage();
     scheduleDeferredStartupWork();
+    coordinateStartupExperience();
 }
 window.__TLZ_startApp = startApp;
 
-if (!loginStrategy && onboardingOverlay) {
-    onboardingOverlay.hidden = false;
-} else {
-    if (onboardingOverlay) onboardingOverlay.hidden = true;
-    startApp();
-}
+window.addEventListener('tasklyzen:entry-ready', startApp);
 
-if (onboardingSkipBtn) {
-    onboardingSkipBtn.addEventListener('click', () => {
-        localStorage.setItem('tasklyzen-login-strategy', 'local');
-        onboardingOverlay.style.opacity = '0';
-        setTimeout(() => {
+if (window.TasklyzenAuth && typeof window.TasklyzenAuth.whenReady === 'function') {
+    window.TasklyzenAuth.whenReady().then(entryState => {
+        if (entryState.canEnter) {
+            startApp();
+        }
+    });
+} else {
+    const loginStrategy = localStorage.getItem('tasklyzen-login-strategy');
+
+    if (!loginStrategy && onboardingOverlay) {
+        onboardingOverlay.hidden = false;
+    } else {
+        if (onboardingOverlay) onboardingOverlay.hidden = true;
+        startApp();
+    }
+
+    if (onboardingSkipBtn) {
+        onboardingSkipBtn.addEventListener('click', () => {
+            localStorage.setItem('tasklyzen-login-strategy', 'local');
             onboardingOverlay.hidden = true;
             startApp();
-        }, 300);
-    });
+        });
+    }
 }
+
+window.addEventListener('pagehide', () => {
+    const raceState = betaFeatureControllers.focus.getState();
+
+    if (raceState.active && !raceState.suspended) {
+        betaFeatureControllers.focus.leave();
+    }
+});
 

@@ -1121,10 +1121,6 @@
     content: "\25C6";
 }
 
-.progress-tab[data-progress-view="achievements"]::before {
-    content: "\2605";
-}
-
 .progress-tab.active {
     color: #ffffff;
     background: linear-gradient(135deg, var(--brand-cyan), var(--teal-deep));
@@ -1470,6 +1466,31 @@
     font-weight: 900;
 }
 
+.daily-goal-settings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.daily-goal-settings[data-mode="tasks"] .goal-setting,
+.daily-goal-settings[data-mode="focus"] .goal-setting {
+    grid-column: 1 / -1;
+}
+
+.daily-goal-settings[data-mode="balanced"] .goal-setting {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.daily-goal-settings[data-mode="balanced"] .goal-setting input {
+    width: 100%;
+}
+
+.daily-goal-settings .goal-setting[hidden] {
+    display: none;
+}
+
 .goal-setting input {
     width: 72px;
     min-height: 34px;
@@ -1523,7 +1544,7 @@
     background: #dfe6e9;
 }
 
-/* Panel lateral de progreso: analitica, racha y logros fuera del flujo principal. */
+
 body.app-layer-open::before,
 body.progress-panel-open::before {
     position: fixed;
@@ -1664,24 +1685,8 @@ body.app-layer-open:not(.progress-panel-open) #progress-panel.progress-collapsed
 #progress-panel.progress-expanded .daily-close-card,
 #progress-panel.progress-expanded .streak-suite,
 #progress-panel.progress-expanded .streak-prestige-road,
-#progress-panel.progress-expanded .achievement-row,
 #progress-panel.progress-expanded .streak-safety-card,
 #progress-panel.progress-expanded .next-reward-card,
-#progress-panel.progress-expanded .featured-achievements,
 #progress-panel.progress-expanded .contribution-panel {
     margin-bottom: 12px;
-}
-
-#progress-panel.progress-expanded .featured-achievement-list {
-    grid-template-columns: 1fr;
-}
-
-#progress-panel.progress-expanded .featured-achievement-card {
-    min-height: 92px;
-    align-items: center;
-}
-
-#progress-panel.progress-expanded .featured-copy h4,
-#progress-panel.progress-expanded .featured-copy p {
-    overflow-wrap: anywhere;
 }

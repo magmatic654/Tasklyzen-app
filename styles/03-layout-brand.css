@@ -8,11 +8,6 @@
     margin: 36px auto;
 }
 
-.achievement-page {
-    width: min(1120px, calc(100% - 32px));
-    margin: 36px auto;
-}
-
 .title-panel {
     position: relative;
     isolation: isolate;
@@ -111,8 +106,7 @@ body.theme-dark .brand-logo-dark {
     display: none;
 }
 
-.app-title-panel,
-.achievement-title-panel {
+.app-title-panel{
     display: flex;
     align-items: end;
     justify-content: space-between;
@@ -120,8 +114,7 @@ body.theme-dark .brand-logo-dark {
     border-radius: 8px 8px 0 0;
 }
 
-.back-link,
-.collection-link {
+.back-link{
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -135,27 +128,6 @@ body.theme-dark .brand-logo-dark {
     background: var(--coral);
     border-radius: 8px;
     box-shadow: 0 7px 0 rgba(23, 32, 42, 0.14);
-}
-
-.collection-link {
-    color: var(--ink);
-    background: var(--gold);
-}
-
-.achievement-title-copy {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    column-gap: 14px;
-    align-items: center;
-}
-
-.achievement-title-copy .eyebrow {
-    align-self: end;
-    margin-bottom: 4px;
-}
-
-.achievement-title-copy h1 {
-    grid-column: 2;
 }
 
 .page-title-icon {

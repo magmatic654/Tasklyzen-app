@@ -31,7 +31,6 @@
         const getGamification = fn(config.getGamification, () => ({}));
         const setGamification = fn(config.setGamification, () => {});
         const getAnalyticsSnapshot = fn(config.getAnalyticsSnapshot, () => ({}));
-        const getAllAchievements = fn(config.getAllAchievements, () => []);
         const getDailyMission = fn(config.getDailyMission, () => ({ id: '', title: '', current: () => 0, target: () => 1 }));
         const getCurrentStreak = fn(config.getCurrentStreak, () => 0);
         const getPerfectStreak = fn(config.getPerfectStreak, () => 0);
@@ -46,24 +45,24 @@
         const createNextHabitOccurrence = fn(config.createNextHabitOccurrence, () => {});
         const removeNextHabitOccurrence = fn(config.removeNextHabitOccurrence, () => {});
         const updateDailyGoal = fn(config.updateDailyGoal, () => {});
-        const queueAchievementShowcase = fn(config.queueAchievementShowcase, () => {});
         const showCompletionAnimation = fn(config.showCompletionAnimation, () => {});
         const showStreakDayCelebration = fn(config.showStreakDayCelebration, () => {});
+        const previewRaceState = fn(config.previewRaceState, () => ({ status: 'unavailable' }));
+        const getSustainableProgress = fn(config.getSustainableProgress, () => ({ version: 1, days: {} }));
+        const replaceSustainableProgress = fn(config.replaceSustainableProgress, () => ({}));
+        const clearSustainableProgress = fn(config.clearSustainableProgress, () => ({}));
+        const recordSustainableTaskCompletion = fn(config.recordSustainableTaskCompletion, () => ({}));
+        const simulateSustainableSession = fn(config.simulateSustainableSession, () => ({}));
+        const playRaceCue = fn(config.playRaceCue, () => false);
+        const enableAppSound = fn(config.enableAppSound, () => false);
         const showToast = fn(config.showToast, () => {});
         const saveTodoList = fn(config.saveTodoList, () => {});
         const saveCompletionHistory = fn(config.saveCompletionHistory, () => {});
         const saveDailyGoal = fn(config.saveDailyGoal, () => {});
         const saveGamification = fn(config.saveGamification, () => {});
         const syncCompletionHistory = fn(config.syncCompletionHistory, () => {});
-        const syncAchievementCollection = fn(config.syncAchievementCollection, () => {});
         const renderCurrentPage = fn(config.renderCurrentPage, () => {});
         const taskUiController = config.taskUiController || {};
-        const gamificationController = config.gamificationController || {};
-        const grantAchievement = fn(config.grantAchievement, () => null);
-        const removeAchievement = fn(config.removeAchievement, () => {});
-        const resetAchievements = fn(config.resetAchievements, () => {});
-        const unlockAllAchievements = fn(config.unlockAllAchievements, () => {});
-        const forceFinalizePendingAchievements = fn(config.forceFinalizePendingAchievements, () => {});
         const normalizeStoredTodoText = fn(config.normalizeStoredTodoText, text => text || '');
         const normalizeTaskTimeLimit = fn(config.normalizeTaskTimeLimit, value => Number(value) || 1);
         const normalizeTaskDueDate = fn(config.normalizeTaskDueDate, value => (/^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? value : null));
@@ -197,7 +196,6 @@
             setTodos(nextTodos);
             saveTodoList();
             syncCompletionHistory();
-            syncAchievementCollection(true);
             renderCurrentPage();
             replayStreakPillAnimationForDev();
 
@@ -225,7 +223,6 @@
 
             saveTodoList();
             syncCompletionHistory();
-            syncAchievementCollection(false);
             renderCurrentPage();
             replayStreakPillAnimationForDev();
             showToast('Racha dev limpiada sin tocar tareas reales.', 'info');
@@ -275,7 +272,6 @@
             setTodos(nextTodos);
             saveTodoList();
             syncCompletionHistory();
-            syncAchievementCollection(false);
             renderCurrentPage();
             if (!settings.silent) {
                 showToast('Caso de revision vencida creado para el panel dev.', 'success');
@@ -297,7 +293,6 @@
             setTodos(nextTodos);
             saveTodoList();
             syncCompletionHistory();
-            syncAchievementCollection(false);
             if (overdueReviewController && typeof overdueReviewController.reload === 'function') {
                 overdueReviewController.reload({ refresh: false });
             }
@@ -504,7 +499,6 @@
             }
             saveTodoList();
             syncCompletionHistory();
-            syncAchievementCollection(false);
             renderCurrentPage();
             showToast('Estados visuales dev creados en Todas.', 'success');
 
@@ -531,7 +525,6 @@
             setTodos(nextTodos);
             saveTodoList();
             syncCompletionHistory();
-            syncAchievementCollection(false);
             renderCurrentPage();
         }
 
@@ -541,10 +534,9 @@
             setDailyGoal(defaultDailyGoal);
             setGamification({
                 usedShields: 0,
-                protectedDates: [],
-                achievementStates: {},
-                featuredAchievements: []
+                protectedDates: []
             });
+            clearSustainableProgress();
             if (taskUiController.clearEditingTodo) {
                 taskUiController.clearEditingTodo(false);
             }
@@ -569,7 +561,8 @@
                 todos: getTodos(),
                 completionHistory: getCompletionHistory(),
                 dailyGoal: getDailyGoal(),
-                gamification: getGamification()
+                gamification: getGamification(),
+                sustainableProgress: getSustainableProgress()
             };
 
             if (storage.writeJson) {
@@ -603,10 +596,9 @@
                 ? snapshot.gamification
                 : {
                     usedShields: 0,
-                    protectedDates: [],
-                    achievementStates: {},
-                    featuredAchievements: []
+                    protectedDates: []
                 });
+            replaceSustainableProgress(snapshot.sustainableProgress || { version: 1, days: {} });
 
             if (config.normalizeGamification) {
                 config.normalizeGamification();
@@ -741,22 +733,6 @@
             return (index + 1) + '. ' + todo.text + ' · ' + type + ' · ' + getPriorityLabel(todo.priority) + ' · ' + status;
         }
 
-        function getCompactLabel(value, maxLength) {
-            const text = String(value || '');
-
-            if (text.length <= maxLength) {
-                return text;
-            }
-
-            return text.slice(0, Math.max(0, maxLength - 3)) + '...';
-        }
-
-        function getAchievementLabel(achievement) {
-            const status = achievement.collected ? 'Listo' : achievement.current + '/' + achievement.target;
-
-            return achievement.mark + ' ' + getCompactLabel(achievement.title, 14) + ' ' + status;
-        }
-
         function setSelectOptions(select, options, preferredValue) {
             const currentValue = preferredValue || select.value;
 
@@ -798,74 +774,6 @@
             return getTodos().find(todo => todo.id === select.value) || null;
         }
 
-        function getSelectedAchievement() {
-            const select = getField('achievement-select');
-
-            if (!select) {
-                return null;
-            }
-
-            return getAllAchievements().find(achievement => achievement.id === select.value) || null;
-        }
-
-        function normalizeSearchValue(value) {
-            return String(value || '')
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .toLowerCase();
-        }
-
-        function getAchievementSearchText() {
-            const field = getField('achievement-filter');
-
-            return normalizeSearchValue(field && field.value ? field.value.trim() : '');
-        }
-
-        function matchesSearchValue(value, searchText) {
-            const normalizedValue = normalizeSearchValue(value);
-
-            if (!searchText || normalizedValue.includes(searchText)) {
-                return true;
-            }
-
-            if (searchText.endsWith('as') && normalizedValue.includes(searchText.slice(0, -2) + 'os')) {
-                return true;
-            }
-
-            if (searchText.endsWith('os') && normalizedValue.includes(searchText.slice(0, -2) + 'as')) {
-                return true;
-            }
-
-            if (searchText.endsWith('a') && normalizedValue.includes(searchText.slice(0, -1) + 'o')) {
-                return true;
-            }
-
-            if (searchText.endsWith('o') && normalizedValue.includes(searchText.slice(0, -1) + 'a')) {
-                return true;
-            }
-
-            return false;
-        }
-
-        function getFilteredAchievements(achievements) {
-            const searchText = getAchievementSearchText();
-
-            if (!searchText) {
-                return achievements;
-            }
-
-            return achievements.filter(achievement => {
-                return [
-                    achievement.id,
-                    achievement.title,
-                    achievement.rarityLabel,
-                    achievement.categoryLabel,
-                    achievement.statusLabel,
-                    achievement.mark
-                ].some(value => matchesSearchValue(value, searchText));
-            });
-        }
-
         function createPanel() {
             const panel = createNode('aside', 'developer-panel');
             const header = createNode('div', 'developer-panel-header');
@@ -877,8 +785,8 @@
             const taskSection = createSection('Tareas y hábitos', 'Crea, completa, reactiva, pospone o elimina sin buscar IDs.');
             const progressSection = createSection('Progreso', 'Ajusta meta diaria, historial y rachas.');
             const overdueSection = createSection('Simulación de eliminación de tareas', 'Prueba avisos de 7 días, confirmaciones y limpieza de 30 días sin esperar al tiempo real.');
-            const animationSection = createSection('Animaciones', 'Reproduce celebraciones y showcases para revisar la experiencia.');
-            const achievementSection = createSection('Logros', 'Concede, quita, destaca o reinicia logros desde una lista legible.');
+            const raceSection = createSection('Modo Carrera', 'Abre estados visuales y escucha cada señal sin esperar una sesión real.');
+            const animationSection = createSection('Animaciones', 'Reproduce celebraciones de tareas y rachas para revisar la experiencia.');
             const dangerSection = createSection('Zona de reinicio', 'Acciones fuertes para pruebas completas.');
             const stateSection = createSection('Estado rápido', 'Vista resumida para confirmar que todo cambió correctamente.');
             const taskCreateGrid = createNode('div', 'developer-grid');
@@ -889,10 +797,11 @@
             const overdueGrid = createNode('div', 'developer-grid');
             const overdueActions = createNode('div', 'developer-actions');
             const overdueStatus = createNode('div', 'developer-overdue-status');
+            const racePreviewActions = createNode('div', 'developer-actions developer-race-actions');
+            const raceProgressActions = createNode('div', 'developer-actions developer-race-actions');
+            const raceSoundActions = createNode('div', 'developer-actions developer-race-actions');
             const animationGrid = createNode('div', 'developer-grid');
             const animationActions = createNode('div', 'developer-actions');
-            const achievementGrid = createNode('div', 'developer-grid');
-            const achievementActions = createNode('div', 'developer-actions');
             const dangerActions = createNode('div', 'developer-actions danger-actions');
             const stateBox = createNode('pre', 'developer-state');
             const taskText = createInput('text', 'task-text', 'Nueva tarea de prueba');
@@ -910,15 +819,12 @@
             const overdueText = createInput('text', 'overdue-text', 'Caso dev vencido');
             const overdueDays = createInput('number', 'overdue-days', overdueReviewIntervalDays + 1);
             const completionSelect = createSelect('completion-animation', getCompletionOptions());
-            const achievementFilter = createInput('search', 'achievement-filter', '');
-            const achievementSelect = createSelect('achievement-select', []);
 
             panel.setAttribute('aria-live', 'polite');
             closeButton.setAttribute('aria-label', 'Cerrar panel desarrollador');
             taskHabit.value = '1';
             taskText.placeholder = 'Texto de tarea';
             taskRename.placeholder = 'Nuevo nombre opcional';
-            achievementFilter.placeholder = 'Buscar por título, rareza o categoría';
             goalInput.min = '1';
             goalInput.max = '20';
             historyCount.min = '1';
@@ -967,8 +873,7 @@
                 createButton('+1 día racha', 'add-streak-day', 'secondary'),
                 createButton('+7 días racha', 'add-streak-week', 'secondary'),
                 createButton('Limpiar racha dev', 'clear-dev-streak', 'danger'),
-                createButton('Animar racha', 'preview-streak', 'secondary'),
-                createButton('Finalizar pendientes', 'finalize-pending', 'secondary')
+                createButton('Animar racha', 'preview-streak', 'secondary')
             );
             progressSection.append(progressGrid, progressActions, createNode('p', 'developer-note'));
             overdueGrid.append(
@@ -985,24 +890,42 @@
                 createButton('Limpiar simulación', 'clear-overdue-dev', 'ghost')
             );
             overdueSection.append(overdueGrid, overdueStatus, overdueActions);
+            racePreviewActions.append(
+                createButton('Vista enfoque', 'preview-race-focus'),
+                createButton('Vista descanso', 'preview-race-break', 'secondary'),
+                createButton('Vista pausada', 'preview-race-paused', 'ghost'),
+                createButton('Resumen final', 'preview-race-summary', 'secondary')
+            );
+            raceSoundActions.append(
+                createButton('Activar sonido', 'enable-race-sound', 'secondary'),
+                createButton('Sonido de enfoque', 'play-race-focus', 'ghost'),
+                createButton('Sonido de descanso', 'play-race-break', 'ghost'),
+                createButton('Sonido de cierre', 'play-race-complete', 'ghost')
+            );
+            raceProgressActions.append(
+                createButton('Simular avance real', 'simulate-progress-meaningful'),
+                createButton('Simular ritmo sostenible', 'simulate-progress-sustainable', 'secondary'),
+                createButton('Simular avance confirmado', 'simulate-progress-advanced', 'secondary'),
+                createButton('Simular bloqueo', 'simulate-progress-blocked', 'ghost'),
+                createButton('Simular segundo plano', 'simulate-progress-background', 'ghost'),
+                createButton('Simular tiempo dudoso', 'simulate-progress-suspicious', 'ghost'),
+                createButton('Reiniciar progreso sostenible', 'clear-sustainable-progress', 'danger')
+            );
+            raceSection.append(
+                createNode('p', 'developer-note', 'Estados visuales'),
+                racePreviewActions,
+                createNode('p', 'developer-note', 'Lectura de progreso y protección contra tiempo vacío'),
+                raceProgressActions,
+                createNode('p', 'developer-note', 'Señales de audio (respetan sonido y volumen de Ajustes)'),
+                raceSoundActions
+            );
             animationGrid.append(createField('Celebración', completionSelect));
             animationActions.append(
                 createButton('Reproducir celebración', 'play-completion'),
                 createButton('Celebrar racha', 'play-streak-day', 'secondary'),
-                createButton('Exhibir logro', 'play-achievement', 'secondary'),
                 createButton('Demo completa', 'run-demo', 'secondary')
             );
             animationSection.append(animationGrid, animationActions);
-            achievementGrid.append(createField('Buscar logro', achievementFilter), createField('Logro', achievementSelect));
-            achievementActions.append(
-                createButton('Conceder logro', 'grant-achievement'),
-                createButton('Quitar logro', 'lock-achievement', 'danger'),
-                createButton('Poner en vitrina', 'feature-achievement', 'secondary'),
-                createButton('Quitar de vitrina', 'unfeature-achievement', 'secondary'),
-                createButton('Desbloquear todo', 'unlock-all'),
-                createButton('Reiniciar logros', 'reset-achievements', 'danger')
-            );
-            achievementSection.append(achievementGrid, achievementActions);
             dangerActions.append(
                 createButton('Reiniciar toda la app', 'reset-all', 'danger'),
                 createButton('Restaurar snapshot', 'restore-snapshot', 'secondary'),
@@ -1011,10 +934,9 @@
             );
             dangerSection.append(dangerActions);
             stateSection.appendChild(stateBox);
-            panel.append(header, summary, taskSection, progressSection, overdueSection, animationSection, achievementSection, dangerSection, stateSection);
+            panel.append(header, summary, taskSection, progressSection, overdueSection, raceSection, animationSection, dangerSection, stateSection);
             panel.addEventListener('click', handlePanelClick);
             panel.addEventListener('change', handlePanelChange);
-            panel.addEventListener('input', handlePanelInput);
 
             return panel;
         }
@@ -1053,7 +975,6 @@
             }
 
             const selectedTask = getSelectedTask();
-            const selectedAchievement = getSelectedAchievement();
             const taskSelect = getField('task-select');
             const taskRename = getField('task-rename');
             const taskNewPriority = getField('task-new-priority');
@@ -1061,7 +982,6 @@
             const historyDate = getField('history-date');
             const streakDays = getField('streak-days');
             const streakMode = getField('streak-mode');
-            const achievementSelect = getField('achievement-select');
             const summary = developerPanel.querySelector('.developer-summary');
             const note = developerPanel.querySelector('.developer-note');
             const stateBox = developerPanel.querySelector('.developer-state');
@@ -1074,14 +994,7 @@
             const overdueActionButtons = ['simulate-overdue-review', 'simulate-overdue-auto', 'show-overdue-interfaces', 'keep-overdue-review', 'request-overdue-delete', 'confirm-overdue-delete']
                 .map(action => developerPanel.querySelector('[data-dev-action="' + action + '"]'))
                 .filter(Boolean);
-            const achievementActionButtons = ['play-achievement', 'grant-achievement', 'lock-achievement', 'feature-achievement', 'unfeature-achievement']
-                .map(action => developerPanel.querySelector('[data-dev-action="' + action + '"]'))
-                .filter(Boolean);
-            const achievements = getAllAchievements();
-            const filteredAchievements = getFilteredAchievements(achievements);
             const developerSnapshot = getDeveloperSnapshot();
-            const collectedCount = achievements.filter(achievement => achievement.collected).length;
-            const pendingCount = achievements.filter(achievement => achievement.pending).length;
             const overdueDebug = getOverdueReviewDebugState();
 
             if (taskSelect) {
@@ -1117,17 +1030,6 @@
             if (streakMode && !['active', 'perfect', 'legendary'].includes(streakMode.value)) {
                 streakMode.value = 'active';
             }
-            if (achievementSelect) {
-                setSelectOptions(achievementSelect, filteredAchievements.map(achievement => ({
-                    value: achievement.id,
-                    label: getAchievementLabel(achievement)
-                })), selectedAchievement ? selectedAchievement.id : null);
-            }
-
-            const refreshedAchievement = getSelectedAchievement();
-            achievementActionButtons.forEach(button => {
-                button.disabled = !refreshedAchievement;
-            });
             if (restoreSnapshotButton) {
                 restoreSnapshotButton.disabled = !developerSnapshot;
             }
@@ -1141,8 +1043,6 @@
                     { label: 'Tareas', value: getTodos().length },
                     { label: 'Completadas hoy', value: getHistoryCount(getTodayKey()) },
                     { label: 'Racha', value: getCurrentStreak() },
-                    { label: 'Logros', value: collectedCount + '/' + achievements.length },
-                    { label: 'Logros en revisión', value: pendingCount },
                     { label: 'Tareas vencidas', value: overdueDebug.overdueCount }
                 ].forEach(item => {
                     const card = createNode('article');
@@ -1185,12 +1085,10 @@
                     rachaActual: getCurrentStreak(),
                     rachaPerfecta: getPerfectStreak(),
                     rachaLegendaria: getLegendaryStreak(),
+                    progresoSostenibleHoy: getSustainableProgress().days?.[getTodayKey()] || null,
                     perfil: analyticsSnapshot.perfil && analyticsSnapshot.perfil.label,
                     riesgoRacha: analyticsSnapshot.riesgoRacha && analyticsSnapshot.riesgoRacha.label,
-                    logrosColeccionados: collectedCount,
-                    logrosRevision: pendingCount,
                     revisionVencidas: overdueDebug,
-                    vitrina: (getGamification().featuredAchievements || []).length,
                     snapshot: getDeveloperSnapshotLabel()
                 }, null, 2);
             }
@@ -1199,17 +1097,7 @@
         function handlePanelChange(event) {
             const field = event.target.closest('[data-dev-field]');
 
-            if (!field || !['task-select', 'achievement-filter'].includes(field.dataset.devField)) {
-                return;
-            }
-
-            refreshPanel();
-        }
-
-        function handlePanelInput(event) {
-            const field = event.target.closest('[data-dev-field]');
-
-            if (!field || field.dataset.devField !== 'achievement-filter') {
+            if (!field || field.dataset.devField !== 'task-select') {
                 return;
             }
 
@@ -1232,7 +1120,6 @@
 
             const action = button.dataset.devAction;
             const task = getSelectedTask();
-            const achievement = getSelectedAchievement();
 
             if (action === 'close-panel') {
                 developerPanel.classList.add('collapsed');
@@ -1251,6 +1138,53 @@
 
             if (action === 'create-state-preview') {
                 addDeveloperStatePreviewTodos();
+            }
+
+            if (action.startsWith('preview-race-')) {
+                const state = action.replace('preview-race-', '');
+                const result = previewRaceState(state);
+                if (result && result.status === 'empty') {
+                    showToast('Crea una tarea pendiente para abrir esta vista de Carrera.', 'info');
+                }
+            }
+
+            if (action.startsWith('simulate-progress-')) {
+                const type = action.replace('simulate-progress-', '');
+                const day = simulateSustainableSession(type);
+                const session = day && Array.isArray(day.sessions) ? day.sessions[day.sessions.length - 1] : null;
+                const label = session && session.outcome === 'blocked'
+                    ? 'Bloqueo registrado solo para analítica.'
+                    : session && session.backgroundMs > 0
+                        ? 'Sesión en segundo plano registrada.'
+                        : session && session.sustainable
+                    ? 'Ritmo sostenible registrado.'
+                    : session && session.meaningful
+                        ? 'Avance real registrado.'
+                        : 'Sesión dudosa registrada sin recompensa.';
+
+                showToast(label, 'info');
+            }
+
+            if (action === 'clear-sustainable-progress') {
+                clearSustainableProgress();
+                renderCurrentPage();
+                showToast('Progreso sostenible reiniciado.', 'info');
+            }
+
+            if (action === 'play-race-focus') {
+                playRaceCue('focus-start');
+            }
+
+            if (action === 'enable-race-sound') {
+                enableAppSound();
+            }
+
+            if (action === 'play-race-break') {
+                playRaceCue('break-start');
+            }
+
+            if (action === 'play-race-complete') {
+                playRaceCue('session-complete');
             }
 
             if (action === 'simulate-overdue-review') {
@@ -1320,10 +1254,10 @@
                 task.completedAt = completedAt;
                 task.updatedAt = completedAt;
                 task.snoozedUntil = null;
+                recordSustainableTaskCompletion(task);
                 createNextHabitOccurrence(task);
                 saveTodoList();
                 syncCompletionHistory();
-                syncAchievementCollection(true);
                 showCompletionAnimation(getHistoryCount(getTodayKey()) > getDailyGoal() ? 'legendary' : 'regular');
                 renderCurrentPage();
             }
@@ -1333,7 +1267,6 @@
                 removeNextHabitOccurrence(task);
                 saveTodoList();
                 syncCompletionHistory();
-                syncAchievementCollection(false);
                 renderCurrentPage();
             }
 
@@ -1345,7 +1278,6 @@
                 task.priority = priorityField ? priorityField.value : task.priority;
                 saveTodoList();
                 syncCompletionHistory();
-                syncAchievementCollection(false);
                 renderCurrentPage();
                 showToast('Tarea actualizada desde el panel dev.', 'success');
             }
@@ -1366,7 +1298,6 @@
                 });
                 saveTodoList();
                 syncCompletionHistory();
-                syncAchievementCollection(false);
                 renderCurrentPage();
             }
 
@@ -1375,7 +1306,6 @@
                 setTodos([]);
                 saveTodoList();
                 syncCompletionHistory();
-                syncAchievementCollection(false);
                 renderCurrentPage();
                 showToast('Tareas borradas desde el panel dev.', 'info');
             }
@@ -1414,11 +1344,6 @@
                 replayStreakPillAnimationForDev();
             }
 
-            if (action === 'finalize-pending') {
-                forceFinalizePendingAchievements();
-                showToast('Logros en revisión finalizados.', 'success');
-            }
-
             if (action === 'play-completion') {
                 const field = getField('completion-animation');
                 showCompletionAnimation(field ? field.value : 'regular');
@@ -1428,47 +1353,8 @@
                 showStreakDayCelebration(Math.max(getCurrentStreak(), 1), { isRecord: true });
             }
 
-            if (action === 'play-achievement' && achievement) {
-                queueAchievementShowcase([achievement]);
-            }
-
             if (action === 'run-demo') {
                 runAnimationDemo();
-            }
-
-            if (action === 'grant-achievement' && achievement) {
-                grantAchievement(achievement.id, true);
-            }
-
-            if (action === 'lock-achievement' && achievement) {
-                captureDeveloperSnapshot('Antes de quitar logro');
-                removeAchievement(achievement.id);
-            }
-
-            if (action === 'feature-achievement' && achievement) {
-                grantAchievement(achievement.id, false);
-                if (gamificationController.featureAchievement) {
-                    gamificationController.featureAchievement(achievement.id);
-                }
-                renderCurrentPage();
-            }
-
-            if (action === 'unfeature-achievement' && achievement) {
-                if (gamificationController.unfeatureAchievement) {
-                    gamificationController.unfeatureAchievement(achievement.id);
-                }
-                renderCurrentPage();
-            }
-
-            if (action === 'unlock-all') {
-                captureDeveloperSnapshot('Antes de desbloquear todo');
-                unlockAllAchievements({ animate: true });
-            }
-
-            if (action === 'reset-achievements') {
-                captureDeveloperSnapshot('Antes de reiniciar logros');
-                resetAchievements();
-                showToast('Logros reiniciados desde el panel dev.', 'info');
             }
 
             if (action === 'reset-all') {
@@ -1507,12 +1393,12 @@
                     todo.completedAt = completedAt;
                     todo.updatedAt = completedAt;
                     todo.snoozedUntil = null;
+                    recordSustainableTaskCompletion(todo);
                     createNextHabitOccurrence(todo);
                 }
             });
             saveTodoList();
             syncCompletionHistory();
-            syncAchievementCollection(true);
             showCompletionAnimation(getHistoryCount(getTodayKey()) > getDailyGoal() ? 'legendary' : 'goal');
             renderCurrentPage();
         }
@@ -1522,7 +1408,6 @@
             windowRef.setTimeout(() => showCompletionAnimation('goal'), 1800);
             windowRef.setTimeout(() => showCompletionAnimation('legendary'), 4000);
             windowRef.setTimeout(() => showStreakDayCelebration(Math.max(getCurrentStreak(), 7), { isRecord: true }), 6300);
-            windowRef.setTimeout(() => queueAchievementShowcase(getAllAchievements().slice(0, 8)), 9500);
         }
 
         function getDeveloperHelp() {
@@ -1530,14 +1415,11 @@
                 panel: 'todoDev.panel() abre el panel visual integrado.',
                 analytics: 'todoDev.analytics() devuelve resumen semanal, riesgo, meta sugerida, perfil e insights.',
                 streakAnimation: 'todoDev.playStreak(30) reproduce la celebración del nivel indicado.',
-                state: 'todoDev.state() devuelve tareas, historial, meta, logros y gamificación.',
+                state: 'todoDev.state() devuelve tareas, historial, meta, rachas y gamificación.',
                 playCompletion: "todoDev.playCompletion('regular' | 'goal' | 'legendary') reproduce una animación de tarea.",
-                playAchievement: "todoDev.playAchievement('id-del-logro' | 'legendary') exhibe un logro por id o por rareza.",
-                unlockAll: 'todoDev.unlockAll({ animate: true }) desbloquea todo y reproduce los logros en orden.',
-                grant: "todoDev.grant('first-spark') concede un logro puntual.",
-                lock: "todoDev.lock('first-spark') elimina un logro puntual.",
-                resetAchievements: 'todoDev.resetAchievements() borra solo la colección de logros.',
-                resetAll: 'todoDev.resetAll() reinicia tareas, historial, meta y logros.',
+                simulateSustainableSession: "todoDev.simulateSustainableSession('meaningful' | 'sustainable' | 'advanced' | 'blocked' | 'background' | 'suspicious') prueba la lectura de Carrera.",
+                clearSustainableProgress: 'todoDev.clearSustainableProgress() reinicia solo el ledger de progreso sostenible.',
+                resetAll: 'todoDev.resetAll() reinicia tareas, historial, meta y rachas.',
                 addTask: "todoDev.addTask('Texto', 'urgent') crea una tarea.",
                 addHabit: "todoDev.addHabit('Leer 10 minutos', 'important') crea un hábito diario.",
                 previewTaskStates: 'todoDev.previewTaskStates() crea tareas dev para A tiempo, Por vencer, Vencida y Caducada.',
@@ -1558,10 +1440,7 @@
                 clearDevStreak: 'todoDev.clearDevStreak() limpia solo las tareas marcadas como racha dev.',
                 snapshot: "todoDev.snapshot('Etiqueta') guarda un punto de restauración.",
                 restoreSnapshot: 'todoDev.restoreSnapshot() restaura el último snapshot dev.',
-                clearSnapshot: 'todoDev.clearSnapshot() elimina el snapshot dev guardado.',
-                feature: "todoDev.feature('first-spark') manda un logro a la vitrina.",
-                unfeature: "todoDev.unfeature('first-spark') lo quita de la vitrina.",
-                finalizePending: 'todoDev.finalizePending() convierte logros en revisión en permanentes.'
+                clearSnapshot: 'todoDev.clearSnapshot() elimina el snapshot dev guardado.'
             };
         }
 
@@ -1578,7 +1457,7 @@
                     completionHistory: getCompletionHistory(),
                     dailyGoal: getDailyGoal(),
                     gamification: getGamification(),
-                    achievements: getAllAchievements(),
+                    sustainableProgress: getSustainableProgress(),
                     analytics: getAnalyticsSnapshot(),
                     developerSnapshot: getDeveloperSnapshot()
                 }),
@@ -1593,34 +1472,14 @@
                     showStreakDayCelebration(streakDays, { isRecord: true });
                     return streakDays;
                 },
-                playAchievement: achievementIdOrRarity => {
-                    const achievements = getAllAchievements();
-                    const achievement = achievements.find(item => item.id === achievementIdOrRarity)
-                        || achievements.find(item => item.rarity === achievementIdOrRarity)
-                        || achievements[0];
-                    queueAchievementShowcase([achievement]);
-                    return cloneForConsole(achievement);
-                },
                 runAnimationDemo: () => {
                     runAnimationDemo();
                     return 'Demo en marcha';
                 },
-                unlockAll: options => {
-                    captureDeveloperSnapshot('Antes de todoDev.unlockAll');
-                    unlockAllAchievements(options || { animate: true });
-                    return api.state();
-                },
-                grant: (achievementId, options) => cloneForConsole(grantAchievement(achievementId, !options || options.animate !== false)),
-                lock: achievementId => {
-                    captureDeveloperSnapshot('Antes de todoDev.lock');
-                    removeAchievement(achievementId);
-                    return api.state();
-                },
-                resetAchievements: () => {
-                    captureDeveloperSnapshot('Antes de todoDev.resetAchievements');
-                    resetAchievements();
-                    return api.state();
-                },
+                previewRace: state => cloneForConsole(previewRaceState(state || 'focus')),
+                simulateSustainableSession: type => cloneForConsole(simulateSustainableSession(type || 'meaningful')),
+                clearSustainableProgress: () => cloneForConsole(clearSustainableProgress()),
+                playRaceSound: cue => playRaceCue(cue || 'focus-start'),
                 resetAll: () => {
                     captureDeveloperSnapshot('Antes de todoDev.resetAll');
                     resetAllForDev();
@@ -1647,10 +1506,10 @@
                         todo.completedAt = completedAt;
                         todo.updatedAt = completedAt;
                         todo.snoozedUntil = null;
+                        recordSustainableTaskCompletion(todo);
                         createNextHabitOccurrence(todo);
                         saveTodoList();
                         syncCompletionHistory();
-                        syncAchievementCollection(true);
                         showCompletionAnimation(getHistoryCount(getTodayKey()) > getDailyGoal() ? 'legendary' : 'regular');
                         renderCurrentPage();
                     }
@@ -1663,7 +1522,6 @@
                         removeNextHabitOccurrence(todo);
                         saveTodoList();
                         syncCompletionHistory();
-                        syncAchievementCollection(false);
                         renderCurrentPage();
                     }
                     return cloneForConsole(todo || null);
@@ -1681,13 +1539,8 @@
                     const todo = getTodos().find(item => item.id === todoId);
                     captureDeveloperSnapshot('Antes de todoDev.deleteTask');
                     if (todo) {
-                        removeNextHabitOccurrence(todo);
+                        removeTodoItem(todoId);
                     }
-                    setTodos(getTodos().filter(item => item.id !== todoId));
-                    saveTodoList();
-                    syncCompletionHistory();
-                    syncAchievementCollection(false);
-                    renderCurrentPage();
                     return api.state();
                 },
                 clearTasks: () => {
@@ -1695,7 +1548,6 @@
                     setTodos([]);
                     saveTodoList();
                     syncCompletionHistory();
-                    syncAchievementCollection(false);
                     renderCurrentPage();
                     return api.state();
                 },
@@ -1710,7 +1562,6 @@
                     });
                     saveTodoList();
                     syncCompletionHistory();
-                    syncAchievementCollection(false);
                     renderCurrentPage();
                     return api.state();
                 },
@@ -1730,24 +1581,6 @@
                 clearSnapshot: () => {
                     clearDeveloperSnapshotForDev();
                     return null;
-                },
-                feature: achievementId => {
-                    const featuredAchievements = gamificationController.featureAchievement
-                        ? gamificationController.featureAchievement(achievementId)
-                        : [];
-                    renderCurrentPage();
-                    return cloneForConsole(featuredAchievements);
-                },
-                unfeature: achievementId => {
-                    const featuredAchievements = gamificationController.unfeatureAchievement
-                        ? gamificationController.unfeatureAchievement(achievementId)
-                        : [];
-                    renderCurrentPage();
-                    return cloneForConsole(featuredAchievements);
-                },
-                finalizePending: () => {
-                    forceFinalizePendingAchievements();
-                    return api.state();
                 }
             };
 

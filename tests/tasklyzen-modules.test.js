@@ -11,6 +11,10 @@ function createLocalStorage() {
     const store = new Map();
 
     return {
+        get length() {
+            return store.size;
+        },
+        key: index => Array.from(store.keys())[index] || null,
         getItem: key => (store.has(key) ? store.get(key) : null),
         setItem: (key, value) => store.set(key, String(value)),
         removeItem: key => store.delete(key)
@@ -20,6 +24,42 @@ function createLocalStorage() {
 function loadBrowserModule(context, fileName) {
     const source = fs.readFileSync(path.join(__dirname, '..', fileName), 'utf8');
     vm.runInNewContext(source, context, { filename: fileName });
+}
+
+async function getAuthEntryState(strategy) {
+    const authStorage = createLocalStorage();
+    const domListeners = {};
+
+    if (strategy) {
+        authStorage.setItem('tasklyzen-login-strategy', strategy);
+    }
+
+    const authContext = {
+        console: { error() {}, warn() {} },
+        Promise,
+        setTimeout,
+        localStorage: authStorage,
+        document: {
+            addEventListener(type, listener) {
+                domListeners[type] = listener;
+            },
+            getElementById() {
+                return null;
+            }
+        },
+        dispatchEvent() {},
+        CustomEvent: class CustomEvent {
+            constructor(type, options) {
+                this.type = type;
+                this.detail = options && options.detail;
+            }
+        },
+        window: null
+    };
+    authContext.window = authContext;
+    loadBrowserModule(authContext, 'tasklyzen-auth.js');
+
+    return authContext.TasklyzenAuth.whenReady();
 }
 
 let uuidCounter = 0;
@@ -45,6 +85,7 @@ context.window = context;
 context.window.addEventListener = () => {};
 
 loadBrowserModule(context, 'tasklyzen-config.js');
+loadBrowserModule(context, 'tasklyzen-data-migration.js');
 loadBrowserModule(context, 'tasklyzen-storage.js');
 loadBrowserModule(context, 'tasklyzen-utils.js');
 loadBrowserModule(context, 'tasklyzen-composite-tasks.js');
@@ -53,11 +94,12 @@ loadBrowserModule(context, 'components/tasklyzen-ui-components.js');
 loadBrowserModule(context, 'tasklyzen-overdue-review.js');
 loadBrowserModule(context, 'components/tasklyzen-task-creation-ui.js');
 loadBrowserModule(context, 'tasklyzen-settings.js');
+loadBrowserModule(context, 'tasklyzen-experience.js');
+loadBrowserModule(context, 'tasklyzen-audio.js');
 loadBrowserModule(context, 'tasklyzen-notifications.js');
 loadBrowserModule(context, 'tasklyzen-task-ui.js');
-loadBrowserModule(context, 'tasklyzen-quick-create.js');
+loadBrowserModule(context, 'tasklyzen-sustainable-progress.js');
 loadBrowserModule(context, 'tasklyzen-analytics-progress.js');
-loadBrowserModule(context, 'tasklyzen-achievements.js');
 loadBrowserModule(context, 'tasklyzen-gamification.js');
 loadBrowserModule(context, 'tasklyzen-gamification-ui.js');
 loadBrowserModule(context, 'tasklyzen-features.js');
@@ -72,20 +114,302 @@ const overdueReview = context.TasklyzenOverdueReview;
 const taskCreationUi = context.TasklyzenTaskCreationUi;
 const storage = context.TasklyzenStorage;
 const settings = context.TasklyzenSettings;
+const experience = context.TasklyzenExperience;
+const audio = context.TasklyzenAudio;
 const notifications = context.TasklyzenNotifications;
 const taskUi = context.TasklyzenTaskUi;
-const quickCreate = context.TasklyzenQuickCreate;
+const sustainableProgress = context.TasklyzenSustainableProgress;
 const analyticsProgress = context.TasklyzenAnalyticsProgress;
-const achievements = context.TasklyzenAchievements;
 const gamification = context.TasklyzenGamification;
 const gamificationUi = context.TasklyzenGamificationUi;
 const features = context.TasklyzenFeatures;
 const developer = context.TasklyzenDeveloper;
 const oop = context.TasklyzenOOP;
-const { TaskState } = await import('../tasks/TaskState.js');
-const { TaskManager } = await import('../tasks/TaskManager.js');
-const { AnalyticsEngine } = await import('../analytics/AnalyticsEngine.js');
-const { UIController } = await import('../ui/UIController.js');
+const { TaskState, TaskManager, AnalyticsEngine, UIController } = oop;
+
+assert.strictEqual((await storage.whenReady()).source, 'local');
+storage.writeText('remove-many-a', '1');
+storage.writeText('remove-many-b', '2');
+await storage.removeMany(['remove-many-a', 'remove-many-b']);
+assert.strictEqual(storage.readText('remove-many-a', null), null);
+assert.strictEqual(storage.readText('remove-many-b', null), null);
+
+assert.strictEqual(experience.shouldOfferExperience(null), true);
+assert.strictEqual(experience.shouldOfferExperience({
+    status: 'completed',
+    profileVersion: experience.constants.profileVersion,
+    walkthroughVersion: experience.constants.walkthroughVersion
+}), false);
+assert.strictEqual(experience.shouldOfferExperience({
+    status: 'completed',
+    profileVersion: 0,
+    walkthroughVersion: 0
+}), true);
+assert.strictEqual(experience.shouldOfferExperience({
+    status: 'deferred',
+    lastOfferedVersion: experience.constants.walkthroughVersion
+}), false);
+
+function createExperienceDom() {
+    const listeners = {};
+    const node = () => ({
+        textContent: '',
+        innerHTML: '',
+        hidden: false,
+        setAttribute() {},
+        focus() {}
+    });
+    const dialog = {
+        open: false,
+        addEventListener(type, listener) {
+            listeners[type] = listener;
+        },
+        showModal() {
+            this.open = true;
+        },
+        close() {
+            this.open = false;
+        },
+        setAttribute() {
+            this.open = true;
+        },
+        removeAttribute() {
+            this.open = false;
+        }
+    };
+
+    return {
+        dialog,
+        body: node(),
+        kicker: node(),
+        title: node(),
+        progress: node(),
+        back: node(),
+        next: node(),
+        secondary: node(),
+        listeners
+    };
+}
+
+const experienceKey = 'experience-controller-test';
+context.localStorage.removeItem(experienceKey);
+const experienceDom = createExperienceDom();
+const experienceBodyClasses = new Set();
+let appliedExperienceSettings = null;
+let appliedExperienceGoal = null;
+const experienceController = experience.createExperienceController({
+    storage,
+    storageKey: experienceKey,
+    dom: experienceDom,
+    documentRef: {
+        body: {
+            classList: {
+                add: value => experienceBodyClasses.add(value),
+                remove: value => experienceBodyClasses.delete(value)
+            }
+        }
+    },
+    normalizeSettings: settings.normalizeAppSettings,
+    defaultSettings: settings.defaultSettings,
+    defaultDailyGoal: 2,
+    getSettings: () => settings.normalizeAppSettings({ theme: 'dark', progressMode: 'balanced' }),
+    applySettings: value => {
+        appliedExperienceSettings = value;
+    },
+    getDailyGoal: () => 4,
+    applyDailyGoal: value => {
+        appliedExperienceGoal = value;
+    },
+    getNowTimestamp: () => '2026-07-14T12:00:00.000Z'
+});
+experienceController.init();
+assert.strictEqual(experienceController.maybeOpen({ hasExistingData: false }).opened, true);
+assert.strictEqual(experienceController.isOpen(), true);
+assert.strictEqual(experienceBodyClasses.has('experience-active'), true);
+experienceDom.listeners.click({ target: experienceDom.dialog });
+assert.strictEqual(experienceController.isOpen(), true);
+experienceController.complete(false);
+assert.strictEqual(experienceController.getState().status, 'completed');
+assert.strictEqual(appliedExperienceSettings.theme, 'dark');
+assert.strictEqual(appliedExperienceGoal, 4);
+assert.strictEqual(experienceController.shouldOffer(), false);
+assert.strictEqual(experienceController.isOpen(), false);
+experienceController.openManual();
+experienceController.defer();
+assert.strictEqual(experienceController.getState().status, 'completed');
+
+const migrationExperienceKey = 'experience-migration-test';
+context.localStorage.removeItem(migrationExperienceKey);
+const migrationController = experience.createExperienceController({
+    storage,
+    storageKey: migrationExperienceKey,
+    dom: createExperienceDom(),
+    documentRef: { body: { classList: { add() {}, remove() {} } } },
+    normalizeSettings: settings.normalizeAppSettings,
+    defaultSettings: settings.defaultSettings
+});
+migrationController.init();
+assert.strictEqual(migrationController.maybeOpen({ hasExistingData: true }).source, 'migration');
+migrationController.defer();
+assert.strictEqual(migrationController.getState().status, 'deferred');
+assert.strictEqual(migrationController.shouldOffer(), false);
+
+const lostCloudSession = await getAuthEntryState('google');
+assert.strictEqual(lostCloudSession.canEnter, false);
+assert.strictEqual(lostCloudSession.shouldPrompt, true);
+const localEntry = await getAuthEntryState('local');
+assert.strictEqual(localEntry.canEnter, true);
+assert.strictEqual(localEntry.shouldPrompt, false);
+
+const silentAudioController = audio.createAudioController({
+    windowRef: context,
+    getSettings: () => ({ sound: false, soundVolume: 0.7 })
+});
+assert.strictEqual(silentAudioController.unlock(), false);
+assert.strictEqual(silentAudioController.playRaceCue('break-start'), false);
+
+let completionToneStarts = 0;
+const audibleWindow = {
+    AudioContext: class FakeAudioContext {
+        constructor() {
+            this.state = 'suspended';
+            this.currentTime = 0;
+            this.destination = {};
+        }
+
+        resume() {
+            this.state = 'running';
+            return Promise.resolve();
+        }
+
+        createOscillator() {
+            return {
+                type: 'sine',
+                frequency: {
+                    setValueAtTime() {},
+                    exponentialRampToValueAtTime() {}
+                },
+                connect() {},
+                start() {
+                    completionToneStarts += 1;
+                },
+                stop() {}
+            };
+        }
+
+        createGain() {
+            return {
+                gain: {
+                    setValueAtTime() {},
+                    exponentialRampToValueAtTime() {}
+                },
+                connect() {}
+            };
+        }
+    }
+};
+const audibleController = audio.createAudioController({
+    windowRef: audibleWindow,
+    getSettings: () => ({ sound: true, soundVolume: 0.7 })
+});
+assert.strictEqual(audibleController.unlock(), true);
+assert.strictEqual(audibleController.playCompletion('regular'), true);
+assert.strictEqual(completionToneStarts, 1);
+
+const migration = context.TasklyzenDataMigration;
+const migrationKeys = context.TasklyzenConfig.storageKeys;
+context.localStorage.setItem(migrationKeys.gamification, JSON.stringify({
+    usedShields: 2,
+    protectedDates: ['2026-07-03'],
+    achievementStates: { legacy: { collected: true } },
+    featuredAchievements: ['legacy']
+}));
+context.localStorage.setItem(migrationKeys.analyticsEvents, JSON.stringify([
+    {
+        type: 'task-completed',
+        taskId: 'task-safe',
+        metadata: { achievementProgress: 2, source: 'task-list' }
+    },
+    { type: 'achievement-unlocked' }
+]));
+context.localStorage.setItem(migrationKeys.dailyStats, JSON.stringify({
+    '2026-07-03': {
+        created: 2,
+        completed: 1,
+        achievements: 4,
+        details: { logros: ['legacy'], preserved: true }
+    }
+}));
+context.localStorage.setItem(migrationKeys.developerSnapshot, JSON.stringify({
+    todos: [{ id: 'task-safe', text: 'Conservar tarea' }],
+    gamification: { usedShields: 1, achievementStates: { legacy: true } },
+    view: { achievementPanelOpen: true, preserved: 'yes' }
+}));
+context.localStorage.setItem(migrationKeys.progressView, 'achievements');
+context.localStorage.setItem('todo-achievements', JSON.stringify({ legacy: true }));
+assert.strictEqual(storage.migrateLegacyData(), true);
+assert.strictEqual(context.localStorage.getItem('todo-achievements'), null);
+assert.deepStrictEqual(JSON.parse(context.localStorage.getItem(migrationKeys.gamification)), {
+    usedShields: 2,
+    protectedDates: ['2026-07-03']
+});
+assert.deepStrictEqual(JSON.parse(context.localStorage.getItem(migrationKeys.analyticsEvents)), [
+    { type: 'task-completed', taskId: 'task-safe', metadata: { source: 'task-list' } }
+]);
+assert.deepStrictEqual(JSON.parse(context.localStorage.getItem(migrationKeys.dailyStats)), {
+    '2026-07-03': { created: 2, completed: 1, details: { preserved: true } }
+});
+assert.deepStrictEqual(JSON.parse(context.localStorage.getItem(migrationKeys.developerSnapshot)), {
+    todos: [{ id: 'task-safe', text: 'Conservar tarea' }],
+    gamification: { usedShields: 1 },
+    view: { preserved: 'yes' }
+});
+assert.strictEqual(context.localStorage.getItem(migrationKeys.progressView), 'today');
+assert.strictEqual(migration.sanitizeStorageEntry('tasklyzen-achievements', '{}').remove, true);
+
+const cloudDeleteToken = { delete: true };
+const cloudWrites = [];
+const cloudDocument = {
+    get: () => Promise.resolve({
+        exists: true,
+        data: () => ({
+            'todo-achievements': JSON.stringify({ legacy: true }),
+            [migrationKeys.gamification]: JSON.stringify({
+                usedShields: 3,
+                achievementStates: { legacy: true }
+            }),
+            [migrationKeys.todos]: JSON.stringify([{ id: 'task-cloud', text: 'Conservar' }])
+        })
+    }),
+    set: (updates, options) => {
+        cloudWrites.push({ updates, options });
+        return Promise.resolve();
+    },
+    onSnapshot: () => () => {}
+};
+context.firebase = {
+    firestore: {
+        FieldValue: { delete: () => cloudDeleteToken }
+    }
+};
+const cloudDb = {
+    collection: () => ({ doc: () => cloudDocument })
+};
+
+context.localStorage.setItem(migrationKeys.todos, JSON.stringify([
+    { id: 'task-cloud', text: 'Conservar' }
+]));
+storage.onAuthChange({ uid: 'cloud-migration-test' }, cloudDb);
+await Promise.resolve();
+await Promise.resolve();
+const cloudMigrationWrite = cloudWrites.find(write => write.options && write.options.merge);
+assert.deepStrictEqual(cloudMigrationWrite.updates['todo-achievements'], cloudDeleteToken);
+assert.strictEqual(
+    cloudMigrationWrite.updates[migrationKeys.gamification],
+    JSON.stringify({ usedShields: 3 })
+);
+assert.strictEqual(cloudMigrationWrite.updates[migrationKeys.todos], undefined);
+storage.onAuthChange(null, null);
 
 assert.strictEqual(utils.isDateKey('2026-07-02'), true);
 assert.strictEqual(utils.isDateKey('02-07-2026'), false);
@@ -259,9 +583,77 @@ const betaControllers = features.createBetaFeatureControllers({
 assert.strictEqual(betaRegistry.isEnabled('focus-mode'), true);
 assert.strictEqual(betaControllers.summary, undefined);
 assert.strictEqual(betaControllers.focus.start('beta-3').selectedTodoId, 'beta-3');
+assert.deepStrictEqual(Array.from(betaControllers.focus.getState().sessionTodoIds), ['beta-3']);
 assert.strictEqual(betaControllers.focus.pause().status, 'paused');
 assert.strictEqual(betaControllers.focus.resume().status, 'running');
-assert.strictEqual(betaControllers.focus.exit().active, false);
+assert.strictEqual(betaControllers.focus.exit().active, true);
+assert.strictEqual(betaControllers.focus.getState().suspended, true);
+assert.strictEqual(betaControllers.focus.getLaunchState().buttonLabel, 'Continuar ritmo libre');
+assert.strictEqual(betaControllers.focus.resumeSession().suspended, false);
+
+let interruptedNow = '2026-07-12T11:00:00.000Z';
+const interruptedTodo = { id: 'interrupted-race', text: 'Carrera interrumpida', completed: false };
+const interruptedRegistry = features.createFeatureRegistry({
+    storage,
+    storageKey: 'interrupted-race-test',
+    definitions: features.plannedLocalFeatures
+});
+const interruptedController = features.createBetaFeatureControllers({
+    registry: interruptedRegistry,
+    getTodos: () => [interruptedTodo],
+    getTopPriorityTodo: () => interruptedTodo,
+    getNowTimestamp: () => interruptedNow
+});
+interruptedController.focus.start(interruptedTodo.id, { mode: 'free' });
+interruptedNow = '2026-07-12T11:03:00.000Z';
+const interruptedLaunch = interruptedController.focus.prepareForEntry();
+assert.strictEqual(interruptedLaunch.resumable, true);
+assert.strictEqual(interruptedController.focus.getState().suspended, true);
+assert.strictEqual(interruptedController.focus.getState().sessionAccumulatedMs, 3 * 60 * 1000);
+
+let visibilityNow = '2026-07-12T12:00:00.000Z';
+const visibilityTodo = { id: 'visibility-race', text: 'Lectura enfocada', completed: false };
+const visibilityRegistry = features.createFeatureRegistry({
+    storage,
+    storageKey: 'visibility-race-test',
+    definitions: features.plannedLocalFeatures
+});
+const visibilityController = features.createBetaFeatureControllers({
+    registry: visibilityRegistry,
+    getTodos: () => [visibilityTodo],
+    getTopPriorityTodo: () => visibilityTodo,
+    getNowTimestamp: () => visibilityNow
+});
+visibilityController.focus.start(visibilityTodo.id, { mode: 'free' });
+visibilityNow = '2026-07-12T12:02:00.000Z';
+visibilityController.focus.handleVisibilityChange(true);
+visibilityNow = '2026-07-12T12:12:00.000Z';
+visibilityController.focus.handleVisibilityChange(false);
+assert.strictEqual(visibilityController.focus.getTimerSnapshot().timer.sessionElapsedMs, 12 * 60 * 1000);
+assert.strictEqual(visibilityController.focus.getState().sessionBackgroundMs, 10 * 60 * 1000);
+assert.strictEqual(visibilityController.focus.getState().sessionAwayMs, 0);
+assert.strictEqual(visibilityController.focus.getState().status, 'running');
+
+let pausedVisibilityNow = '2026-07-12T13:00:00.000Z';
+const pausedVisibilityRegistry = features.createFeatureRegistry({
+    storage,
+    storageKey: 'visibility-paused-test',
+    definitions: features.plannedLocalFeatures
+});
+const pausedVisibilityController = features.createBetaFeatureControllers({
+    registry: pausedVisibilityRegistry,
+    getTodos: () => [visibilityTodo],
+    getTopPriorityTodo: () => visibilityTodo,
+    getNowTimestamp: () => pausedVisibilityNow,
+    shouldRunInBackground: () => false
+});
+pausedVisibilityController.focus.start(visibilityTodo.id, { mode: 'free' });
+pausedVisibilityNow = '2026-07-12T13:02:00.000Z';
+pausedVisibilityController.focus.handleVisibilityChange(true);
+pausedVisibilityNow = '2026-07-12T13:12:00.000Z';
+pausedVisibilityController.focus.handleVisibilityChange(false);
+assert.strictEqual(pausedVisibilityController.focus.getState().sessionAccumulatedMs, 2 * 60 * 1000);
+assert.strictEqual(pausedVisibilityController.focus.getState().sessionAwayMs, 10 * 60 * 1000);
 
 const focusHito = {
     id: 'focus-hito',
@@ -313,6 +705,243 @@ assert.strictEqual(focusDraftControllers.focus.completeAndContinue().active, fal
 assert.strictEqual(focusHito.subtasks[0].completed, true);
 assert.strictEqual(focusHito.completed, true);
 
+let raceNow = '2026-07-12T10:00:00.000Z';
+const raceTodo = {
+    id: 'race-timer',
+    text: 'Preparar exposición',
+    completed: false,
+    habit: false
+};
+let completedRaceSession = null;
+const raceCues = [];
+const raceSessionRegistry = features.createFeatureRegistry({
+    storage,
+    storageKey: 'race-session-test',
+    definitions: features.plannedLocalFeatures
+});
+const raceSessionController = features.createBetaFeatureControllers({
+    registry: raceSessionRegistry,
+    getTodos: () => [raceTodo],
+    getTopPriorityTodo: () => raceTodo,
+    getNowTimestamp: () => raceNow,
+    evaluateSession: sustainableProgress.evaluateSession,
+    onCompleteTodo: todoId => {
+        if (todoId === raceTodo.id) {
+            raceTodo.completed = true;
+            return true;
+        }
+
+        return false;
+    },
+    onSessionComplete: session => {
+        completedRaceSession = session;
+    },
+    onTimerCue: cue => raceCues.push(cue)
+});
+raceSessionController.focus.start('race-timer', { mode: 'countdown', targetMs: 10 * 60 * 1000 });
+assert.strictEqual(raceSessionController.focus.getState().mode, 'countdown');
+assert.strictEqual(raceSessionController.focus.getState().targetMs, 10 * 60 * 1000);
+raceNow = '2026-07-12T10:05:00.000Z';
+raceSessionController.focus.pause();
+assert.strictEqual(raceSessionController.focus.getState().sessionAccumulatedMs, 5 * 60 * 1000);
+assert.strictEqual(raceSessionController.focus.getState().taskElapsedMsById['race-timer'], 5 * 60 * 1000);
+raceSessionController.focus.resume();
+raceNow = '2026-07-12T10:06:00.000Z';
+const finishedRaceState = raceSessionController.focus.completeAndContinue();
+assert.strictEqual(finishedRaceState.active, false);
+assert.strictEqual(completedRaceSession.completedCount, 1);
+assert.strictEqual(completedRaceSession.completedTodos[0].title, 'Preparar exposición');
+assert.strictEqual(completedRaceSession.mode, 'countdown');
+assert.strictEqual(completedRaceSession.targetReached, false);
+assert.strictEqual(completedRaceSession.focusMs, 6 * 60 * 1000);
+assert.strictEqual(completedRaceSession.meaningful, true);
+assert.strictEqual(completedRaceSession.sustainable, true);
+assert.deepStrictEqual(Array.from(raceCues), ['session-complete']);
+assert.strictEqual(raceSessionController.focus.getWeeklySummary().sessions, 1);
+assert.strictEqual(raceSessionController.focus.getWeeklySummary().successfulTargets, 1);
+
+let multiTaskNow = '2026-07-12T11:00:00.000Z';
+const multiTaskTodos = [
+    { id: 'race-task-a', text: 'Preparar diapositivas', completed: false, habit: false },
+    { id: 'race-task-b', text: 'Ensayar presentación', completed: false, habit: false },
+    { id: 'race-task-excluded', text: 'Tarea fuera de la sesión', completed: false, habit: false }
+];
+const multiTaskRegistry = features.createFeatureRegistry({
+    storage,
+    storageKey: 'race-multi-task-test',
+    definitions: features.plannedLocalFeatures
+});
+let multiTaskController = null;
+multiTaskController = features.createBetaFeatureControllers({
+    registry: multiTaskRegistry,
+    getTodos: () => multiTaskTodos,
+    getTopPriorityTodo: () => multiTaskTodos.find(todo => !todo.completed) || null,
+    getNowTimestamp: () => multiTaskNow,
+    onCompleteTodo: todoId => {
+        const todo = multiTaskTodos.find(item => item.id === todoId);
+        if (!todo) return false;
+        todo.completed = true;
+        multiTaskController.focus.render();
+        return true;
+    }
+});
+multiTaskController.focus.start('race-task-a', {
+    mode: 'free',
+    todoIds: ['race-task-a', 'race-task-b']
+});
+assert.deepStrictEqual(
+    Array.from(multiTaskController.focus.getState().sessionTodoIds),
+    ['race-task-a', 'race-task-b']
+);
+multiTaskNow = '2026-07-12T11:02:00.000Z';
+let multiTaskState = multiTaskController.focus.skipToNext();
+assert.strictEqual(multiTaskState.selectedTodoId, 'race-task-b');
+assert.strictEqual(multiTaskState.sessionAccumulatedMs, 2 * 60 * 1000);
+assert.strictEqual(multiTaskState.taskElapsedMsById['race-task-a'], 2 * 60 * 1000);
+assert.strictEqual(multiTaskController.focus.getTimerSnapshot().timer.primaryValue, '02:00');
+multiTaskNow = '2026-07-12T11:03:00.000Z';
+multiTaskState = multiTaskController.focus.skipToNext();
+assert.strictEqual(multiTaskState.selectedTodoId, 'race-task-a');
+assert.strictEqual(multiTaskState.sessionAccumulatedMs, 3 * 60 * 1000);
+assert.strictEqual(multiTaskState.taskElapsedMsById['race-task-b'], 60 * 1000);
+multiTaskNow = '2026-07-12T11:04:00.000Z';
+multiTaskController.focus.completeAndContinue();
+multiTaskNow = '2026-07-12T11:06:00.000Z';
+const multiTaskFinished = multiTaskController.focus.finishSession();
+const multiTaskBreakdown = Object.fromEntries(
+    multiTaskFinished.lastSession.taskBreakdown.map(todo => [todo.id, todo])
+);
+assert.strictEqual(multiTaskFinished.lastSession.elapsedMs, 6 * 60 * 1000);
+assert.strictEqual(multiTaskBreakdown['race-task-a'].elapsedMs, 3 * 60 * 1000);
+assert.strictEqual(multiTaskBreakdown['race-task-a'].completed, true);
+assert.strictEqual(multiTaskBreakdown['race-task-b'].elapsedMs, 3 * 60 * 1000);
+assert.strictEqual(multiTaskBreakdown['race-task-b'].completed, false);
+assert.strictEqual(multiTaskBreakdown['race-task-excluded'], undefined);
+
+let pomodoroNow = '2026-07-12T12:00:00.000Z';
+const pomodoroTodo = {
+    id: 'pomodoro-timer',
+    text: 'Estudiar con Pomodoro',
+    completed: false,
+    habit: false
+};
+const pomodoroRegistry = features.createFeatureRegistry({
+    storage,
+    storageKey: 'pomodoro-session-test',
+    definitions: features.plannedLocalFeatures
+});
+const pomodoroCues = [];
+let pomodoroAudioUnlocks = 0;
+const pomodoroController = features.createBetaFeatureControllers({
+    registry: pomodoroRegistry,
+    getTodos: () => [pomodoroTodo],
+    getTopPriorityTodo: () => pomodoroTodo,
+    getNowTimestamp: () => pomodoroNow,
+    onTimerCue: cue => pomodoroCues.push(cue),
+    unlockAudio: () => {
+        pomodoroAudioUnlocks += 1;
+    }
+});
+pomodoroController.focus.start('pomodoro-timer', {
+    mode: 'countdown',
+    targetMs: 40 * 60 * 1000,
+    pomodoroEnabled: true,
+    pomodoroWorkMs: 25 * 60 * 1000,
+    pomodoroBreakMs: 5 * 60 * 1000
+});
+assert.strictEqual(pomodoroAudioUnlocks, 1);
+pomodoroNow = '2026-07-12T12:25:00.000Z';
+let pomodoroSnapshot = pomodoroController.focus.getTimerSnapshot();
+assert.strictEqual(pomodoroSnapshot.pomodoro.phase, 'break');
+assert.strictEqual(pomodoroSnapshot.pomodoro.remainingMs, 5 * 60 * 1000);
+assert.deepStrictEqual(Array.from(pomodoroCues), ['break-start']);
+pomodoroNow = '2026-07-12T12:30:00.000Z';
+pomodoroSnapshot = pomodoroController.focus.getTimerSnapshot();
+assert.strictEqual(pomodoroSnapshot.pomodoro.phase, 'work');
+assert.strictEqual(pomodoroSnapshot.pomodoro.remainingMs, 10 * 60 * 1000);
+assert.deepStrictEqual(Array.from(pomodoroCues), ['break-start', 'focus-start']);
+pomodoroNow = '2026-07-12T12:32:00.000Z';
+const suspendedPomodoro = pomodoroController.focus.leave();
+assert.strictEqual(suspendedPomodoro.suspended, true);
+assert.strictEqual(suspendedPomodoro.sessionAccumulatedMs, 32 * 60 * 1000);
+assert.strictEqual(pomodoroController.focus.getLaunchState().buttonLabel, 'Continuar contra reloj');
+pomodoroNow = '2026-07-12T12:40:00.000Z';
+assert.strictEqual(pomodoroController.focus.getTimerSnapshot().timer.sessionElapsedMs, 32 * 60 * 1000);
+pomodoroController.focus.resumeSession();
+pomodoroNow = '2026-07-12T12:48:00.000Z';
+pomodoroSnapshot = pomodoroController.focus.getTimerSnapshot();
+assert.strictEqual(pomodoroSnapshot.timer.remainingMs, 0);
+assert.strictEqual(pomodoroSnapshot.pomodoro.finished, true);
+
+pomodoroTodo.completed = false;
+pomodoroNow = '2026-07-12T13:00:00.000Z';
+pomodoroController.focus.start('pomodoro-timer', {
+    mode: 'countdown',
+    pomodoroEnabled: true,
+    pomodoroWorkMs: 25 * 60 * 1000,
+    pomodoroBreakMs: 5 * 60 * 1000,
+    pomodoroTargetCycles: 2
+});
+assert.strictEqual(pomodoroController.focus.getState().targetMs, 55 * 60 * 1000);
+assert.strictEqual(pomodoroController.focus.getState().pomodoroTargetCycles, 2);
+
+pomodoroController.focus.start('pomodoro-timer', {
+    mode: 'countdown',
+    pomodoroEnabled: true,
+    pomodoroWorkMs: 25 * 60 * 1000,
+    pomodoroBreakMs: 5 * 60 * 1000,
+    pomodoroTargetCycles: 99
+});
+assert.strictEqual(pomodoroController.focus.getState().pomodoroTargetCycles, 8);
+assert.strictEqual(pomodoroController.focus.getState().targetMs, 250 * 60 * 1000);
+
+pomodoroNow = '2026-07-12T14:00:00.000Z';
+pomodoroController.focus.start('pomodoro-timer', {
+    mode: 'countdown',
+    pomodoroEnabled: true,
+    pomodoroWorkMs: 25 * 60 * 1000,
+    pomodoroBreakMs: 5 * 60 * 1000,
+    pomodoroTargetCycles: 8
+});
+pomodoroNow = '2026-07-12T15:55:00.000Z';
+pomodoroSnapshot = pomodoroController.focus.getTimerSnapshot();
+assert.strictEqual(pomodoroSnapshot.pomodoro.phase, 'break');
+assert.strictEqual(pomodoroSnapshot.pomodoro.label, 'Descanso largo');
+assert.strictEqual(pomodoroSnapshot.pomodoro.cycle, 4);
+assert.strictEqual(pomodoroSnapshot.pomodoro.remainingMs, 20 * 60 * 1000);
+
+pomodoroNow = '2026-07-12T16:30:00.000Z';
+pomodoroController.focus.start('pomodoro-timer', {
+    mode: 'countdown',
+    pomodoroEnabled: true,
+    pomodoroWorkMs: 50 * 60 * 1000,
+    pomodoroBreakMs: 10 * 60 * 1000,
+    pomodoroTargetCycles: 99
+});
+assert.strictEqual(pomodoroController.focus.getState().pomodoroTargetCycles, 4);
+assert.strictEqual(pomodoroController.focus.getState().targetMs, 240 * 60 * 1000);
+
+pomodoroNow = '2026-07-12T13:00:00.000Z';
+pomodoroController.focus.start('pomodoro-timer', { mode: 'free' });
+pomodoroNow = '2026-07-12T13:08:00.000Z';
+const manuallyFinishedRace = pomodoroController.focus.finishSession();
+assert.strictEqual(manuallyFinishedRace.active, false);
+assert.strictEqual(manuallyFinishedRace.lastSession.result, 'manual');
+
+pomodoroTodo.completed = false;
+pomodoroNow = '2026-07-12T13:20:00.000Z';
+pomodoroController.focus.start('pomodoro-timer', {
+    mode: 'countdown',
+    targetMs: 25 * 60 * 1000
+});
+pomodoroNow = '2026-07-12T13:24:00.000Z';
+const earlyCountdownFinish = pomodoroController.focus.finishSession();
+assert.strictEqual(earlyCountdownFinish.active, false);
+assert.strictEqual(earlyCountdownFinish.lastSession.mode, 'countdown');
+assert.strictEqual(earlyCountdownFinish.lastSession.targetReached, false);
+assert.strictEqual(earlyCountdownFinish.lastSession.elapsedMs, 4 * 60 * 1000);
+assert.strictEqual(manuallyFinishedRace.lastSession.elapsedMs, 8 * 60 * 1000);
+
 const normalizedSettings = settings.normalizeAppSettings({
     theme: 'custom',
     sound: true,
@@ -321,7 +950,12 @@ const normalizedSettings = settings.normalizeAppSettings({
 assert.strictEqual(normalizedSettings.theme, 'light');
 assert.strictEqual(normalizedSettings.sound, true);
 assert.strictEqual(normalizedSettings.soundVolume, 1);
+assert.strictEqual(normalizedSettings.progressMode, 'tasks');
+assert.strictEqual(normalizedSettings.dailyFocusGoalMinutes, 50);
+assert.strictEqual(normalizedSettings.backgroundTimer, true);
 assert.strictEqual(settings.normalizeAppSettings({ theme: 'dark' }).theme, 'dark');
+assert.strictEqual(settings.normalizeAppSettings({ progressMode: 'balanced', dailyFocusGoalMinutes: 500 }).progressMode, 'balanced');
+assert.strictEqual(settings.normalizeAppSettings({ progressMode: 'balanced', dailyFocusGoalMinutes: 500 }).dailyFocusGoalMinutes, 240);
 assert.strictEqual(settings.normalizeSettingsVolume(-1), 0);
 
 function createClassList() {
@@ -445,47 +1079,6 @@ const emptyStateComponent = components.createEmptyState({
 });
 assert.strictEqual(emptyStateComponent.className, 'empty-state');
 assert.strictEqual(emptyStateComponent.textContent, 'Sin datos');
-assert.strictEqual(typeof quickCreate.createQuickCreateController, 'function');
-
-let quickCreateKeydown = null;
-let quickCreatedTitle = null;
-const quickCreateLayer = createFakeElement('aside');
-const quickCreateTitle = createFakeElement('strong');
-const quickCreateStatus = createFakeElement('span');
-const quickCreateDocument = {
-    activeElement: null,
-    addEventListener(type, handler) {
-        if (type === 'keydown') {
-            quickCreateKeydown = handler;
-        }
-    },
-    removeEventListener() {},
-    querySelector: () => null
-};
-const freeKeyTarget = { closest: () => null };
-const inputKeyTarget = { closest: selector => selector.includes('input') ? {} : null };
-const quickCreateController = quickCreate.createQuickCreateController({
-    dom: { quickCreateLayer, quickCreateTitle, quickCreateStatus },
-    documentRef: quickCreateDocument,
-    onCreate: title => {
-        quickCreatedTitle = title;
-        return true;
-    }
-});
-quickCreateController.init();
-quickCreateKeydown({ key: 'R', target: freeKeyTarget, preventDefault() {} });
-quickCreateKeydown({ key: 'e', target: freeKeyTarget, preventDefault() {} });
-assert.strictEqual(quickCreateController.isActive(), true);
-assert.strictEqual(quickCreateController.getDraft(), 'Re');
-assert.strictEqual(quickCreateLayer.hidden, false);
-quickCreateKeydown({ key: 'Enter', target: freeKeyTarget, preventDefault() {} });
-assert.strictEqual(quickCreatedTitle, 'Re');
-assert.strictEqual(quickCreateController.isActive(), false);
-quickCreateKeydown({ key: 'X', target: inputKeyTarget, preventDefault() {} });
-assert.strictEqual(quickCreateController.isActive(), false);
-quickCreateKeydown({ key: 'N', target: freeKeyTarget, preventDefault() {} });
-quickCreateKeydown({ key: 'Escape', target: freeKeyTarget, preventDefault() {} });
-assert.strictEqual(quickCreateController.isActive(), false);
 
 const taskDisplayComponent = components.createTaskDisplayContent({
     documentRef: context.document,
@@ -584,65 +1177,6 @@ const flowChartComponent = components.createWeeklyFlowChart({
 });
 assert.strictEqual(flowChartComponent.className, 'weekly-flow-chart weekly-line-chart');
 assert.strictEqual(flowChartComponent.children.length, 2);
-
-const achievementCardComponent = components.createAchievementCard({
-    documentRef: context.document,
-    achievement: {
-        id: 'a1',
-        title: 'Primer logro',
-        message: 'Haz algo.',
-        mark: 'A',
-        rarity: 'rare',
-        rarityLabel: 'Raro',
-        categoryLabel: 'Diarias',
-        statusLabel: 'Pendiente',
-        type: 'single',
-        progress: 0.5,
-        collected: false,
-        pending: false,
-        repeatable: false
-    },
-    rarityText: 'Raro · Rango 3',
-    showFeatureButton: true,
-    canFeature: false,
-    featureButtonText: 'Bloqueado'
-});
-assert.strictEqual(achievementCardComponent.classList.contains('achievement-card'), true);
-assert.strictEqual(achievementCardComponent.classList.contains('rarity-rare'), true);
-
-const featuredAchievementComponent = components.createFeaturedAchievementCard({
-    documentRef: context.document,
-    achievement: {
-        title: 'Destacado',
-        mark: 'D',
-        rarity: 'epic',
-        collected: true,
-        pending: false
-    },
-    rarityText: 'Epico · Rango 4',
-    statusText: 'Conseguido'
-});
-assert.strictEqual(featuredAchievementComponent.classList.contains('featured-achievement-card'), true);
-
-const achievementSpotlightComponent = components.createAchievementSpotlight({
-    documentRef: context.document,
-    kind: 'next',
-    achievement: {
-        title: 'Siguiente logro',
-        message: 'Avanza una vez más.',
-        mark: 'S',
-        rarity: 'uncommon',
-        rarityLabel: 'Poco común',
-        statusLabel: '1 por completar',
-        progress: 0.5,
-        collected: false,
-        pending: false,
-        unseen: false
-    }
-});
-assert.strictEqual(achievementSpotlightComponent.classList.contains('achievement-spotlight'), true);
-assert.strictEqual(achievementSpotlightComponent.classList.contains('achievement-spotlight-next'), true);
-assert.strictEqual(featuredAchievementComponent.children.length, 2);
 
 const prestigeStepComponent = components.createPrestigeStep({
     documentRef: context.document,
@@ -744,6 +1278,7 @@ context.document.querySelectorAll = selector => {
 };
 loadBrowserModule(context, 'tasklyzen-dom.js');
 assert.strictEqual(context.TasklyzenDom.settings.settingsButton, sharedSettingsButton);
+assert.strictEqual(context.TasklyzenDom.settingsButton, sharedSettingsButton);
 assert.strictEqual(context.TasklyzenDom.tasks.todoForm, sharedTodoForm);
 assert.strictEqual(context.TasklyzenDom.todoForm, context.TasklyzenDom.tasks.todoForm);
 assert.strictEqual(context.TasklyzenDom.analytics.analyticsCompletionRate, sharedAnalyticsCompletionRate);
@@ -976,46 +1511,18 @@ assert.deepStrictEqual(directSubtaskDeleteCalls, [{
     strategy: 'remove'
 }]);
 
-const achievementDefinitions = achievements.createAchievementDefinitions({
-    getTodayHistory: () => 2,
-    getDailyGoal: () => 3,
-    getCleanDayProgress: () => 1,
-    getCurrentStreak: () => 7,
-    getPerfectStreak: () => 3,
-    getLegendaryStreak: () => 0,
-    getTotalCompletedTasks: () => 15,
-    getBestDayTotal: () => 5,
-    getCompletedPriorityCount: priority => priority === 'urgent' ? 10 : 4,
-    getEarnedShields: () => 1,
-    getActiveDaysTotal: () => 20,
-    getUsedShields: () => 2
-});
-const dailyGoalAchievement = achievementDefinitions.find(achievement => achievement.id === 'daily-goal');
-const urgentAchievement = achievementDefinitions.find(achievement => achievement.id === 'urgent-master-10');
-assert.ok(achievementDefinitions.length > 20);
-assert.strictEqual(dailyGoalAchievement.current(), 2);
-assert.strictEqual(dailyGoalAchievement.target(), 3);
-assert.strictEqual(urgentAchievement.current(), 10);
-assert.strictEqual(urgentAchievement.target(), 10);
-
 const gamificationTodayKey = utils.getTodayKey();
 const gamificationYesterdayKey = utils.getDateKeyByOffset(gamificationTodayKey, -1);
 let gamificationState = gamification.normalizeGamificationState({
     usedShields: 0,
     protectedDates: [],
-    achievementStates: {},
-    featuredAchievements: []
+    achievementStates: { 'first-spark': { collected: true } },
+    featuredAchievements: ['first-spark']
 });
-const normalizedUnseenState = gamification.normalizeGamificationState({ unseenAchievementIds: ['first-spark', 'first-spark'] });
-assert.deepStrictEqual(Array.from(normalizedUnseenState.unseenAchievementIds), ['first-spark']);
+assert.deepStrictEqual(Object.keys(gamificationState).sort(), ['lastStreakCelebrationDate', 'protectedDates', 'usedShields']);
 let gamificationSaveCount = 0;
 const gamificationController = gamification.createGamificationController({
-    definitions: achievementDefinitions,
-    rarities: context.TasklyzenConfig.achievementRarities,
-    categories: context.TasklyzenConfig.achievementCategories,
-    rarityKeys: context.TasklyzenConfig.achievementRarityKeys,
     prestigeLevels: context.TasklyzenConfig.streakPrestigeLevels,
-    featuredLimit: 3,
     utils,
     getGamification: () => gamificationState,
     setGamification: value => {
@@ -1033,35 +1540,7 @@ const gamificationController = gamification.createGamificationController({
 assert.strictEqual(gamificationController.getCurrentStreak(), 2);
 assert.strictEqual(gamificationController.getPerfectStreak(), 1);
 assert.strictEqual(gamificationController.getContributionLevel(3), 3);
-gamificationController.syncAchievementCollection(false);
-assert.strictEqual(gamificationController.getAllAchievements().find(achievement => achievement.id === 'first-spark').collected, true);
-assert.strictEqual(gamificationSaveCount > 0, true);
-
-let quietAchievementState = gamification.normalizeGamificationState({});
-let normalShowcaseCount = 0;
-const quietAchievementController = gamification.createGamificationController({
-    definitions: achievementDefinitions,
-    rarities: context.TasklyzenConfig.achievementRarities,
-    categories: context.TasklyzenConfig.achievementCategories,
-    rarityKeys: context.TasklyzenConfig.achievementRarityKeys,
-    prestigeLevels: context.TasklyzenConfig.streakPrestigeLevels,
-    utils,
-    getGamification: () => quietAchievementState,
-    setGamification: value => {
-        quietAchievementState = value;
-    },
-    saveGamification: () => {},
-    getCompletionHistory: () => ({ [gamificationTodayKey]: 2 }),
-    getDailyGoal: () => 2,
-    queueAchievementShowcase: () => {
-        normalShowcaseCount += 1;
-    }
-});
-quietAchievementController.syncAchievementCollection(true);
-assert.strictEqual(normalShowcaseCount, 0);
-assert.strictEqual(quietAchievementController.getUnseenAchievements().length > 0, true);
-assert.strictEqual(quietAchievementController.markAchievementsSeen(), true);
-assert.strictEqual(quietAchievementController.getUnseenAchievements().length, 0);
+assert.strictEqual(gamificationSaveCount, 0);
 
 let pendingStreakState = gamification.normalizeGamificationState({});
 const pendingStreakController = gamification.createGamificationController({
@@ -1081,23 +1560,6 @@ assert.strictEqual(pendingStreakController.getCurrentStreak(), 1);
 assert.strictEqual(pendingStreakController.hasCelebratedStreakDate(gamificationTodayKey), false);
 assert.strictEqual(pendingStreakController.markStreakDateCelebrated(gamificationTodayKey), true);
 assert.strictEqual(pendingStreakController.hasCelebratedStreakDate(gamificationTodayKey), true);
-
-const featuredAchievementList = createFakeElement('div');
-const featuredAchievementHint = createFakeElement('p');
-const gamificationUiController = gamificationUi.createGamificationUiController({
-    dom: {
-        featuredAchievementList,
-        featuredAchievementHint
-    },
-    documentRef: context.document,
-    windowRef: context,
-    getGamification: () => gamificationState,
-    getFeaturedAchievements: () => [gamificationController.getAllAchievements().find(achievement => achievement.id === 'first-spark')],
-    getRarityRankLabel: rarity => gamificationController.getRarityRankLabel(rarity)
-});
-gamificationUiController.renderFeaturedAchievements();
-assert.strictEqual(featuredAchievementList.children.length, 1);
-assert.strictEqual(featuredAchievementHint.textContent.includes('Selección automática'), true);
 
 let renderedStreak = 100;
 const streakHeroCard = createFakeElement('article');
@@ -1190,7 +1652,6 @@ const developerController = developer.createDeveloperModeController({
     saveDailyGoal: () => {},
     saveGamification: () => {},
     syncCompletionHistory: () => {},
-    syncAchievementCollection: () => {},
     renderCurrentPage: () => {
         developerRenderCount += 1;
     },
@@ -1299,7 +1760,6 @@ const analyticsDailyStats = {
         edited: 0,
         snoozed: 0,
         goalChanges: 0,
-        achievements: 0,
         usageEvents: 0,
         completionValue: 3
     }
@@ -1328,7 +1788,6 @@ const analyticsProgressController = analyticsProgress.createAnalyticsProgressCon
     getDailyGoal: () => 1,
     getHistoryCount: dateKey => dateKey === analyticsTodayKey ? 1 : 0,
     getLifecycleAnalyticsForRange: () => analyticsLifecycle,
-    getAllAchievements: () => [],
     getPriorityLabel: priority => priority === 'urgent' ? 'Urgente' : 'Normal',
     getPriorityRank: priority => priority === 'urgent' ? 3 : 1,
     getCurrentStreak: () => 1,
@@ -1336,7 +1795,20 @@ const analyticsProgressController = analyticsProgress.createAnalyticsProgressCon
     getTotalCompletedTasks: () => 1,
     getCompletedPriorityCount: priority => priority === 'urgent' ? 1 : 0,
     getTodoDeadlineState: () => null,
-    isTodoAvailableToday: () => false
+    isTodoAvailableToday: () => false,
+    getSustainableRangeSummary: () => ({
+        days: [{
+            dateKey: analyticsTodayKey,
+            focusMs: 30 * 60 * 1000,
+            rewardedFocusMs: 25 * 60 * 1000,
+            focusGoalMinutes: 25
+        }],
+        focusMs: 30 * 60 * 1000,
+        rewardedFocusMs: 25 * 60 * 1000,
+        sustainableSessions: 1
+    }),
+    getProgressMode: () => 'focus',
+    getDailyFocusGoalMinutes: () => 25
 });
 assert.strictEqual(analyticsProgress.normalizeFlowPeriod('unknown'), 'weekly');
 assert.strictEqual(analyticsProgressController.getPercent(1, 2), 50);
@@ -1354,6 +1826,11 @@ assert.strictEqual(analyticsProgressController.getMonthlyAnalytics(0).completedP
 assert.strictEqual(analyticsProgressController.getMonthlyAnalytics(0).tasksCreated, 1);
 assert.strictEqual(analyticsProgressController.getMonthlyAnalytics(0).totalActivities, 1);
 assert.strictEqual(analyticsProgressController.getMonthlyAnalytics(0).notCompletedPercent, 0);
+assert.strictEqual(analyticsProgressController.getFocusPeriodAnalytics('weekly').focusMs, 30 * 60 * 1000);
+assert.strictEqual(analyticsProgressController.getFocusPeriodAnalytics('weekly').goalPercent > 0, true);
+assert.strictEqual(analyticsProgressController.getProgressGoalRecommendation().mode, 'focus');
+assert.strictEqual(analyticsProgressController.getProgressGoalRecommendation().focusGoal, 25);
+assert.strictEqual(analyticsProgressController.getProgressGoalRecommendation().message.includes('min'), true);
 assert.strictEqual(Array.isArray(analyticsProgressController.getMonthlyAnalytics(0).habitDayEntries), true);
 assert.strictEqual(analyticsProgressController.getAnalyticsSnapshot().analisisMensual.completedPercent, 100);
 const dailyMissionSnapshot = analyticsProgressController.getDailyMissionSnapshot();
@@ -1362,6 +1839,159 @@ assert.strictEqual(typeof dailyMissionSnapshot.title, 'string');
 assert.strictEqual(typeof dailyMissionSnapshot.current, 'number');
 assert.strictEqual(typeof dailyMissionSnapshot.target, 'number');
 assert.strictEqual(typeof dailyMissionSnapshot.complete, 'boolean');
+assert.strictEqual(typeof dailyMissionSnapshot.statusText, 'string');
+
+const sustainableController = sustainableProgress.createSustainableProgressController({
+    storage,
+    storageKey: 'sustainable-progress-test',
+    getTodayKey: () => '2026-07-14',
+    getNowTimestamp: () => '2026-07-14T14:00:00.000Z',
+    getDailyGoal: () => 3
+});
+let sustainableDay = sustainableController.recordSession({
+    id: 'meaningful-short',
+    startedAt: '2026-07-14T08:00:00.000Z',
+    completedAt: '2026-07-14T08:20:00.000Z',
+    selectedCount: 1,
+    focusMs: 20 * 60 * 1000,
+    result: 'manual'
+});
+assert.strictEqual(sustainableDay.sessions[0].meaningful, false);
+assert.strictEqual(sustainableDay.sessions[0].sustainable, false);
+assert.strictEqual(sustainableDay.sessions[0].confirmedFocusMs, 0);
+sustainableDay = sustainableController.recordSession({
+    id: 'long-without-break',
+    startedAt: '2026-07-14T09:00:00.000Z',
+    completedAt: '2026-07-14T10:00:00.000Z',
+    selectedCount: 1,
+    completedCount: 1,
+    completedTodoIds: ['long-task'],
+    focusMs: 60 * 60 * 1000,
+    breakMs: 0,
+    result: 'manual'
+});
+assert.strictEqual(sustainableDay.sessions.find(session => session.id === 'long-without-break').meaningful, true);
+assert.strictEqual(sustainableDay.sessions.find(session => session.id === 'long-without-break').sustainable, false);
+sustainableDay = sustainableController.recordSession({
+    id: 'long-with-break',
+    startedAt: '2026-07-14T11:00:00.000Z',
+    completedAt: '2026-07-14T11:55:00.000Z',
+    selectedCount: 1,
+    completedCount: 1,
+    focusMs: 50 * 60 * 1000,
+    breakMs: 5 * 60 * 1000,
+    completedBreaks: 1,
+    result: 'manual'
+});
+assert.strictEqual(sustainableDay.sessions.find(session => session.id === 'long-with-break').sustainable, true);
+sustainableDay = sustainableController.recordSession({
+    id: 'mostly-away',
+    startedAt: '2026-07-14T12:00:00.000Z',
+    completedAt: '2026-07-14T13:00:00.000Z',
+    selectedCount: 1,
+    focusMs: 60 * 60 * 1000,
+    confirmedAwayMs: 55 * 60 * 1000,
+    result: 'manual'
+});
+assert.strictEqual(sustainableDay.sessions.find(session => session.id === 'mostly-away').meaningful, false);
+assert.strictEqual(sustainableDay.active, true);
+assert.strictEqual(sustainableController.getMissionSnapshot('2026-07-14').target, 1);
+assert.strictEqual(sustainableController.getMissionSnapshot('2026-07-14').statusText.includes('avance'), true);
+sustainableController.revokeTaskCompletion('long-task', '2026-07-14');
+assert.strictEqual(sustainableController.getDaySnapshot('2026-07-14').sessions.find(session => session.id === 'long-without-break').meaningful, false);
+sustainableController.recordTaskCompletion({ id: 'revocable-task' }, { dateKey: '2026-07-15' });
+assert.strictEqual(sustainableController.getDaySnapshot('2026-07-15').active, true);
+sustainableController.revokeTaskCompletion('revocable-task', '2026-07-15');
+assert.strictEqual(sustainableController.getDaySnapshot('2026-07-15').active, false);
+sustainableController.recordSession({
+    id: 'legacy-session-without-progress',
+    startedAt: '2026-07-10T08:00:00.000Z',
+    completedAt: '2026-07-10T08:20:00.000Z',
+    selectedCount: 1,
+    focusMs: 20 * 60 * 1000,
+    result: 'manual'
+});
+const localDateController = sustainableProgress.createSustainableProgressController({
+    storage,
+    storageKey: 'sustainable-progress-local-date-test',
+    getTodayKey: () => '2026-07-14',
+    getDateKeyFromTimestamp: () => '2026-07-14'
+});
+localDateController.recordSession({
+    id: 'local-midnight-session',
+    startedAt: '2026-07-15T04:30:00.000Z',
+    completedAt: '2026-07-15T05:15:00.000Z',
+    selectedCount: 1,
+    completedCount: 1,
+    completedTodoIds: ['local-task'],
+    focusMs: 45 * 60 * 1000,
+    result: 'manual'
+});
+assert.strictEqual(localDateController.getDateKeys()[0], '2026-07-14');
+
+let sustainableGamificationState = gamification.normalizeGamificationState({});
+const sustainableGamification = gamification.createGamificationController({
+    prestigeLevels: context.TasklyzenConfig.streakPrestigeLevels,
+    utils,
+    getGamification: () => sustainableGamificationState,
+    setGamification: value => {
+        sustainableGamificationState = value;
+    },
+    saveGamification: () => {},
+    getCompletionHistory: () => ({ '2026-07-10': 1, '2026-07-15': 5 }),
+    getDailyGoal: () => 3,
+    getMeaningfulDay: dateKey => sustainableController.getDaySnapshot(dateKey),
+    getMeaningfulDateKeys: () => sustainableController.getDateKeys()
+});
+assert.strictEqual(sustainableGamification.hasActiveCredit('2026-07-10'), true);
+assert.strictEqual(sustainableGamification.hasActiveCredit('2026-07-15'), false);
+assert.strictEqual(sustainableGamification.hasPerfectCredit('2026-07-14'), false);
+assert.strictEqual(sustainableGamification.hasLegendaryCredit('2026-07-14'), false);
+sustainableController.recordTaskCompletion({ id: 'legendary-1' }, { dateKey: '2026-07-14' });
+sustainableController.recordTaskCompletion({ id: 'legendary-2' }, { dateKey: '2026-07-14' });
+sustainableController.recordTaskCompletion({ id: 'legendary-3' }, { dateKey: '2026-07-14' });
+assert.strictEqual(sustainableGamification.hasPerfectCredit('2026-07-14'), true);
+assert.strictEqual(sustainableGamification.hasLegendaryCredit('2026-07-14'), true);
+
+let focusProgressMode = 'focus';
+const focusGoalController = sustainableProgress.createSustainableProgressController({
+    storage,
+    storageKey: 'sustainable-focus-goal-test',
+    getTodayKey: () => '2026-07-14',
+    getProgressMode: () => focusProgressMode,
+    getDailyGoal: () => 2,
+    getDailyFocusGoalMinutes: () => 30
+});
+focusGoalController.recordSession({
+    id: 'confirmed-advance',
+    startedAt: '2026-07-14T08:00:00.000Z',
+    completedAt: '2026-07-14T08:30:00.000Z',
+    selectedCount: 1,
+    focusMs: 30 * 60 * 1000,
+    outcome: 'advanced',
+    result: 'manual'
+});
+assert.strictEqual(focusGoalController.getDaySnapshot('2026-07-14').focusGoalReached, true);
+assert.strictEqual(focusGoalController.getDaySnapshot('2026-07-14').goalReached, true);
+assert.strictEqual(focusGoalController.getMissionSnapshot('2026-07-14').statusText.includes('min'), true);
+focusProgressMode = 'balanced';
+assert.strictEqual(focusGoalController.getDaySnapshot('2026-07-14').goalReached, false);
+assert.strictEqual(focusGoalController.getMissionSnapshot('2026-07-14').statusText.includes('avances'), true);
+assert.strictEqual(focusGoalController.getMissionSnapshot('2026-07-14').statusText.includes('min'), true);
+focusGoalController.recordTaskCompletion({ id: 'balanced-a' }, { dateKey: '2026-07-14' });
+focusGoalController.recordTaskCompletion({ id: 'balanced-b' }, { dateKey: '2026-07-14' });
+assert.strictEqual(focusGoalController.getDaySnapshot('2026-07-14').goalReached, true);
+focusGoalController.recordSession({
+    id: 'blocked-session',
+    startedAt: '2026-07-14T09:00:00.000Z',
+    completedAt: '2026-07-14T09:20:00.000Z',
+    selectedCount: 1,
+    focusMs: 20 * 60 * 1000,
+    outcome: 'blocked',
+    result: 'manual'
+});
+assert.strictEqual(focusGoalController.getRangeSummary('2026-07-14', '2026-07-14').focusMs, 50 * 60 * 1000);
+assert.strictEqual(focusGoalController.getDaySnapshot('2026-07-14').sessions.find(session => session.id === 'blocked-session').meaningful, false);
 
 const toggledClasses = new Set();
 const fakeElement = {

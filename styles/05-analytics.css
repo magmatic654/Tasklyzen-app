@@ -145,12 +145,137 @@
 }
 
 .performance-trend,
-.performance-balance {
+.performance-balance,
+.performance-focus {
     margin-bottom: 12px;
     padding: 15px;
     background: var(--surface-panel);
     border: 2px solid var(--border-soft);
     border-radius: 8px;
+}
+
+.performance-focus {
+    margin-bottom: 12px;
+    padding: 15px;
+    background: color-mix(in srgb, var(--teal) 7%, var(--surface-panel));
+    border: 2px solid color-mix(in srgb, var(--teal) 26%, var(--border-soft));
+    border-bottom-width: 4px;
+    border-radius: 8px;
+}
+
+.performance-focus-key {
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.performance-focus-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.performance-focus-metrics > span {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    padding: 9px 10px;
+    background: var(--surface-panel);
+    border: 1px solid var(--border-soft);
+    border-radius: 7px;
+}
+
+.performance-focus-metrics strong {
+    overflow: hidden;
+    color: var(--teal-dark);
+    font-size: 1rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.performance-focus-metrics small {
+    color: var(--muted);
+    font-size: 0.67rem;
+    font-weight: 900;
+    line-height: 1.15;
+}
+
+.focus-flow-chart {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(26px, 1fr));
+    align-items: end;
+    gap: 6px;
+    min-height: 108px;
+    padding: 10px 8px 2px;
+    background: var(--surface-panel);
+    border: 1px solid var(--border-soft);
+    border-radius: 7px;
+}
+
+.focus-flow-day {
+    display: grid;
+    grid-template-rows: 76px auto;
+    align-items: end;
+    justify-items: stretch;
+    gap: 5px;
+    min-width: 0;
+}
+
+.focus-flow-bar {
+    display: block;
+    width: min(18px, 72%);
+    height: var(--focus-bar-height, 3%);
+    min-height: 3px;
+    margin-inline: auto;
+    background: linear-gradient(180deg, #35d9c2, #0ba8aa);
+    border-radius: 5px 5px 2px 2px;
+    box-shadow: 0 2px 0 color-mix(in srgb, var(--teal-dark) 45%, transparent);
+    transition: height 220ms ease;
+}
+
+.focus-flow-day.goal-hit .focus-flow-bar {
+    background: linear-gradient(180deg, #ffbd59, #ff786f);
+    box-shadow: 0 2px 0 rgba(198, 74, 72, 0.35);
+}
+
+.focus-flow-day small {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 0.6rem;
+    font-weight: 900;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.focus-flow-chart[data-empty="true"]::after {
+    content: "Inicia una Carrera para ver tu tiempo aquí";
+    grid-column: 1 / -1;
+    align-self: center;
+    color: var(--muted);
+    font-size: 0.74rem;
+    font-weight: 850;
+    text-align: center;
+}
+
+.focus-flow-chart[data-empty="true"] .focus-flow-day {
+    opacity: 0.22;
+}
+
+body.theme-dark .performance-focus {
+    background: #173139;
+    border-color: #2a665f;
+}
+
+body.theme-dark .performance-focus-metrics > span,
+body.theme-dark .focus-flow-chart {
+    background: #14243a;
+    border-color: #31506a;
+}
+
+body.theme-dark .performance-focus-metrics strong {
+    color: #67ead6;
 }
 
 .performance-section-heading {
@@ -1099,7 +1224,6 @@
 .task-funnel-card,
 .analytics-clarity-panel,
 .weekly-flow-panel,
-.achievement-ranking-panel,
 .consistency-strip-panel {
     position: relative;
     margin-bottom: 12px;
@@ -1236,87 +1360,6 @@
 .funnel-reactivated .task-funnel-track span,
 .funnel-deleted .task-funnel-track span {
     background: linear-gradient(90deg, var(--coral), var(--danger));
-}
-
-.achievement-ranking-list {
-    display: grid;
-    gap: 9px;
-}
-
-.achievement-ranking-item {
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr);
-    gap: 10px;
-    align-items: center;
-    padding: 10px;
-    background: var(--soft-blue);
-    border: 2px solid rgba(39, 125, 161, 0.1);
-    border-radius: 8px;
-}
-
-.achievement-ranking-item > strong {
-    display: grid;
-    place-items: center;
-    width: 42px;
-    height: 42px;
-    color: #ffffff;
-    font-size: 0.78rem;
-    font-weight: 1000;
-    background: var(--blue);
-    border-radius: 50%;
-}
-
-.achievement-ranking-item span,
-.achievement-ranking-item em {
-    display: block;
-}
-
-.achievement-ranking-item span {
-    color: var(--ink);
-    font-size: 0.86rem;
-    font-weight: 1000;
-    line-height: 1.08;
-}
-
-.achievement-ranking-item em {
-    margin-top: 4px;
-    color: var(--muted);
-    font-size: 0.74rem;
-    font-style: normal;
-    font-weight: 900;
-}
-
-.achievement-ranking-track {
-    height: 8px;
-    margin-top: 8px;
-    overflow: hidden;
-    background: #e8eef3;
-    border-radius: 999px;
-}
-
-.achievement-ranking-track span {
-    display: block;
-    width: var(--bar-width);
-    height: 100%;
-    background: linear-gradient(90deg, var(--teal), var(--green-3));
-    border-radius: inherit;
-}
-
-.achievement-ranking-item.rarity-epic > strong,
-.achievement-ranking-item.rarity-legendary > strong,
-.achievement-ranking-item.rarity-mythic > strong {
-    background: linear-gradient(135deg, var(--coral), var(--orange), var(--gold));
-}
-
-.achievement-ranking-empty {
-    margin: 0;
-    padding: 12px;
-    color: var(--muted);
-    font-size: 0.86rem;
-    font-weight: 900;
-    text-align: center;
-    background: var(--soft-blue);
-    border-radius: 8px;
 }
 
 .consistency-strip {
