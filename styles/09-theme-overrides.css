@@ -155,12 +155,6 @@ body.theme-dark .weekly-line-chart {
     box-shadow: inset 0 0 0 1px rgba(91, 215, 255, 0.06), 0 12px 28px rgba(0, 0, 0, 0.18);
 }
 
-body.theme-dark .weekly-line {
-    stroke: var(--dark-complete);
-    stroke-width: 6.5;
-    filter: drop-shadow(0 0 7px rgba(46, 227, 155, 0.45));
-}
-
 body.theme-dark .goal-line {
     stroke: var(--dark-review);
     stroke-width: 4;
@@ -168,21 +162,28 @@ body.theme-dark .goal-line {
     filter: drop-shadow(0 0 5px rgba(255, 209, 102, 0.32));
 }
 
-body.theme-dark .day-dot {
-    fill: #0f1724;
-    stroke: var(--dark-complete);
-    stroke-width: 4;
-    filter: drop-shadow(0 0 5px rgba(46, 227, 155, 0.42));
+body.theme-dark .weekly-bar {
+    fill: var(--dark-complete);
+    filter: drop-shadow(0 0 6px rgba(46, 227, 155, 0.26));
 }
 
-body.theme-dark .day-dot.goal-hit {
+body.theme-dark .weekly-bar.goal-hit {
     fill: var(--dark-review);
-    stroke: var(--dark-warning);
-    filter: drop-shadow(0 0 8px rgba(255, 209, 102, 0.52));
+    filter: drop-shadow(0 0 7px rgba(255, 209, 102, 0.34));
 }
 
 body.theme-dark .weekly-axis-label {
     fill: var(--dark-text-soft);
+}
+
+body.theme-dark .weekly-chart-insight {
+    color: var(--dark-text-soft);
+    background: rgba(91, 215, 255, 0.08);
+    border-left-color: var(--dark-danger);
+}
+
+body.theme-dark .weekly-chart-insight strong {
+    color: var(--dark-text-strong);
 }
 
 body.theme-dark :where(.analytics-chart-track, .comparison-track, .task-funnel-track) {

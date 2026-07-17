@@ -21,6 +21,19 @@
     let dataReadyPromise = null;
     const dataMigration = global.TasklyzenDataMigration || null;
 
+    function getCloudStorageKeys() {
+        const config = global.TasklyzenConfig || {};
+        const configuredKeys = Array.isArray(config.cloudStorageKeys)
+            ? config.cloudStorageKeys
+            : Object.values(config.storageKeys || {});
+
+        return Array.from(new Set(configuredKeys.filter(key => typeof key === 'string' && key)));
+    }
+
+    function isCloudStorageKey(key) {
+        return getCloudStorageKeys().includes(String(key || ''));
+    }
+
     function resetDataReady() {
         dataReady = false;
         dataReadyDetail = null;
@@ -115,6 +128,10 @@
                 return;
             }
 
+            if (!isCloudStorageKey(key)) {
+                return;
+            }
+
             data[key] = sanitized.value;
 
             if (sanitized.changed) {
@@ -150,6 +167,10 @@
         docRef.set(updates, { merge: true }).catch(error => {
             console.error('Error al migrar datos retirados en la nube:', error);
         });
+    }
+
+    function canDeleteCloudKey(key) {
+        return isCloudStorageKey(key) || sanitizeStorageEntry(key, null).remove;
     }
 
     // Se invoca desde tasklyzen-auth.js cuando el estado cambia
@@ -391,10 +412,28 @@
     function uploadLocalToCloud(docRef) {
         migrateLegacyData();
         const allLocalData = {};
-        for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i);
-            allLocalData[k] = localStorage.getItem(k);
-        }
+
+        getCloudStorageKeys().forEach(key => {
+            const localValue = localStorage.getItem(key);
+
+            if (localValue === null) {
+                return;
+            }
+
+            const sanitized = sanitizeStorageEntry(key, localValue);
+
+            if (sanitized.remove) {
+                localStorage.removeItem(key);
+                return;
+            }
+
+            if (sanitized.changed && sanitized.value !== localValue) {
+                localStorage.setItem(key, sanitized.value);
+            }
+
+            allLocalData[key] = sanitized.value;
+        });
+
         return docRef.set(allLocalData, { merge: true }).catch(console.error);
     }
 
@@ -428,6 +467,10 @@
 
         if (sanitized.remove) {
             remove(key);
+            return;
+        }
+
+        if (!isCloudStorageKey(key)) {
             return;
         }
 
@@ -489,9 +532,9 @@
 
     function remove(key) {
         localStorage.removeItem(key);
-        if (currentUser && db && !isApplyingRemoteChange) {
+        if (currentUser && db && !isApplyingRemoteChange && canDeleteCloudKey(key)) {
             const docRef = db.collection('users').doc(currentUser.uid);
-            if (global.firebase) {
+            if (global.firebase && global.firebase.firestore && global.firebase.firestore.FieldValue) {
                 docRef.update({ [key]: global.firebase.firestore.FieldValue.delete() }).catch(console.error);
             }
         }
@@ -499,6 +542,7 @@
 
     function removeMany(keys) {
         const uniqueKeys = Array.from(new Set((keys || []).filter(Boolean)));
+        const cloudKeys = uniqueKeys.filter(canDeleteCloudKey);
 
         if (!currentUser || !db || isApplyingRemoteChange || !global.firebase) {
             uniqueKeys.forEach(key => localStorage.removeItem(key));
@@ -507,11 +551,12 @@
 
         const deleteField = global.firebase.firestore.FieldValue.delete();
         const updates = {};
-        uniqueKeys.forEach(key => {
+        cloudKeys.forEach(key => {
             updates[key] = deleteField;
         });
 
         if (!Object.keys(updates).length) {
+            uniqueKeys.forEach(key => localStorage.removeItem(key));
             return Promise.resolve();
         }
 
@@ -548,6 +593,7 @@
             ready: dataReady,
             detail: dataReadyDetail
         }),
+        getCloudSyncKeys: getCloudStorageKeys,
         migrateLegacyData
     };
 

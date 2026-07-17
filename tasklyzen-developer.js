@@ -26,6 +26,8 @@
         const setTodos = fn(config.setTodos, () => {});
         const getCompletionHistory = fn(config.getCompletionHistory, () => ({}));
         const setCompletionHistory = fn(config.setCompletionHistory, () => {});
+        const getAnalyticsEvents = fn(config.getAnalyticsEvents, () => []);
+        const setAnalyticsEvents = fn(config.setAnalyticsEvents, () => {});
         const getDailyGoal = fn(config.getDailyGoal, () => defaults.dailyGoal || 3);
         const setDailyGoal = fn(config.setDailyGoal, () => {});
         const getGamification = fn(config.getGamification, () => ({}));
@@ -57,6 +59,7 @@
         const enableAppSound = fn(config.enableAppSound, () => false);
         const showToast = fn(config.showToast, () => {});
         const saveTodoList = fn(config.saveTodoList, () => {});
+        const saveAnalyticsEvents = fn(config.saveAnalyticsEvents, () => {});
         const saveCompletionHistory = fn(config.saveCompletionHistory, () => {});
         const saveDailyGoal = fn(config.saveDailyGoal, () => {});
         const saveGamification = fn(config.saveGamification, () => {});
@@ -96,10 +99,12 @@
         const overdueReviewIntervalDays = Math.max(Number(defaults.overdueReviewIntervalDays) || 7, 1);
         const overdueAutoDeleteDays = Math.max(Number(defaults.overdueAutoDeleteDays) || 30, 1);
         const developerOverduePrefix = defaults.developerOverduePrefix || 'Revision dev';
+        const developerHistoryPrefix = 'dev-history-';
         let developerModeEnabled = false;
         let developerPanel = null;
         let developerToggleButton = null;
         let lastOverdueSimulation = 'Sin simulacion';
+        let lastHistorySimulation = null;
 
         function cloneForConsole(value) {
             return JSON.parse(JSON.stringify(value));
@@ -528,9 +533,364 @@
             renderCurrentPage();
         }
 
+        function clamp(value, minimum, maximum) {
+            return Math.min(Math.max(value, minimum), maximum);
+        }
+
+        function createSeededRandom(seed) {
+            const source = String(seed || 'tasklyzen-demo');
+            let state = 2166136261;
+
+            for (let index = 0; index < source.length; index += 1) {
+                state ^= source.charCodeAt(index);
+                state = Math.imul(state, 16777619);
+            }
+
+            return () => {
+                state += 0x6D2B79F5;
+                let next = state;
+                next = Math.imul(next ^ (next >>> 15), next | 1);
+                next ^= next + Math.imul(next ^ (next >>> 7), next | 61);
+                return ((next ^ (next >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+
+        function isDeveloperHistoryValue(value) {
+            return String(value || '').startsWith(developerHistoryPrefix);
+        }
+
+        function isDeveloperHistoryEvent(event) {
+            return Boolean(event && (event.source === 'developer-history'
+                || isDeveloperHistoryValue(event.id)
+                || isDeveloperHistoryValue(event.todoId)));
+        }
+
+        function getDeveloperHistoryOptions(overrides) {
+            const source = overrides || {};
+            const daysField = getField('history-simulation-days');
+            const recordsField = getField('history-simulation-records');
+            const completionField = getField('history-simulation-completion');
+            const profileField = getField('history-simulation-profile');
+            const dataField = getField('history-simulation-data');
+            const seedField = getField('history-simulation-seed');
+            const includeTodayField = getField('history-simulation-today');
+            const requestedDays = Number(source.days ?? (daysField && daysField.value));
+            const requestedRecords = Number(source.records ?? (recordsField && recordsField.value));
+            const requestedCompletionRate = Number(source.completionRate ?? (completionField && completionField.value));
+
+            return {
+                days: clamp(Math.round(Number.isFinite(requestedDays) ? requestedDays : 30), 7, 365),
+                records: clamp(Math.round(Number.isFinite(requestedRecords) ? requestedRecords : 36), 1, 180),
+                completionRate: clamp(Math.round(Number.isFinite(requestedCompletionRate) ? requestedCompletionRate : 70), 0, 100),
+                profile: ['steady', 'bursts', 'irregular', 'deadline'].includes(source.profile || (profileField && profileField.value))
+                    ? (source.profile || (profileField && profileField.value))
+                    : 'steady',
+                dataType: ['tasks', 'focus', 'mixed'].includes(source.dataType || (dataField && dataField.value))
+                    ? (source.dataType || (dataField && dataField.value))
+                    : 'mixed',
+                seed: String(source.seed ?? (seedField && seedField.value) ?? 'tasklyzen-demo').trim() || 'tasklyzen-demo',
+                includeToday: source.includeToday ?? Boolean(includeTodayField && includeTodayField.checked)
+            };
+        }
+
+        function getSimulationDateKey(offset) {
+            const today = getStartOfDay(new Date(getTodayKey() + 'T12:00:00'));
+
+            return formatDateKey(addDays(today, offset));
+        }
+
+        function getDateOffset(dateKey, baseDateKey) {
+            const date = new Date(dateKey + 'T12:00:00');
+            const base = new Date(baseDateKey + 'T12:00:00');
+
+            return Math.round((date.getTime() - base.getTime()) / 86400000);
+        }
+
+        function getSimulationOffset(index, options, random) {
+            const startOffset = -(options.days - 1) - (options.includeToday ? 0 : 1);
+            const endOffset = options.includeToday ? 0 : -1;
+            const span = Math.max(endOffset - startOffset + 1, 1);
+            let normalized = (index + random()) / options.records;
+
+            if (options.profile === 'bursts') {
+                const anchors = [0.14, 0.48, 0.82];
+                const anchor = anchors[Math.min(Math.floor(random() * anchors.length), anchors.length - 1)];
+                normalized = clamp(anchor + ((random() - 0.5) * 0.16), 0, 0.999);
+            } else if (options.profile === 'irregular') {
+                normalized = random() < 0.7
+                    ? clamp(0.56 + (random() * 0.42), 0, 0.999)
+                    : random() * 0.44;
+            }
+
+            return clamp(startOffset + Math.floor(normalized * span), startOffset, endOffset);
+        }
+
+        function getSimulationTaskName(index, profile, habit) {
+            const taskNames = [
+                'Resolver práctica',
+                'Leer apuntes',
+                'Preparar entrega',
+                'Revisar proyecto',
+                'Organizar referencias',
+                'Repasar conceptos',
+                'Actualizar ejercicio',
+                'Planear siguiente paso'
+            ];
+            const habitNames = ['Repasar 15 minutos', 'Ordenar apuntes', 'Leer una página', 'Practicar conceptos'];
+            const names = habit ? habitNames : taskNames;
+            const profileLabel = {
+                steady: 'constante',
+                bursts: 'racha',
+                irregular: 'irregular',
+                deadline: 'límite'
+            }[profile] || 'mixta';
+
+            return 'Simulación ' + profileLabel + ' · ' + names[index % names.length] + ' #' + (index + 1);
+        }
+
+        function getDeveloperHistoryStats() {
+            const events = getAnalyticsEvents().filter(isDeveloperHistoryEvent);
+            const created = events.filter(event => event.type === 'task_created');
+            const completed = events.filter(event => event.type === 'task_completed');
+            const overdue = events.filter(event => event.type === 'task_deleted' && event.analyticsRetained === true);
+            const progress = getSustainableProgress();
+            const focusMinutes = Object.values(progress.days || {}).reduce((total, day) => {
+                const sessions = Array.isArray(day && day.sessions) ? day.sessions : [];
+
+                return total + sessions
+                    .filter(session => isDeveloperHistoryValue(session && session.id))
+                    .reduce((sum, session) => sum + Math.round((Number(session.focusMs) || 0) / 60000), 0);
+            }, 0);
+
+            return {
+                events: events.length,
+                created: created.length,
+                completed: completed.length,
+                overdue: overdue.length,
+                focusMinutes
+            };
+        }
+
+        function addDeveloperHistoryTaskToProgress(progress, dateKey, todoId) {
+            const days = progress.days || {};
+            const day = days[dateKey] || {};
+            const taskIds = Array.isArray(day.taskIds) ? day.taskIds : [];
+
+            days[dateKey] = {
+                ...day,
+                taskIds: Array.from(new Set(taskIds.concat(todoId))),
+                progressAuthoritative: true
+            };
+            progress.days = days;
+        }
+
+        function addDeveloperHistorySessionToProgress(progress, dateKey, session) {
+            const days = progress.days || {};
+            const day = days[dateKey] || {};
+            const sessions = Array.isArray(day.sessions) ? day.sessions : [];
+
+            days[dateKey] = {
+                ...day,
+                sessions: sessions.concat(session)
+            };
+            progress.days = days;
+        }
+
+        function createDeveloperHistorySession(simulationId, index, dateKey, profile, random) {
+            const minutes = profile === 'deadline'
+                ? 50
+                : profile === 'bursts'
+                    ? (random() > 0.58 ? 50 : 25)
+                    : (random() > 0.72 ? 50 : 25);
+            const breakMinutes = minutes >= 50 ? 10 : 5;
+            const startedAt = dateKey + 'T09:00:00.000';
+
+            return {
+                id: simulationId + '-focus-' + index,
+                startedAt,
+                completedAt: dateKey + 'T10:00:00.000',
+                mode: minutes >= 50 ? 'countdown' : 'free',
+                result: 'manual',
+                outcome: 'advanced',
+                selectedCount: 1 + Math.floor(random() * 3),
+                focusMs: minutes * 60000,
+                breakMs: breakMinutes * 60000,
+                completedBreaks: 1,
+                pomodoroEnabled: true,
+                targetReached: random() > 0.32
+            };
+        }
+
+        function createRandomHistorySimulation(overrides) {
+            const options = getDeveloperHistoryOptions(overrides);
+            const random = createSeededRandom(options.seed);
+            const simulationId = developerHistoryPrefix + options.seed.replace(/[^a-z0-9_-]+/gi, '-').slice(0, 32).replace(/^-+|-+$/g, '') + '-' + Date.now();
+            const generatedEvents = [];
+            const sustainableProgress = cloneForConsole(getSustainableProgress());
+            const rangeEndKey = getSimulationDateKey(options.includeToday ? 0 : -1);
+            let overdueCount = 0;
+            let excludedCount = 0;
+
+            if (options.dataType === 'tasks' || options.dataType === 'mixed') {
+                for (let index = 0; index < options.records; index += 1) {
+                    const createdOffset = getSimulationOffset(index, options, random);
+                    const createdOn = getSimulationDateKey(createdOffset);
+                    const remainingDays = Math.max(getDateOffset(rangeEndKey, createdOn), 0);
+                    const habit = random() < 0.2;
+                    const priority = random() < 0.12 ? 'urgent' : random() < 0.34 ? 'important' : 'normal';
+                    const hasDeadline = options.profile === 'deadline' || random() < 0.55;
+                    const dueDays = hasDeadline ? Math.max(1, Math.min(remainingDays || 1, 1 + Math.floor(random() * 4))) : null;
+                    const dueDate = dueDays ? getSimulationDateKey(createdOffset + dueDays) : null;
+                    const todoId = simulationId + '-task-' + index;
+                    const createdAt = createdOn + 'T09:00:00.000';
+                    const common = {
+                        todoId,
+                        text: getSimulationTaskName(index, options.profile, habit),
+                        priority,
+                        habit,
+                        createdOn,
+                        createdAt,
+                        dueDate,
+                        deadlineStartedAt: createdAt,
+                        timeLimitDays: dueDays || taskDefaultDays,
+                        source: 'developer-history',
+                        simulationId
+                    };
+
+                    generatedEvents.push({
+                        id: todoId + '-created',
+                        type: 'task_created',
+                        timestamp: createdAt,
+                        dateKey: createdOn,
+                        ...common
+                    });
+
+                    const completed = random() * 100 < options.completionRate;
+                    if (completed) {
+                        const completeDelay = dueDays && options.profile === 'deadline'
+                            ? dueDays
+                            : Math.min(remainingDays, Math.floor(random() * Math.min(remainingDays + 1, 4)));
+                        const completedOn = getSimulationDateKey(createdOffset + completeDelay);
+                        const completedAt = completedOn + 'T18:00:00.000';
+
+                        generatedEvents.push({
+                            id: todoId + '-completed',
+                            type: 'task_completed',
+                            timestamp: completedAt,
+                            dateKey: completedOn,
+                            completedOn,
+                            completedAt,
+                            completionValue: 1,
+                            ...common
+                        });
+                        addDeveloperHistoryTaskToProgress(sustainableProgress, completedOn, todoId);
+                    } else if (dueDate && dueDate < rangeEndKey && (options.profile === 'deadline' || random() < 0.24)) {
+                        const deletedOffset = Math.min(createdOffset + dueDays + 1 + Math.floor(random() * 3), getDateOffset(rangeEndKey, getSimulationDateKey(0)));
+                        const deletedOn = getSimulationDateKey(deletedOffset);
+                        const deletedAt = deletedOn + 'T20:00:00.000';
+
+                        generatedEvents.push({
+                            id: todoId + '-deleted',
+                            type: 'task_deleted',
+                            timestamp: deletedAt,
+                            dateKey: deletedOn,
+                            wasCompleted: false,
+                            analyticsRetained: true,
+                            ...common
+                        });
+                        overdueCount += 1;
+                    } else if (!dueDate && random() < 0.08) {
+                        excludedCount += 1;
+                    }
+                }
+            }
+
+            if (options.dataType === 'focus' || options.dataType === 'mixed') {
+                const sessionCount = options.dataType === 'focus' ? options.records : Math.max(Math.round(options.records * 0.6), 1);
+
+                for (let index = 0; index < sessionCount; index += 1) {
+                    const offset = getSimulationOffset(index, { ...options, records: sessionCount }, random);
+                    const dateKey = getSimulationDateKey(offset);
+
+                    addDeveloperHistorySessionToProgress(
+                        sustainableProgress,
+                        dateKey,
+                        createDeveloperHistorySession(simulationId, index, dateKey, options.profile, random)
+                    );
+                }
+            }
+
+            const currentEvents = getAnalyticsEvents();
+            const maxAnalyticsEvents = 1500;
+
+            if (currentEvents.length + generatedEvents.length > maxAnalyticsEvents) {
+                return {
+                    ...options,
+                    blocked: true,
+                    availableEvents: Math.max(maxAnalyticsEvents - currentEvents.length, 0),
+                    requestedEvents: generatedEvents.length
+                };
+            }
+
+            setAnalyticsEvents(currentEvents.concat(generatedEvents));
+            saveAnalyticsEvents();
+            replaceSustainableProgress(sustainableProgress);
+            syncCompletionHistory();
+            renderCurrentPage();
+
+            const stats = getDeveloperHistoryStats();
+            lastHistorySimulation = {
+                ...options,
+                simulationId,
+                generatedEvents: generatedEvents.length,
+                overdueCount,
+                excludedCount,
+                stats
+            };
+
+            return lastHistorySimulation;
+        }
+
+        function clearRandomHistorySimulation() {
+            const previousEvents = getAnalyticsEvents();
+            const nextEvents = previousEvents.filter(event => !isDeveloperHistoryEvent(event));
+            const sourceProgress = cloneForConsole(getSustainableProgress());
+            const nextDays = {};
+            let removedProgressItems = 0;
+
+            Object.entries(sourceProgress.days || {}).forEach(([dateKey, day]) => {
+                const nextTaskIds = (Array.isArray(day.taskIds) ? day.taskIds : []).filter(id => !isDeveloperHistoryValue(id));
+                const nextSessions = (Array.isArray(day.sessions) ? day.sessions : []).filter(session => !isDeveloperHistoryValue(session && session.id));
+                const hasContent = nextTaskIds.length > 0
+                    || nextSessions.length > 0
+                    || (Array.isArray(day.requiredSubtaskKeys) && day.requiredSubtaskKeys.length > 0);
+
+                if (hasContent) {
+                    nextDays[dateKey] = {
+                        ...day,
+                        taskIds: nextTaskIds,
+                        sessions: nextSessions
+                    };
+                }
+
+                removedProgressItems += (Array.isArray(day.taskIds) ? day.taskIds.length : 0) - nextTaskIds.length;
+                removedProgressItems += (Array.isArray(day.sessions) ? day.sessions.length : 0) - nextSessions.length;
+            });
+
+            setAnalyticsEvents(nextEvents);
+            saveAnalyticsEvents();
+            replaceSustainableProgress({ ...sourceProgress, days: nextDays });
+            syncCompletionHistory();
+            renderCurrentPage();
+            lastHistorySimulation = null;
+
+            return (previousEvents.length - nextEvents.length) + removedProgressItems;
+        }
+
         function resetAllForDev() {
             setTodos([]);
             setCompletionHistory({});
+            setAnalyticsEvents([]);
             setDailyGoal(defaultDailyGoal);
             setGamification({
                 usedShields: 0,
@@ -544,6 +904,7 @@
                 taskUiController.setFilter('today', false);
             }
             saveTodoList();
+            saveAnalyticsEvents();
             saveCompletionHistory();
             saveDailyGoal();
             saveGamification();
@@ -560,6 +921,7 @@
                 createdAt: new Date().toISOString(),
                 todos: getTodos(),
                 completionHistory: getCompletionHistory(),
+                analyticsEvents: getAnalyticsEvents(),
                 dailyGoal: getDailyGoal(),
                 gamification: getGamification(),
                 sustainableProgress: getSustainableProgress()
@@ -591,6 +953,7 @@
             setCompletionHistory(snapshot.completionHistory && typeof snapshot.completionHistory === 'object'
                 ? snapshot.completionHistory
                 : {});
+            setAnalyticsEvents(Array.isArray(snapshot.analyticsEvents) ? snapshot.analyticsEvents : []);
             setDailyGoal(Math.min(Math.max(Math.round(Number(snapshot.dailyGoal) || defaultDailyGoal), 1), 20));
             setGamification(snapshot.gamification && typeof snapshot.gamification === 'object'
                 ? snapshot.gamification
@@ -605,6 +968,7 @@
             }
             syncCompletionHistory();
             saveTodoList();
+            saveAnalyticsEvents();
             saveDailyGoal();
             saveGamification();
             renderCurrentPage();
@@ -784,6 +1148,7 @@
             const summary = createNode('div', 'developer-summary');
             const taskSection = createSection('Tareas y hábitos', 'Crea, completa, reactiva, pospone o elimina sin buscar IDs.');
             const progressSection = createSection('Progreso', 'Ajusta meta diaria, historial y rachas.');
+            const historySimulationSection = createSection('Historial aleatorio para Analítica', 'Genera actividad pasada reproducible sin llenar tu lista actual de tareas. Usa la misma semilla para repetir un escenario.');
             const overdueSection = createSection('Simulación de eliminación de tareas', 'Prueba avisos de 7 días, confirmaciones y limpieza de 30 días sin esperar al tiempo real.');
             const raceSection = createSection('Modo Carrera', 'Abre estados visuales y escucha cada señal sin esperar una sesión real.');
             const animationSection = createSection('Animaciones', 'Reproduce celebraciones de tareas y rachas para revisar la experiencia.');
@@ -794,6 +1159,9 @@
             const taskActions = createNode('div', 'developer-actions');
             const progressGrid = createNode('div', 'developer-grid');
             const progressActions = createNode('div', 'developer-actions');
+            const historySimulationGrid = createNode('div', 'developer-grid');
+            const historySimulationActions = createNode('div', 'developer-actions');
+            const historySimulationStatus = createNode('div', 'developer-history-simulation-status');
             const overdueGrid = createNode('div', 'developer-grid');
             const overdueActions = createNode('div', 'developer-actions');
             const overdueStatus = createNode('div', 'developer-overdue-status');
@@ -816,6 +1184,22 @@
             const historyPriority = createSelect('history-priority', getPriorityOptions());
             const streakDays = createInput('number', 'streak-days', getCurrentStreak());
             const streakMode = createSelect('streak-mode', getStreakOptions());
+            const historySimulationDays = createInput('number', 'history-simulation-days', 30);
+            const historySimulationRecords = createInput('number', 'history-simulation-records', 36);
+            const historySimulationCompletion = createInput('number', 'history-simulation-completion', 70);
+            const historySimulationProfile = createSelect('history-simulation-profile', [
+                { value: 'steady', label: 'Constante' },
+                { value: 'bursts', label: 'Por rachas' },
+                { value: 'irregular', label: 'Irregular' },
+                { value: 'deadline', label: 'Al límite' }
+            ]);
+            const historySimulationData = createSelect('history-simulation-data', [
+                { value: 'mixed', label: 'Tareas y enfoque' },
+                { value: 'tasks', label: 'Solo tareas' },
+                { value: 'focus', label: 'Solo enfoque' }
+            ]);
+            const historySimulationSeed = createInput('text', 'history-simulation-seed', 'tasklyzen-demo');
+            const historySimulationToday = createInput('checkbox', 'history-simulation-today');
             const overdueText = createInput('text', 'overdue-text', 'Caso dev vencido');
             const overdueDays = createInput('number', 'overdue-days', overdueReviewIntervalDays + 1);
             const completionSelect = createSelect('completion-animation', getCompletionOptions());
@@ -828,6 +1212,14 @@
             goalInput.min = '1';
             goalInput.max = '20';
             historyCount.min = '1';
+            historySimulationDays.min = '7';
+            historySimulationDays.max = '365';
+            historySimulationRecords.min = '1';
+            historySimulationRecords.max = '180';
+            historySimulationCompletion.min = '0';
+            historySimulationCompletion.max = '100';
+            historySimulationSeed.maxLength = 32;
+            historySimulationToday.checked = true;
             streakDays.min = '0';
             streakDays.max = String(developerStreakMaxDays);
             overdueText.placeholder = 'Texto del caso vencido';
@@ -876,6 +1268,21 @@
                 createButton('Animar racha', 'preview-streak', 'secondary')
             );
             progressSection.append(progressGrid, progressActions, createNode('p', 'developer-note'));
+            historySimulationGrid.append(
+                createField('Días a cubrir', historySimulationDays),
+                createField('Registros base', historySimulationRecords),
+                createField('% completado', historySimulationCompletion),
+                createField('Comportamiento', historySimulationProfile),
+                createField('Datos a generar', historySimulationData),
+                createField('Semilla repetible', historySimulationSeed),
+                createField('Incluir hoy', historySimulationToday)
+            );
+            historySimulationStatus.dataset.devHistorySimulationStatus = 'true';
+            historySimulationActions.append(
+                createButton('Generar historial', 'simulate-random-history'),
+                createButton('Limpiar solo simulación', 'clear-random-history', 'ghost')
+            );
+            historySimulationSection.append(historySimulationGrid, historySimulationStatus, historySimulationActions);
             overdueGrid.append(
                 createField('Texto del caso', overdueText),
                 createField('Días vencida', overdueDays)
@@ -934,7 +1341,7 @@
             );
             dangerSection.append(dangerActions);
             stateSection.appendChild(stateBox);
-            panel.append(header, summary, taskSection, progressSection, overdueSection, raceSection, animationSection, dangerSection, stateSection);
+            panel.append(header, summary, taskSection, progressSection, historySimulationSection, overdueSection, raceSection, animationSection, dangerSection, stateSection);
             panel.addEventListener('click', handlePanelClick);
             panel.addEventListener('change', handlePanelChange);
 
@@ -985,6 +1392,7 @@
             const summary = developerPanel.querySelector('.developer-summary');
             const note = developerPanel.querySelector('.developer-note');
             const stateBox = developerPanel.querySelector('.developer-state');
+            const historySimulationStatus = developerPanel.querySelector('[data-dev-history-simulation-status]');
             const overdueStatus = developerPanel.querySelector('[data-dev-overdue-status]');
             const restoreSnapshotButton = developerPanel.querySelector('[data-dev-action="restore-snapshot"]');
             const clearSnapshotButton = developerPanel.querySelector('[data-dev-action="clear-snapshot"]');
@@ -1050,6 +1458,35 @@
                     const label = createNode('span', '', item.label);
                     card.append(value, label);
                     summary.appendChild(card);
+                });
+            }
+
+            if (historySimulationStatus) {
+                const historyStats = getDeveloperHistoryStats();
+                const profileLabels = {
+                    steady: 'Constante',
+                    bursts: 'Por rachas',
+                    irregular: 'Irregular',
+                    deadline: 'Al límite'
+                };
+                const historyLabel = lastHistorySimulation
+                    ? (profileLabels[lastHistorySimulation.profile] || 'Personalizado') + ' · semilla ' + lastHistorySimulation.seed
+                    : historyStats.events > 0 ? 'Simulación guardada' : 'Sin simulación';
+
+                historySimulationStatus.innerHTML = '';
+                [
+                    { label: 'Registros', value: historyStats.created },
+                    { label: 'Completadas', value: historyStats.completed },
+                    { label: 'Vencidas', value: historyStats.overdue },
+                    { label: 'Enfoque', value: historyStats.focusMinutes + ' min' },
+                    { label: 'Escenario', value: historyLabel }
+                ].forEach(item => {
+                    const card = createNode('article');
+                    const value = createNode('strong', '', String(item.value));
+                    const label = createNode('span', '', item.label);
+
+                    card.append(value, label);
+                    historySimulationStatus.appendChild(card);
                 });
             }
 
@@ -1321,6 +1758,30 @@
                 showToast('Historial agregado desde el panel dev.', 'success');
             }
 
+            if (action === 'simulate-random-history') {
+                captureDeveloperSnapshot('Antes de historial aleatorio dev');
+                const simulation = createRandomHistorySimulation();
+
+                if (simulation.blocked) {
+                    showToast('No cabe una simulación completa. Reduce registros o limpia la simulación anterior.', 'error');
+                    refreshPanel();
+                    return;
+                }
+
+                const activityLabel = simulation.generatedEvents + ' eventos, '
+                    + simulation.stats.completed + ' completadas y '
+                    + simulation.stats.focusMinutes + ' min de enfoque.';
+
+                showToast('Historial generado: ' + activityLabel, 'success');
+            }
+
+            if (action === 'clear-random-history') {
+                const removed = clearRandomHistorySimulation();
+                showToast(removed > 0
+                    ? 'Se eliminó solo el historial generado por el simulador.'
+                    : 'No hay historial aleatorio generado para limpiar.', 'info');
+            }
+
             if (action === 'set-streak') {
                 const modeField = getField('streak-mode');
                 setDeveloperStreakForDev(getNumberField('streak-days', getCurrentStreak()), modeField ? modeField.value : 'active', true);
@@ -1417,6 +1878,8 @@
                 streakAnimation: 'todoDev.playStreak(30) reproduce la celebración del nivel indicado.',
                 state: 'todoDev.state() devuelve tareas, historial, meta, rachas y gamificación.',
                 playCompletion: "todoDev.playCompletion('regular' | 'goal' | 'legendary') reproduce una animación de tarea.",
+                simulateHistory: "todoDev.simulateHistory({ days: 30, records: 36, completionRate: 70, profile: 'steady' | 'bursts' | 'irregular' | 'deadline', dataType: 'tasks' | 'focus' | 'mixed', seed: 'demo', includeToday: true }) genera un historial repetible.",
+                clearSimulatedHistory: 'todoDev.clearSimulatedHistory() elimina únicamente el historial creado por el simulador.',
                 simulateSustainableSession: "todoDev.simulateSustainableSession('meaningful' | 'sustainable' | 'advanced' | 'blocked' | 'background' | 'suspicious') prueba la lectura de Carrera.",
                 clearSustainableProgress: 'todoDev.clearSustainableProgress() reinicia solo el ledger de progreso sostenible.',
                 resetAll: 'todoDev.resetAll() reinicia tareas, historial, meta y rachas.',
@@ -1455,6 +1918,7 @@
                 state: () => cloneForConsole({
                     todos: getTodos(),
                     completionHistory: getCompletionHistory(),
+                    analyticsEvents: getAnalyticsEvents(),
                     dailyGoal: getDailyGoal(),
                     gamification: getGamification(),
                     sustainableProgress: getSustainableProgress(),
@@ -1462,6 +1926,11 @@
                     developerSnapshot: getDeveloperSnapshot()
                 }),
                 analytics: () => cloneForConsole(getAnalyticsSnapshot()),
+                simulateHistory: options => {
+                    captureDeveloperSnapshot('Antes de todoDev.simulateHistory');
+                    return cloneForConsole(createRandomHistorySimulation(options));
+                },
+                clearSimulatedHistory: () => clearRandomHistorySimulation(),
                 playCompletion: type => {
                     showCompletionAnimation(type || 'regular');
                     return type || 'regular';
@@ -1639,6 +2108,8 @@
             setStreak: setDeveloperStreakForDev,
             addStreak: addDeveloperStreakDaysForDev,
             clearDevStreak: clearDeveloperStreakForDev,
+            simulateRandomHistory: createRandomHistorySimulation,
+            clearRandomHistory: clearRandomHistorySimulation,
             getHelp: getDeveloperHelp
         };
     }

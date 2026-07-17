@@ -103,23 +103,24 @@
         #taskApi;
         #utils;
         #taskState;
+        #taskTitleMaxLength;
 
         constructor({
             taskApi = global.TasklyzenTasks,
             utils = global.TasklyzenUtils,
-            taskState = null
+            taskState = null,
+            taskTitleMaxLength = global.TasklyzenConfig && global.TasklyzenConfig.defaults
+                ? global.TasklyzenConfig.defaults.taskTitleMaxLength
+                : 96
         } = {}) {
             this.#taskApi = this.#requireTaskApi(taskApi);
             this.#utils = this.#requireUtils(utils);
             this.#taskState = taskState || new TaskState({ taskApi: this.#taskApi });
+            this.#taskTitleMaxLength = Math.max(Math.round(Number(taskTitleMaxLength) || 96), 1);
         }
 
         create(text, priority = 'normal', options = {}) {
-            const cleanText = String(text || '').trim();
-
-            if (!cleanText) {
-                throw new Error('TaskManager.create necesita texto de tarea.');
-            }
+            const cleanText = this.#normalizeTitle(text, 'TaskManager.create necesita texto de tarea.');
 
             const createOptions = { ...options };
             if (createOptions.type === 'composite') {
@@ -138,7 +139,7 @@
             this.#assertTodo(todo);
 
             if (typeof changes.text === 'string') {
-                todo.text = changes.text.trim();
+                todo.text = this.#normalizeTitle(changes.text, 'El título de la tarea no puede quedar vacío.');
             }
 
             if (typeof changes.priority === 'string') {
@@ -155,6 +156,20 @@
 
             todo.updatedAt = changes.updatedAt || this.#utils.getNowTimestamp();
             return todo;
+        }
+
+        #normalizeTitle(value, emptyMessage) {
+            const cleanTitle = String(value || '').trim();
+
+            if (!cleanTitle) {
+                throw new Error(emptyMessage);
+            }
+
+            if (cleanTitle.length > this.#taskTitleMaxLength) {
+                throw new Error('El título de la tarea puede tener hasta ' + this.#taskTitleMaxLength + ' caracteres.');
+            }
+
+            return cleanTitle;
         }
 
         complete(todo, options = {}) {

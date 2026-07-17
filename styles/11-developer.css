@@ -141,6 +141,50 @@
     text-transform: uppercase;
 }
 
+.developer-history-simulation-status {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.developer-history-simulation-status article {
+    min-width: 0;
+    padding: 9px 8px;
+    color: var(--ink);
+    text-align: center;
+    background: rgba(238, 252, 249, 0.92);
+    border: 2px solid rgba(0, 168, 150, 0.18);
+    border-radius: 8px;
+    box-shadow: 0 5px 0 rgba(23, 32, 42, 0.08);
+}
+
+.developer-history-simulation-status article:last-child {
+    grid-column: span 2;
+}
+
+.developer-history-simulation-status strong,
+.developer-history-simulation-status span {
+    display: block;
+}
+
+.developer-history-simulation-status strong {
+    overflow: hidden;
+    color: var(--teal-dark);
+    font-size: 0.9rem;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.developer-history-simulation-status span {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 0.62rem;
+    font-weight: 1000;
+    text-transform: uppercase;
+}
+
 .developer-section {
     padding: 14px;
     margin-top: 12px;
@@ -270,6 +314,36 @@
     line-height: 1.45;
     background: var(--ink);
     border-radius: 8px;
+}
+
+body.theme-dark .developer-panel,
+body.theme-dark .developer-section,
+body.theme-dark .developer-section:nth-of-type(2n) {
+    color: var(--dark-text-strong);
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+}
+
+body.theme-dark .developer-section-heading p,
+body.theme-dark .developer-note,
+body.theme-dark .developer-field,
+body.theme-dark .developer-overdue-status span,
+body.theme-dark .developer-history-simulation-status span {
+    color: var(--dark-text-soft);
+}
+
+body.theme-dark .developer-field input,
+body.theme-dark .developer-field select,
+body.theme-dark .developer-overdue-status article,
+body.theme-dark .developer-history-simulation-status article {
+    color: var(--dark-text-strong);
+    background: var(--dark-surface-strong);
+    border-color: var(--dark-border);
+}
+
+body.theme-dark .developer-overdue-status strong,
+body.theme-dark .developer-history-simulation-status strong {
+    color: var(--teal);
 }
 
 .sr-only {

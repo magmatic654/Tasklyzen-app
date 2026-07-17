@@ -25,6 +25,9 @@
         overdueReview: 'tasklyzen-overdue-review'
     };
 
+    // Solo estas claves pertenecen al documento sincronizado del usuario.
+    const cloudStorageKeys = Object.freeze(Object.values(storageKeys));
+
     const defaults = {
         dailyGoal: 3,
         developerStreakPrefix: 'Racha dev',
@@ -34,7 +37,8 @@
         overdueAutoDeleteDays: 30,
         taskTimeLimitDefaultDays: 1,
         taskTimeLimitMaxDays: 3,
-        taskDeadlineSoonHours: 12
+        taskDeadlineSoonHours: 12,
+        taskTitleMaxLength: 96
     };
 
     const streakPrestigeLevels = [
@@ -55,6 +59,7 @@
 
     global.TasklyzenConfig = {
         storageKeys,
+        cloudStorageKeys,
         defaults,
         streakPrestigeLevels
     };

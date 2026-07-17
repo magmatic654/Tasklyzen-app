@@ -1782,18 +1782,16 @@
 
             container.hidden = false;
             const originalOrder = getFocusSubtaskOrder(todo, state);
-            getSubtasks(todo)
-                .map((subtask, index) => {
-                    const originalIndex = originalOrder.indexOf(subtask.id);
-
-                    return {
-                        subtask,
-                        index: originalIndex >= 0 ? originalIndex : index,
-                        completed: isSubtaskCompleteInFocus(todo, subtask, state)
-                    };
+            const compositeTasks = global.TasklyzenCompositeTasks;
+            const displaySubtasks = compositeTasks && typeof compositeTasks.getDisplaySubtasks === 'function'
+                ? compositeTasks.getDisplaySubtasks(getSubtasks(todo), {
+                    orderIds: originalOrder,
+                    isCompleted: subtask => isSubtaskCompleteInFocus(todo, subtask, state)
                 })
-                .sort((left, right) => Number(left.completed) - Number(right.completed) || left.index - right.index)
-                .forEach(({ subtask, completed }) => {
+                : getSubtasks(todo).slice();
+
+            displaySubtasks.forEach(subtask => {
+                    const completed = isSubtaskCompleteInFocus(todo, subtask, state);
                     const button = documentRef.createElement('button');
                     const check = documentRef.createElement('span');
                     const title = documentRef.createElement('span');
@@ -1814,7 +1812,7 @@
                     tag.textContent = subtask.optional ? 'Opcional' : 'Paso clave';
                     button.append(check, title, tag);
                     container.appendChild(button);
-                });
+            });
         }
 
         function buildSessionRecord(state, result) {
