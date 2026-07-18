@@ -778,8 +778,13 @@
 
     .developer-summary,
     .developer-grid,
-    .developer-overdue-status {
+    .developer-overdue-status,
+    .developer-history-simulation-status {
         grid-template-columns: 1fr;
+    }
+
+    .developer-history-simulation-status article:last-child {
+        grid-column: auto;
     }
 
     .developer-action {
@@ -942,11 +947,23 @@
 
     .performance-section-heading {
         align-items: flex-start;
+        flex-direction: column;
     }
 
-    .performance-section-heading > span {
-        max-width: 48%;
-        text-align: right;
+    .performance-chart-controls {
+        width: 100%;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+
+    .performance-trend .analytics-period-control {
+        flex-basis: min(100%, 196px);
+    }
+
+    .performance-goal-key {
+        max-width: none;
+        text-align: left;
     }
 
     .performance-detail-grid {
@@ -1188,6 +1205,45 @@
 }
 
 @media (max-width: 430px) {
+    .performance-bar-chart {
+        --performance-chart-height: 108px;
+        gap: 8px;
+        padding: 10px;
+    }
+
+    .performance-bar-plot {
+        gap: 3px;
+        padding-inline: 4px;
+    }
+
+    .performance-bar-stage {
+        grid-template-columns: 25px minmax(0, 1fr);
+        gap: 3px;
+    }
+
+    .performance-bar-axis {
+        font-size: 0.5rem;
+    }
+
+    .performance-bar-chart[data-columns="12"] .performance-bar-label {
+        font-size: 0.52rem;
+    }
+
+    .performance-bar-chart[data-columns="12"] .performance-bar-cluster {
+        gap: 2px;
+        padding-inline: 1px;
+    }
+
+    .performance-bar-chart[data-columns="12"].is-balanced .performance-bar {
+        min-width: 5px;
+        border-radius: 4px 4px 2px 2px;
+    }
+
+    .performance-bar-selection {
+        gap: 3px 6px;
+        padding: 8px;
+    }
+
     .compact-progress-widget {
         padding: 8px;
     }

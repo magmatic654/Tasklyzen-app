@@ -27,10 +27,15 @@ const TASK_EXPIRATION_DAYS = TASKLYZEN_CONFIG.defaults.taskExpirationDays;
 const TASK_TIME_LIMIT_DEFAULT_DAYS = TASKLYZEN_CONFIG.defaults.taskTimeLimitDefaultDays;
 const TASK_TIME_LIMIT_MAX_DAYS = TASKLYZEN_CONFIG.defaults.taskTimeLimitMaxDays;
 const TASK_DEADLINE_SOON_HOURS = TASKLYZEN_CONFIG.defaults.taskDeadlineSoonHours;
+const TASK_TITLE_MAX_LENGTH = TASKLYZEN_CONFIG.defaults.taskTitleMaxLength;
 const OVERDUE_REVIEW_INTERVAL_DAYS = TASKLYZEN_CONFIG.defaults.overdueReviewIntervalDays;
 const OVERDUE_AUTO_DELETE_DAYS = TASKLYZEN_CONFIG.defaults.overdueAutoDeleteDays;
 const STREAK_PRESTIGE_LEVELS = TASKLYZEN_CONFIG.streakPrestigeLevels;
 const TASKLYZEN_STORAGE = window.TasklyzenStorage;
+const TASKLYZEN_TASK_LIFECYCLE = window.TasklyzenTaskLifecycle;
+const TASKLYZEN_DOMAIN_EVENTS = window.TasklyzenDomainEvents;
+const TASKLYZEN_TASK_EFFECTS = window.TasklyzenTaskEffects;
+const TASKLYZEN_TASK_TRANSACTIONS = window.TasklyzenTaskTransactions;
 const TASKLYZEN_UI_COMPONENTS = window.TasklyzenUiComponents;
 const TASKLYZEN_TASK_CREATION_UI = window.TasklyzenTaskCreationUi;
 const TASKLYZEN_SETTINGS = window.TasklyzenSettings;
@@ -190,18 +195,12 @@ const {
     analyticsCompletionRate,
     analyticsCompletionDetail,
     analyticsPeriodComparison,
-    analyticsCompletionBar,
-    analyticsProgressBar,
     streakRiskCard,
     streakRiskLevel,
     streakRiskTitle,
     streakRiskMessage,
     analyticsActionTitle,
     analyticsActionMessage,
-    analyticsBalanceLabel,
-    analyticsBalanceTrack,
-    analyticsBalanceCompleted,
-    analyticsBalancePending,
     analyticsActiveDays,
     analyticsBestRhythm,
     analyticsBestRhythmDetail,
@@ -380,6 +379,7 @@ const taskUiController = TASKLYZEN_TASK_UI.createTaskUiController({
     documentRef: document,
     uiController,
     components: TASKLYZEN_UI_COMPONENTS,
+    taskTitleMaxLength: TASK_TITLE_MAX_LENGTH,
     getTodos: () => todos,
     getDailyGoal: () => dailyGoal,
     getTodayKey,
@@ -417,6 +417,11 @@ const taskUiController = TASKLYZEN_TASK_UI.createTaskUiController({
     scheduleRefresh: scheduleTaskStateRefresh
 });
 window.TasklyzenRuntime.taskUiController = taskUiController;
+
+[todoInput, subtaskDraftInput].filter(Boolean).forEach(input => {
+    input.maxLength = TASK_TITLE_MAX_LENGTH;
+    input.setAttribute('aria-label', (input.getAttribute('aria-label') || 'Título') + ', máximo ' + TASK_TITLE_MAX_LENGTH + ' caracteres');
+});
 const overdueReviewController = TASKLYZEN_OVERDUE_REVIEW.createOverdueReviewController({
     storage: TASKLYZEN_STORAGE,
     storageKey: OVERDUE_REVIEW_KEY,
@@ -473,6 +478,41 @@ const gamificationController = TASKLYZEN_GAMIFICATION.createGamificationControll
     renderCurrentPage
 });
 window.TasklyzenRuntime.gamificationController = gamificationController;
+const taskEffectsController = TASKLYZEN_TASK_EFFECTS.createTaskEffectsController({
+    taskApi: TASKLYZEN_TASKS,
+    lifecycle: TASKLYZEN_TASK_LIFECYCLE,
+    sustainableProgress: sustainableProgressController,
+    getTodayKey,
+    getDateKeyFromTimestamp,
+    getHoursBetween,
+    getTodoAgeDays,
+    getDailyGoal: () => dailyGoal,
+    getHistoryCount,
+    getLongestActiveStreak,
+    hasCelebratedStreakDate: dateKey => gamificationController.hasCelebratedStreakDate(dateKey),
+    createMutationId: TASKLYZEN_DOMAIN_EVENTS.createMutationId,
+    logAnalyticsEvent,
+    discardAnalyticsEvents: discardTodoAnalyticsEvents
+});
+window.TasklyzenRuntime.taskEffectsController = taskEffectsController;
+const taskTransactionController = TASKLYZEN_TASK_TRANSACTIONS.createTaskTransactionController({
+    taskManager,
+    taskEffects: taskEffectsController,
+    getTodos: () => todos,
+    setTodos: value => {
+        todos = Array.isArray(value) ? value : [];
+    },
+    getTodayKey,
+    getNowTimestamp,
+    getDateKeyFromTimestamp,
+    isCompositeTask: TASKLYZEN_COMPOSITE_TASKS.isCompositeTask,
+    compositeTasks: TASKLYZEN_COMPOSITE_TASKS,
+    createNextHabitOccurrence,
+    removeNextHabitOccurrenceFromList,
+    persist: saveTodoList,
+    syncDerivedState: syncCompletionHistory
+});
+window.TasklyzenRuntime.taskTransactionController = taskTransactionController;
 const gamificationUiController = TASKLYZEN_GAMIFICATION_UI.createGamificationUiController({
     dom: TASKLYZEN_DOM,
     documentRef: document,
@@ -689,6 +729,10 @@ function getDeveloperController() {
         setCompletionHistory: value => {
             completionHistory = value && typeof value === 'object' ? value : {};
         },
+        getAnalyticsEvents: () => analyticsEvents,
+        setAnalyticsEvents: value => {
+            analyticsEvents = Array.isArray(value) ? value : [];
+        },
         getDailyGoal: () => dailyGoal,
         setDailyGoal: value => {
             dailyGoal = value;
@@ -744,6 +788,7 @@ function getDeveloperController() {
         },
         showToast,
         saveTodoList,
+        saveAnalyticsEvents,
         saveCompletionHistory,
         saveDailyGoal,
         saveGamification,
@@ -779,10 +824,9 @@ settingsController.syncControls();
 normalizeGamification();
 overdueReviewController.init();
 processOverdueRetention(true);
+syncCompletionHistory();
 if (!todoForm) {
-    saveCompletionHistory();
     saveGamification();
-    syncAnalyticsData();
 }
 TASKLYZEN_STORAGE.subscribe([
     STORAGE_KEY,
@@ -965,12 +1009,15 @@ function buildDailyStats(todoItems, events) {
     const stats = {};
     const sourceEvents = Array.isArray(events) ? events : [];
     const lifecycleRecords = getTaskLifecycleRecords(todoItems, sourceEvents);
+    const discardedTodoIds = new Set(
+        lifecycleRecords
+            .filter(isLifecycleDiscardedFromAnalytics)
+            .map(record => record.id)
+    );
     const eventTodoIds = new Set(sourceEvents.map(event => event && event.todoId).filter(Boolean));
 
     lifecycleRecords.forEach(record => {
-        const isDraftDeleted = isLifecycleDeletedBeforeAnalyticsLock(record);
-
-        if (isDraftDeleted) {
+        if (isLifecycleDiscardedFromAnalytics(record)) {
             return;
         }
 
@@ -1010,6 +1057,10 @@ function buildDailyStats(todoItems, events) {
     });
 
     sourceEvents.forEach(event => {
+        if (event && event.todoId && discardedTodoIds.has(event.todoId)) {
+            return;
+        }
+
         const stat = getMutableDailyStat(stats, isDateKey(event.dateKey) ? event.dateKey : getDateKeyFromTimestamp(event.timestamp));
 
         stat.usageEvents += 1;
@@ -1073,21 +1124,21 @@ function handleExternalStorageChange() {
 }
 
 function logAnalyticsEvent(type, payload) {
-    const timestamp = getNowTimestamp();
-    const event = {
-        id: crypto.randomUUID ? crypto.randomUUID() : 'event-' + Date.now().toString(),
-        type,
-        timestamp,
-        dateKey: getDateKeyFromTimestamp(timestamp),
-        ...(payload || {})
-    };
+    const result = TASKLYZEN_DOMAIN_EVENTS.append(analyticsEvents, type, payload, {
+        getNowTimestamp,
+        getDateKeyFromTimestamp,
+        limit: 1500
+    });
 
-    analyticsEvents.push(event);
-    analyticsEvents = analyticsEvents.slice(-1500);
+    if (!result.appended) {
+        return result.event;
+    }
+
+    analyticsEvents = result.events;
     saveAnalyticsEvents();
     syncAnalyticsData();
 
-    return event;
+    return result.event;
 }
 
 function loadTodoList() {
@@ -1161,7 +1212,7 @@ function buildCompletionHistory(todoItems, events) {
     const records = getTaskLifecycleRecords(todoItems, events || []);
 
     records.forEach(record => {
-        if (!record.completedOn || isSameDayDeletedLifecycle(record)) {
+        if (!record.completedOn || isLifecycleDiscardedFromAnalytics(record)) {
             return;
         }
 
@@ -1176,6 +1227,7 @@ function buildCompletionHistory(todoItems, events) {
 }
 
 function syncCompletionHistory() {
+    pruneDiscardedAnalyticsEvents();
     completionHistory = buildCompletionHistory(todos, analyticsEvents);
     normalizeGamification();
     saveCompletionHistory();
@@ -1210,6 +1262,7 @@ function getTaskLifecycleRecords(todoItems, events) {
                 deletedOn: null,
                 deletedAt: null,
                 deletedWasCompleted: false,
+                analyticsRetained: null,
                 expired: false,
                 reactivated: 0
             });
@@ -1279,7 +1332,8 @@ function getTaskLifecycleRecords(todoItems, events) {
                 record.deletedAt = event.timestamp || createTimestampFromDateKey(eventDateKey);
                 record.deletedWasCompleted = Boolean(event.wasCompleted);
                 record.completed = record.deletedWasCompleted;
-                record.expired = event.type === 'task_expired' || event.type === 'task_auto_deleted';
+                record.analyticsRetained = resolveRemovalAnalyticsRetention(event, record, eventDateKey);
+                record.expired = Boolean(record.analyticsRetained);
 
                 if (isDateKey(event.createdOn)) {
                     record.createdOn = event.createdOn;
@@ -1321,6 +1375,7 @@ function getTaskLifecycleRecords(todoItems, events) {
         record.deletedOn = null;
         record.deletedAt = null;
         record.deletedWasCompleted = false;
+        record.analyticsRetained = null;
         record.expired = false;
     });
 
@@ -1345,21 +1400,71 @@ function getLifecycleAnalyticsLockState(record) {
     return {
         fixed,
         provisional: Boolean(createdOn && !fixed),
+        retainedAfterDeletion: isDeletedLifecycleRetainedForAnalytics(record),
+        discardedAfterDeletion: isLifecycleDiscardedFromAnalytics(record),
         createdOn,
         referenceDateKey
     };
 }
 
-function isLifecycleDeletedBeforeAnalyticsLock(record) {
-    return Boolean(record.deletedOn && !getLifecycleAnalyticsLockState(record).fixed);
+function resolveRemovalAnalyticsRetention(event, record, deletedOn) {
+    if (event && (event.type === 'task_expired' || event.type === 'task_auto_deleted')) {
+        return true;
+    }
+
+    if (event && typeof event.analyticsRetained === 'boolean') {
+        return event.analyticsRetained;
+    }
+
+    const dueDate = normalizeTaskDueDate((event && event.dueDate) || (record && record.dueDate));
+
+    return Boolean(dueDate && isDateKey(deletedOn) && dueDate < deletedOn);
 }
 
-function isSameDayDeletedLifecycle(record) {
-    return isLifecycleDeletedBeforeAnalyticsLock(record);
+function isDeletedLifecycleRetainedForAnalytics(record) {
+    if (!record || !isDateKey(record.deletedOn)) {
+        return false;
+    }
+
+    if (typeof record.analyticsRetained === 'boolean') {
+        return record.analyticsRetained;
+    }
+
+    if (record.expired) {
+        return true;
+    }
+
+    return Boolean(isDateKey(record.dueDate) && record.dueDate < record.deletedOn);
+}
+
+function isLifecycleDiscardedFromAnalytics(record) {
+    return Boolean(record && record.deletedOn && !isDeletedLifecycleRetainedForAnalytics(record));
+}
+
+function pruneDiscardedAnalyticsEvents() {
+    const discardedTodoIds = new Set(
+        getTaskLifecycleRecords(todos, analyticsEvents)
+            .filter(isLifecycleDiscardedFromAnalytics)
+            .map(record => record.id)
+    );
+
+    if (discardedTodoIds.size === 0) {
+        return false;
+    }
+
+    const nextEvents = analyticsEvents.filter(event => !event || !event.todoId || !discardedTodoIds.has(event.todoId));
+
+    if (nextEvents.length === analyticsEvents.length) {
+        return false;
+    }
+
+    analyticsEvents = nextEvents;
+    saveAnalyticsEvents();
+    return true;
 }
 
 function isLifecycleRelevantForRange(record, startKey, endKey) {
-    if (isSameDayDeletedLifecycle(record)) {
+    if (isLifecycleDiscardedFromAnalytics(record)) {
         return false;
     }
 
@@ -1371,7 +1476,11 @@ function isLifecycleRelevantForRange(record, startKey, endKey) {
 function getLifecycleAnalyticsForRange(startKey, endKey) {
     const records = getTaskLifecycleRecords().filter(record => isLifecycleRelevantForRange(record, startKey, endKey));
     const completedRecords = records.filter(record => isDateKeyInRange(record.completedOn, startKey, endKey) && (record.completed || record.deletedWasCompleted));
-    const deletedUnfinishedRecords = records.filter(record => record.deletedOn && !record.deletedWasCompleted);
+    const deletedUnfinishedRecords = records.filter(record => (
+        isDateKeyInRange(record.deletedOn, startKey, endKey)
+        && record.deletedOn
+        && !record.deletedWasCompleted
+    ));
     const createdRecords = records.filter(record => isDateKeyInRange(record.createdOn, startKey, endKey));
     const reactivatedRecords = records.filter(record => record.reactivated > 0 && (
         isDateKeyInRange(record.createdOn, startKey, endKey)
@@ -1487,10 +1596,14 @@ function createNextHabitOccurrence(todo) {
     }));
 }
 
-function removeNextHabitOccurrence(todo) {
-    todos = todos.filter(item => {
+function removeNextHabitOccurrenceFromList(todo, todoItems) {
+    return (Array.isArray(todoItems) ? todoItems : todos).filter(item => {
         return !(item.sourceHabitId === todo.id && !item.completed && item.snoozedUntil === getTomorrowKey());
     });
+}
+
+function removeNextHabitOccurrence(todo) {
+    todos = removeNextHabitOccurrenceFromList(todo, todos);
 }
 
 function getTopPriorityTodo() {
@@ -2792,30 +2905,6 @@ function renderRecommendedGoal() {
     analyticsProgressController.renderRecommendedGoal();
 }
 
-function renderPerformanceSummary(element, monthAnalytics, compact) {
-    analyticsProgressController.renderPerformanceSummary(element, monthAnalytics, compact);
-}
-
-function renderMonthlyCompletionDonut(container, monthAnalytics, compact) {
-    analyticsProgressController.renderMonthlyCompletionDonut(container, monthAnalytics, compact);
-}
-
-function renderAnalyticsTooltips() {
-    analyticsProgressController.renderAnalyticsTooltips();
-}
-
-function renderMonthlyAnalytics() {
-    analyticsProgressController.renderMonthlyAnalytics();
-}
-
-function renderWeeklyFlowChart(flowData, targetElement) {
-    analyticsProgressController.renderWeeklyFlowChart(flowData, targetElement);
-}
-
-function renderDataAnalyticsSurfaces(clarity, monthAnalytics, flowAnalytics) {
-    analyticsProgressController.renderDataAnalyticsSurfaces(clarity, monthAnalytics, flowAnalytics);
-}
-
 function renderAnalyticsPanel() {
     analyticsProgressController.renderAnalyticsPanel();
 }
@@ -2949,8 +3038,76 @@ function renderCurrentPage() {
     refreshDeveloperPanel();
 }
 
+function refreshTaskDependentSurfaces() {
+    renderCompactProgressWidget();
+    overdueReviewController.refresh();
+    notifyDeadlineRisks();
+
+    if (progressPanelExpanded) {
+        if (progressDashboardHydrated) {
+            renderProgressDashboard();
+        } else {
+            renderEssentialProgressDashboard();
+        }
+    }
+
+    const focusState = betaFeatureControllers
+        && betaFeatureControllers.focus
+        && typeof betaFeatureControllers.focus.getState === 'function'
+        ? betaFeatureControllers.focus.getState()
+        : null;
+
+    if (focusState && focusState.active && !focusState.suspended) {
+        renderFeatureSurfaces();
+    }
+}
+
+function refreshAfterTaskStateChange(changedTodoId) {
+    if (!todoForm) {
+        return;
+    }
+
+    // Completar una tarea no debe reconstruir el creador ni paneles que el usuario no abrió.
+    taskUiController.renderTodoList({
+        preserveScroll: true,
+        changedTodoId: changedTodoId || ''
+    });
+    refreshTaskDependentSurfaces();
+}
+
+function refreshAfterSubtaskStateChange(todoId, subtaskId) {
+    if (!todoForm) {
+        return;
+    }
+
+    const patched = taskUiController.refreshSubtaskState(todoId, subtaskId);
+
+    if (!patched) {
+        taskUiController.renderTodoList({
+            preserveScroll: true,
+            changedTodoId: todoId || ''
+        });
+    }
+
+    refreshTaskDependentSurfaces();
+}
+
 function renderTodoList() {
     taskUiController.renderTodoList();
+}
+
+function validateTaskTitleLength(value, input, subject) {
+    const title = String(value || '').trim();
+
+    if (title.length <= TASK_TITLE_MAX_LENGTH) {
+        return true;
+    }
+
+    showToast('El título de ' + (subject || 'la tarea') + ' puede tener hasta ' + TASK_TITLE_MAX_LENGTH + ' caracteres.', 'error');
+    if (input && typeof input.focus === 'function') {
+        input.focus();
+    }
+    return false;
 }
 
 function addTodoItem(text, priority, options) {
@@ -3001,6 +3158,10 @@ function saveEditedTodoItem(id) {
         return;
     }
 
+    if (!validateTaskTitleLength(cleanText, editDraft.input, 'la tarea')) {
+        return;
+    }
+
     todo.text = cleanText;
     todo.priority = editDraft.priority;
     todo.dueDate = normalizeTaskDueDate(editDraft.dueDate);
@@ -3028,22 +3189,20 @@ function cancelEditTodoItem() {
     renderCurrentPage();
 }
 
+function discardTodoAnalyticsEvents(todoId) {
+    const nextEvents = analyticsEvents.filter(event => !event || event.todoId !== todoId);
+
+    if (nextEvents.length === analyticsEvents.length) {
+        return false;
+    }
+
+    analyticsEvents = nextEvents;
+    saveAnalyticsEvents();
+    return true;
+}
+
 function logTodoRemoval(todo, type) {
-    logAnalyticsEvent(type || 'task_deleted', {
-        todoId: todo.id,
-        text: todo.text,
-        priority: todo.priority,
-        habit: todo.habit,
-        timeLimitDays: todo.timeLimitDays,
-        dueDate: todo.dueDate,
-        createdOn: todo.createdOn,
-        createdAt: todo.createdAt,
-        deadlineStartedAt: todo.deadlineStartedAt,
-        completedOn: todo.completedOn,
-        completedAt: todo.completedAt,
-        wasCompleted: todo.completed,
-        ageDays: getTodoAgeDays(todo)
-    });
+    return taskEffectsController.handleRemoval(todo, type || 'task_deleted');
 }
 
 function removeOverdueTasks(taskItems, eventType) {
@@ -3122,32 +3281,22 @@ function reactivateTodoForToday(todo) {
     const completedOn = getCompletionDateKey(todo);
     const reactivatedAt = taskManager.reactivate(todo).reactivatedAt;
 
-    if (todo && completedOn === getTodayKey()) {
-        sustainableProgressController.revokeTaskCompletion(todo.id, completedOn);
-    }
-
-    return reactivatedAt;
+    return {
+        completedOn,
+        reactivatedAt
+    };
 }
 
 function getCompletionDateKey(item) {
     return item && (item.completedOn || getDateKeyFromTimestamp(item.completedAt));
 }
 
-function revokeTodaySustainableCredits(todo) {
-    if (!todo) return;
-    const todayKey = getTodayKey();
-
-    if (getCompletionDateKey(todo) === todayKey) {
-        sustainableProgressController.revokeTaskCompletion(todo.id, todayKey);
-    }
-
-    if (Array.isArray(todo.subtasks)) {
-        todo.subtasks.forEach(subtask => {
-            if (!subtask.optional && subtask.completed && getDateKeyFromTimestamp(subtask.completedAt) === todayKey) {
-                sustainableProgressController.revokeSubtaskCompletion(todo.id, subtask.id, todayKey);
-            }
-        });
-    }
+function getTodoCompletionState(todo) {
+    return {
+        completed: Boolean(todo && todo.completed),
+        completedOn: getCompletionDateKey(todo) || null,
+        completedAt: todo && todo.completedAt ? todo.completedAt : null
+    };
 }
 
 function toggleTodoItem(id, options) {
@@ -3169,76 +3318,36 @@ function toggleTodoItem(id, options) {
         audioController.unlock();
     }
 
-    if (todo.completed) {
-        const reactivatedAt = reactivateTodoForToday(todo);
-        const todayKey = getTodayKey();
-
-        removeNextHabitOccurrence(todo);
-        logAnalyticsEvent('task_reactivated', {
-            todoId: todo.id,
-            text: todo.text,
-            priority: todo.priority,
-            habit: todo.habit,
-            timeLimitDays: todo.timeLimitDays,
-            dueDate: todo.dueDate,
-            createdOn: todo.createdOn,
-            createdAt: todo.createdAt,
-            reactivatedOn: todayKey,
-            reactivatedAt,
-            deadlineStartedAt: todo.deadlineStartedAt
-        });
-    } else {
-        const todayKey = getTodayKey();
-        const completedAt = getNowTimestamp();
-        const previousTodayCount = getHistoryCount(todayKey);
-        const previousRecord = getLongestActiveStreak();
-        const nextTodayCount = previousTodayCount + 1;
-        let celebrationType = 'regular';
-
-        taskManager.complete(todo, { completedOn: todayKey, completedAt });
-        sustainableProgressController.recordTaskCompletion(todo, {
-            dateKey: todayKey,
-            completedAt,
+    const transaction = wasCompleted
+        ? taskTransactionController.reactivate(todo.id, {
+            source: actionContext.source || 'tasks',
+            sessionId: actionContext.sessionId || null
+        })
+        : taskTransactionController.complete(todo.id, {
             source: actionContext.source || 'tasks',
             sessionId: actionContext.sessionId || null
         });
 
-        if (previousTodayCount === 0 && !gamificationController.hasCelebratedStreakDate(todayKey)) {
-            streakCelebrationContext = { todayKey, previousRecord };
-        }
-
-        if (nextTodayCount === dailyGoal) {
-            celebrationType = 'goal';
-        } else if (nextTodayCount > dailyGoal) {
-            celebrationType = 'legendary';
-        }
-
-        if (celebrationType === 'regular') {
-            playCompletionSound(celebrationType);
-        } else {
-            showCompletionAnimation(celebrationType);
-        }
-
-        createNextHabitOccurrence(todo);
-        logAnalyticsEvent('task_completed', {
-            todoId: todo.id,
-            text: todo.text,
-            priority: todo.priority,
-            habit: todo.habit,
-            timeLimitDays: todo.timeLimitDays,
-            dueDate: todo.dueDate,
-            createdOn: todo.createdOn,
-            createdAt: todo.createdAt,
-            deadlineStartedAt: todo.deadlineStartedAt,
-            completedOn: todo.completedOn,
-            completedAt: todo.completedAt,
-            completionValue: todo.completionValue,
-            hoursToComplete: getHoursBetween(todo.createdAt, completedAt)
-        });
+    if (!transaction.changed) {
+        return;
     }
 
-    saveTodoList();
-    syncCompletionHistory();
+    if (!wasCompleted) {
+        const completionEffect = transaction.completionEffect;
+
+        if (completionEffect.shouldCelebrateStreak) {
+            streakCelebrationContext = {
+                todayKey: completionEffect.todayKey,
+                previousRecord: completionEffect.previousRecord
+            };
+        }
+
+        if (completionEffect.celebrationType === 'regular') {
+            playCompletionSound(completionEffect.celebrationType);
+        } else {
+            showCompletionAnimation(completionEffect.celebrationType);
+        }
+    }
 
     if (streakCelebrationContext) {
         const updatedStreak = getCurrentStreak();
@@ -3249,101 +3358,57 @@ function toggleTodoItem(id, options) {
         });
     }
 
-    renderCurrentPage();
+    refreshAfterTaskStateChange(todo.id);
 }
 
 function removeTodoItem(id) {
-    const removalResult = taskManager.removeById(todos, id);
-    const removedTodo = removalResult.removedTodo;
+    const transaction = taskTransactionController.remove(id, 'task_deleted', { source: 'tasks' });
 
-    if (removedTodo) {
-        revokeTodaySustainableCredits(removedTodo);
-        removeNextHabitOccurrence(removedTodo);
-        logTodoRemoval(removedTodo, 'task_deleted');
+    if (transaction.changed) {
+        renderCurrentPage();
     }
-
-    todos = removalResult.todos;
-    saveTodoList();
-
-    if (removedTodo && removedTodo.completed) {
-        syncCompletionHistory();
-    }
-
-    renderCurrentPage();
 }
 
-function logCompositeTransition(todo, transition) {
-    if (!transition || !transition.changed) {
+function applyCompositeTransactionFeedback(transaction) {
+    const transitionEffect = transaction && transaction.transitionEffect;
+
+    if (!transitionEffect || !transitionEffect.completedNow) {
         return;
     }
 
-    if (transition.completedNow) {
-        logAnalyticsEvent('task_completed', {
-            todoId: todo.id,
-            text: todo.text,
-            priority: todo.priority,
-            habit: false,
-            timeLimitDays: todo.timeLimitDays,
-            dueDate: todo.dueDate,
-            createdOn: todo.createdOn,
-            createdAt: todo.createdAt,
-            completedOn: todo.completedOn,
-            completedAt: todo.completedAt,
-            completionValue: todo.completionValue,
-            composite: true,
-            hoursToComplete: getHoursBetween(todo.createdAt, todo.completedAt)
-        });
-        showCompletionAnimation(getHistoryCount(getTodayKey()) + 1 >= dailyGoal ? 'goal' : 'regular');
-    } else if (transition.reactivatedNow) {
-        logAnalyticsEvent('task_reactivated', {
-            todoId: todo.id,
-            text: todo.text,
-            priority: todo.priority,
-            dueDate: todo.dueDate,
-            createdOn: todo.createdOn,
-            createdAt: todo.createdAt,
-            reactivatedOn: getTodayKey(),
-            reactivatedAt: todo.updatedAt,
-            composite: true
+    showCompletionAnimation(transitionEffect.feedbackType);
+
+    if (transitionEffect.shouldCelebrateStreak) {
+        const updatedStreak = getCurrentStreak();
+
+        gamificationController.markStreakDateCelebrated(transitionEffect.todayKey);
+        showStreakDayCelebration(updatedStreak, {
+            isRecord: updatedStreak > transitionEffect.previousRecord
         });
     }
 }
 
-function commitCompositeChange(todo, previousCompleted, options) {
+function commitCompositeChange(todo, previousState, options) {
     if (!todo) return false;
     const actionContext = options || {};
-    const todayKey = getTodayKey();
-    const previousTodayCount = getHistoryCount(todayKey);
-    const previousRecord = getLongestActiveStreak();
-    todo.completed = Boolean(previousCompleted);
-    const transition = TASKLYZEN_COMPOSITE_TASKS.synchronizeCompositeTask(todo, { dateKey: todayKey });
+    const previous = typeof previousState === 'object' && previousState
+        ? previousState
+        : { completed: Boolean(previousState), completedOn: null, completedAt: null };
+    const transaction = taskTransactionController.syncComposite(todo.id, previous, {
+        dateKey: getTodayKey(),
+        source: actionContext.source || 'tasks',
+        sessionId: actionContext.sessionId || null,
+        mutationId: actionContext.mutationId || TASKLYZEN_DOMAIN_EVENTS.createMutationId()
+    });
 
-    if (transition.completedNow) {
-        sustainableProgressController.recordTaskCompletion(todo, {
-            dateKey: todayKey,
-            completedAt: todo.completedAt,
-            source: actionContext.source || 'tasks',
-            sessionId: actionContext.sessionId || null
-        });
-    } else if (transition.reactivatedNow) {
-        sustainableProgressController.revokeTaskCompletion(todo.id, todayKey);
+    if (!transaction.changed) return false;
+
+    applyCompositeTransactionFeedback(transaction);
+
+    if (!actionContext.deferUiRefresh) {
+        refreshAfterTaskStateChange(todo.id);
     }
-
-    logCompositeTransition(todo, transition);
-    saveTodoList();
-    syncCompletionHistory();
-
-    if (transition.completedNow && previousTodayCount === 0 && !gamificationController.hasCelebratedStreakDate(todayKey)) {
-        const updatedStreak = getCurrentStreak();
-
-        gamificationController.markStreakDateCelebrated(todayKey);
-        showStreakDayCelebration(updatedStreak, {
-            isRecord: updatedStreak > previousRecord
-        });
-    }
-
-    renderCurrentPage();
-    return true;
+    return transaction;
 }
 
 function addSubtaskToTodo(todoId, title, optional, options) {
@@ -3352,6 +3417,10 @@ function addSubtaskToTodo(todoId, title, optional, options) {
     const cleanTitle = String(title || '').trim();
     if (!todo || !cleanTitle) {
         showToast('Escribe un título para la subtarea.', 'error');
+        return false;
+    }
+
+    if (!validateTaskTitleLength(cleanTitle, null, 'la subtarea')) {
         return false;
     }
 
@@ -3374,7 +3443,7 @@ function addSubtaskToTodo(todoId, title, optional, options) {
         }
     }
 
-    const previousCompleted = Boolean(todo.completed);
+    const previousState = getTodoCompletionState(todo);
     todo.type = 'composite';
     todo.subtasks = currentSubtasks;
     todo.subtasks.push(TASKLYZEN_COMPOSITE_TASKS.createSubtask(cleanTitle, {
@@ -3382,7 +3451,7 @@ function addSubtaskToTodo(todoId, title, optional, options) {
         order: todo.subtasks.length
     }));
 
-    return commitCompositeChange(todo, previousCompleted);
+    return commitCompositeChange(todo, previousState);
 }
 
 function toggleTodoSubtask(todoId, subtaskId, options) {
@@ -3390,30 +3459,21 @@ function toggleTodoSubtask(todoId, subtaskId, options) {
     const todo = todos.find(item => item.id === todoId);
     const subtask = todo && Array.isArray(todo.subtasks) ? todo.subtasks.find(item => item.id === subtaskId) : null;
     if (!subtask) return false;
-    const wasCompleted = Boolean(subtask.completed);
-    const previousCompletedAt = subtask.completedAt;
     if (!subtask.completed) {
         audioController.unlock();
     }
-    const previousCompleted = Boolean(todo.completed);
-    subtask.completed = !subtask.completed;
-    subtask.completedAt = subtask.completed ? getNowTimestamp() : null;
-    subtask.updatedAt = getNowTimestamp();
-    const committed = commitCompositeChange(todo, previousCompleted, actionContext);
+    const transaction = taskTransactionController.setSubtaskCompletion(todoId, subtaskId, !subtask.completed, {
+        source: actionContext.source || 'tasks',
+        sessionId: actionContext.sessionId || null,
+        mutationId: actionContext.mutationId || TASKLYZEN_DOMAIN_EVENTS.createMutationId()
+    });
 
-    if (committed && !subtask.optional) {
-        if (!wasCompleted && subtask.completed) {
-            sustainableProgressController.recordSubtaskCompletion(todo.id, subtask.id, {
-                completedAt: subtask.completedAt,
-                source: actionContext.source || 'tasks',
-                sessionId: actionContext.sessionId || null
-            });
-        } else if (wasCompleted && !subtask.completed && getDateKeyFromTimestamp(previousCompletedAt) === getTodayKey()) {
-            sustainableProgressController.revokeSubtaskCompletion(todo.id, subtask.id, getTodayKey());
-        }
+    if (transaction.changed) {
+        applyCompositeTransactionFeedback(transaction);
+        refreshAfterSubtaskStateChange(todo.id, subtask.id);
     }
 
-    return committed;
+    return transaction.changed;
 }
 
 function completeTodoFromFeature(todoId, context) {
@@ -3454,11 +3514,14 @@ function saveTodoSubtaskEdit(todoId, subtaskId, title, optional) {
         showToast('El título de la subtarea no puede quedar vacío.', 'error');
         return false;
     }
+    if (!validateTaskTitleLength(cleanTitle, null, 'la subtarea')) {
+        return false;
+    }
     if (todo.subtasks.some(item => item.id !== subtask.id && item.title.toLocaleLowerCase('es') === cleanTitle.toLocaleLowerCase('es'))) {
         showToast('Esa subtarea ya existe.', 'error');
         return false;
     }
-    const previousCompleted = Boolean(todo.completed);
+    const previousState = getTodoCompletionState(todo);
     subtask.title = cleanTitle;
     subtask.optional = Boolean(optional);
     if (subtask.optional && !todo.subtasks.some(item => item.id !== subtask.id && !item.optional)) {
@@ -3466,7 +3529,7 @@ function saveTodoSubtaskEdit(todoId, subtaskId, title, optional) {
         showToast('Debe quedar al menos una subtarea obligatoria.', 'error');
     }
     subtask.updatedAt = getNowTimestamp();
-    return commitCompositeChange(todo, previousCompleted);
+    return commitCompositeChange(todo, previousState);
 }
 
 function getSubtaskDeleteRequest(todoId, subtaskId) {
@@ -3495,76 +3558,43 @@ function getSubtaskDeleteRequest(todoId, subtaskId) {
 
 function deleteTodoSubtask(todoId, subtaskId, strategy) {
     const todo = todos.find(item => item.id === todoId);
-    const subtask = todo && Array.isArray(todo.subtasks) ? todo.subtasks.find(item => item.id === subtaskId) : null;
-    if (!subtask) return false;
-    const todayKey = getTodayKey();
+    if (!todo || !Array.isArray(todo.subtasks)) return false;
+    const transaction = taskTransactionController.removeSubtask(todoId, subtaskId, strategy, {
+        dateKey: getTodayKey(),
+        source: 'tasks',
+        mutationId: TASKLYZEN_DOMAIN_EVENTS.createMutationId()
+    });
 
-    if (!subtask.optional && subtask.completed && getDateKeyFromTimestamp(subtask.completedAt) === todayKey) {
-        sustainableProgressController.revokeSubtaskCompletion(todo.id, subtask.id, todayKey);
-    }
+    if (!transaction.changed) return false;
 
-    if (strategy === 'promote-optional') {
-        const optionalReplacement = todo.subtasks.find(item => item.id !== subtaskId && item.optional);
-        if (!optionalReplacement) return false;
-        optionalReplacement.optional = false;
-        if (optionalReplacement.completed && getDateKeyFromTimestamp(optionalReplacement.completedAt) === todayKey) {
-            sustainableProgressController.recordSubtaskCompletion(todo.id, optionalReplacement.id, {
-                dateKey: todayKey,
-                completedAt: optionalReplacement.completedAt,
-                source: 'tasks'
-            });
-        }
-    }
-
-    if (strategy === 'convert-normal') {
-        revokeTodaySustainableCredits(todo);
-        todo.type = 'normal';
-        delete todo.subtasks;
-        delete todo.compositeStatus;
-        todo.completed = false;
-        todo.completedOn = null;
-        todo.completedAt = null;
-        todo.deadlineStartedAt = getNowTimestamp();
-        todo.updatedAt = todo.deadlineStartedAt;
-        saveTodoList();
-        syncCompletionHistory();
+    applyCompositeTransactionFeedback(transaction);
+    if (transaction.conversion) {
         renderCurrentPage();
         return true;
     }
 
-    const previousCompleted = Boolean(todo.completed);
-    todo.subtasks = todo.subtasks.filter(item => item.id !== subtaskId).map((item, index) => ({ ...item, order: index }));
-    return commitCompositeChange(todo, previousCompleted);
+    refreshAfterTaskStateChange(todoId);
+    return true;
 }
 
 function moveTodoSubtask(todoId, subtaskId, direction) {
     const todo = todos.find(item => item.id === todoId);
     if (!todo || !Array.isArray(todo.subtasks)) return;
-    const index = todo.subtasks.findIndex(item => item.id === subtaskId);
-    const nextIndex = index + Number(direction);
-    if (index < 0 || nextIndex < 0 || nextIndex >= todo.subtasks.length) return;
-    const reordered = todo.subtasks.slice();
-    [reordered[index], reordered[nextIndex]] = [reordered[nextIndex], reordered[index]];
-    todo.subtasks = reordered.map((item, order) => ({ ...item, order, updatedAt: getNowTimestamp() }));
-    saveTodoList();
-    renderCurrentPage();
+    const previousState = getTodoCompletionState(todo);
+    const reordered = TASKLYZEN_COMPOSITE_TASKS.moveSubtask(todo.subtasks, subtaskId, direction, {
+        updatedAt: getNowTimestamp()
+    });
+    if (!reordered) return;
+    todo.subtasks = reordered;
+    commitCompositeChange(todo, previousState);
 }
 
 function convertCompositeTodoToNormal(todoId) {
-    const todo = todos.find(item => item.id === todoId);
-    if (!TASKLYZEN_COMPOSITE_TASKS.isCompositeTask(todo)) return;
-    revokeTodaySustainableCredits(todo);
-    todo.type = 'normal';
-    delete todo.subtasks;
-    delete todo.compositeStatus;
-    todo.completed = false;
-    todo.completedOn = null;
-    todo.completedAt = null;
-    todo.deadlineStartedAt = getNowTimestamp();
-    todo.updatedAt = todo.deadlineStartedAt;
-    saveTodoList();
-    syncCompletionHistory();
-    renderCurrentPage();
+    const transaction = taskTransactionController.convertCompositeToNormal(todoId, { source: 'tasks' });
+
+    if (!transaction.changed) return false;
+
+    refreshAfterTaskStateChange(todoId);
     return true;
 }
 
@@ -3578,6 +3608,10 @@ function createTodoFromInput(text, options) {
         if (shouldFocusOnError && todoInput) {
             todoInput.focus();
         }
+        return false;
+    }
+
+    if (!validateTaskTitleLength(newTodoText, shouldFocusOnError ? todoInput : null, 'la tarea')) {
         return false;
     }
 
@@ -3873,6 +3907,9 @@ function addCompositeDraftSubtask() {
     if (!title) {
         showCompositeBuilderError('Escribe un título para la subtarea.');
         if (subtaskDraftInput) subtaskDraftInput.focus();
+        return;
+    }
+    if (!validateTaskTitleLength(title, subtaskDraftInput, 'la subtarea')) {
         return;
     }
     if (compositeDraftSubtasks.some(item => item.title.toLocaleLowerCase('es') === title.toLocaleLowerCase('es'))) {

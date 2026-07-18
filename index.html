@@ -526,12 +526,7 @@
                 <header class="performance-header">
                     <div>
                         <p class="section-kicker">Rendimiento</p>
-                        <h3>Tu avance en claro</h3>
-                    </div>
-                    <div id="analytics-period-control" class="analytics-period-control" role="group" aria-label="Periodo de rendimiento">
-                        <button type="button" data-analytics-period="weekly" aria-pressed="true">Semana</button>
-                        <button type="button" data-analytics-period="monthly" aria-pressed="false">Mes</button>
-                        <button type="button" data-analytics-period="quarterly" aria-pressed="false">3 meses</button>
+                        <h3 id="analytics-panel-title">Tu avance en claro</h3>
                     </div>
                 </header>
 
@@ -543,50 +538,38 @@
                     </div>
                     <div class="performance-comparison">
                         <span id="analytics-period-comparison" class="comparison-neutral">Sin periodo anterior comparable</span>
-                        <div class="performance-progress" role="progressbar" aria-label="Porcentaje de tareas completadas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                            <span id="analytics-completion-bar"></span>
-                        </div>
+                        <p id="analytics-summary-context">La lectura se actualiza con tu actividad real.</p>
                     </div>
                 </article>
 
                 <section class="performance-trend" aria-labelledby="performance-trend-title">
                     <div class="performance-section-heading">
-                        <div>
+                        <div class="performance-chart-heading-copy">
                             <p class="section-kicker">Ritmo</p>
-                            <h4 id="performance-trend-title">Avance por día</h4>
+                            <h4 id="performance-trend-title">Tu semana en una mirada</h4>
                         </div>
-                        <span class="performance-goal-key"><i aria-hidden="true"></i> Meta diaria</span>
+                        <div class="performance-chart-controls">
+                            <div id="analytics-period-control" class="analytics-period-control" role="group" aria-label="Periodo de este gráfico">
+                                <button type="button" data-analytics-period="weekly" aria-pressed="true">Semana</button>
+                                <button type="button" data-analytics-period="yearly" aria-pressed="false">12 meses</button>
+                            </div>
+                            <span id="analytics-chart-key" class="performance-goal-key"><i aria-hidden="true"></i> Meta diaria</span>
+                        </div>
                     </div>
                     <div id="weekly-flow-chart" class="weekly-flow-chart"></div>
-                </section>
-
-                <section class="performance-focus" aria-labelledby="performance-focus-title">
-                    <div class="performance-section-heading">
-                        <div>
-                            <p class="section-kicker">Enfoque</p>
-                            <h4 id="performance-focus-title">Tiempo que sí produjo avance</h4>
-                        </div>
-                        <span class="performance-focus-key">Tiempo confirmado</span>
-                    </div>
-                    <div class="performance-focus-metrics" aria-live="polite">
-                        <span><strong id="analytics-focus-total">0 min</strong><small>Enfoque</small></span>
-                        <span><strong id="analytics-focus-sessions">0</strong><small>Sesiones sostenibles</small></span>
-                        <span><strong id="analytics-focus-average">0 min</strong><small>Promedio activo</small></span>
-                    </div>
-                    <div id="focus-flow-chart" class="focus-flow-chart"></div>
                 </section>
 
                 <article class="performance-advice" aria-live="polite">
                     <span class="performance-advice-mark" aria-hidden="true"></span>
                     <div>
-                        <p class="section-kicker">Próximo ajuste</p>
+                        <p class="section-kicker">Siguiente paso</p>
                         <h4 id="analytics-action-title">Empieza con una tarea pequeña</h4>
                         <p id="analytics-action-message">Completa una tarea para obtener una recomendación basada en tu ritmo.</p>
                     </div>
                 </article>
 
                 <details class="performance-details">
-                    <summary>Ver detalles</summary>
+                    <summary>Ver contexto</summary>
                     <div class="performance-detail-grid">
                         <article>
                             <strong id="analytics-active-days">0</strong>
@@ -609,6 +592,7 @@
                             <small id="race-analytics-targets">Sin metas de tiempo</small>
                         </article>
                     </div>
+                    <p class="performance-method-note">Las tareas eliminadas antes de vencer no alteran este cálculo.</p>
                 </details>
             </section>
 
@@ -781,6 +765,10 @@
     <script src="tasklyzen-utils.js"></script>
     <script src="tasklyzen-composite-tasks.js"></script>
     <script src="tasklyzen-tasks.js"></script>
+    <script src="tasklyzen-task-lifecycle.js"></script>
+    <script src="tasklyzen-domain-events.js"></script>
+    <script src="tasklyzen-task-effects.js"></script>
+    <script src="tasklyzen-task-transactions.js"></script>
     <script src="components/tasklyzen-ui-components.js"></script>
     <script src="tasklyzen-overdue-review.js"></script>
     <script src="components/tasklyzen-task-creation-ui.js"></script>

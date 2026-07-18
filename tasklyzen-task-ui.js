@@ -24,6 +24,7 @@
         const ui = config.uiController || createFallbackUi();
         const components = config.components || global.TasklyzenUiComponents;
         const compositeTasks = config.compositeTasks || global.TasklyzenCompositeTasks;
+        const taskTitleMaxLength = Math.max(Math.round(Number(config.taskTitleMaxLength) || 96), 1);
         const getTodos = typeof config.getTodos === 'function' ? config.getTodos : () => [];
         const getDailyGoal = typeof config.getDailyGoal === 'function' ? config.getDailyGoal : () => 1;
         const getTodayKey = typeof config.getTodayKey === 'function' ? config.getTodayKey : () => '';
@@ -337,65 +338,87 @@
             }
 
             return {
-                className: 'date-badge',
+                className: 'date-badge detail-meta-text',
                 text: 'Creada ' + getDateLabel(createdDateKey, { day: 'numeric', month: 'short' })
             };
         }
 
-        function getDueDateBadge(todo) {
+        function getDueDateBadge(todo, includeEmpty) {
             const dueDate = getTaskDueDate(todo);
 
             if (!dueDate) {
-                return {
-                    className: 'due-date-badge no-deadline-badge',
+                return includeEmpty ? {
+                    className: 'due-date-badge no-deadline-badge detail-meta-text',
                     text: 'Sin vencimiento'
-                };
+                } : null;
             }
 
             return {
-                className: 'due-date-badge',
-                text: 'Límite ' + getDateLabel(dueDate, { day: 'numeric', month: 'short' })
+                className: 'due-date-badge detail-meta-text',
+                text: 'Vence ' + getDateLabel(dueDate, { day: 'numeric', month: 'short' })
             };
         }
 
-        function getEssentialBadge(todo, urgencyState) {
-            if (urgencyState && urgencyState.level && urgencyState.level !== 'on-time') {
-                return {
-                    className: 'urgency-badge urgency-badge-' + urgencyState.level,
-                    text: urgencyState.label,
-                    title: urgencyState.message
-                };
+        function getTaskSecondaryMeta(todo, urgencyState) {
+            const context = [];
+
+            if (todo.priority && todo.priority !== 'normal') {
+                context.push({
+                    className: 'task-meta-priority task-meta-priority-' + todo.priority,
+                    text: getPriorityLabel(todo.priority)
+                });
             }
 
-            return null;
+            if (urgencyState && urgencyState.label) {
+                context.push({
+                    className: 'task-meta-urgency task-meta-urgency-' + urgencyState.level,
+                    text: urgencyState.label,
+                    title: urgencyState.message
+                });
+            }
+
+            return context;
+        }
+
+        function getCompositeProgressVisual(todo) {
+            if (!compositeTasks || !compositeTasks.isCompositeTask(todo)) {
+                return null;
+            }
+
+            const progress = compositeTasks.getCompositeTaskProgress(todo);
+            const requiredTotal = Math.max(Number(progress.requiredTotal) || 0, 1);
+            const requiredCompleted = Math.min(Math.max(Number(progress.requiredCompleted) || 0, 0), requiredTotal);
+
+            return {
+                completed: requiredCompleted,
+                total: requiredTotal,
+                label: 'Hito · ' + requiredCompleted + '/' + requiredTotal + ' pasos',
+                ariaLabel: compositeTasks.getCompositeProgressLabel(todo)
+            };
         }
 
         function renderEditItem(item, todo) {
             const editContent = components.createTaskEditContent({
                 documentRef,
                 todo,
-                priorityOptions: getPriorityOptions(todo.priority)
+                priorityOptions: getPriorityOptions(todo.priority),
+                titleMaxLength: taskTitleMaxLength
             });
 
             item.append(editContent.content);
-            dom.todoList.appendChild(item);
-            editContent.editInput.focus();
-            editContent.editInput.select();
+            return editContent.editInput;
         }
 
         function renderDisplayItem(item, todo, urgencyState) {
             const isComposite = compositeTasks && compositeTasks.isCompositeTask(todo);
+            const isExpanded = expandedTodoIds.has(todo.id);
             const dateBadge = getCreatedDateBadge(todo);
-            const dueDateBadge = getDueDateBadge(todo);
-            const essentialBadge = getEssentialBadge(todo, urgencyState);
-            const badges = [
-                {
-                    className: 'priority-badge priority-badge-' + todo.priority,
-                    text: getPriorityLabel(todo.priority)
-                }
-            ];
+            const dueDateBadge = getDueDateBadge(todo, true);
+            const badges = [];
 
-            badges.push(dueDateBadge);
+            if (dueDateBadge) {
+                badges.push(dueDateBadge);
+            }
 
             if (dateBadge) {
                 badges.push(dateBadge);
@@ -415,19 +438,11 @@
                 });
             }
 
-            if (urgencyState) {
-                badges.push({
-                    className: 'urgency-badge urgency-badge-' + urgencyState.level,
-                    text: urgencyState.label,
-                    title: urgencyState.message
-                });
-            }
-
             const displayContent = components.createTaskDisplayContent({
                 documentRef,
                 todo,
                 badges,
-                essentialBadge: isComposite ? null : essentialBadge,
+                compactMeta: getTaskSecondaryMeta(todo, urgencyState),
                 composite: isComposite,
                 compositeStatus: isComposite ? compositeTasks.getCompositeTaskStatus(todo) : '',
                 compositeStatusLabel: isComposite
@@ -435,80 +450,456 @@
                         ? (compositeTasks.getCompositeTaskStatus(todo) === 'fully-completed' ? 'Tarea completada totalmente' : 'Tarea completada con subtareas opcionales pendientes')
                         : 'Completa las subtareas obligatorias para terminar esta tarea')
                     : '',
-                progressLabel: isComposite ? compositeTasks.getCompositeProgressLabel(todo) : '',
-                compositeDetails: (isComposite || expandedTodoIds.has(todo.id))
+                compositeProgress: getCompositeProgressVisual(todo),
+                compositeDetails: (isComposite || isExpanded)
                     ? components.createSubtaskList({
                         documentRef,
-                        subtasks: isComposite ? todo.subtasks : [],
-                        progressLabel: isComposite ? compositeTasks.getCompositeProgressLabel(todo) : 'Subtareas',
+                        subtasks: isComposite && typeof compositeTasks.getDisplaySubtasks === 'function'
+                            ? compositeTasks.getDisplaySubtasks(todo.subtasks)
+                            : (isComposite ? todo.subtasks : []),
+                        progressLabel: isComposite ? 'Pasos del hito' : 'Subtareas',
                         composite: isComposite,
                         adding: addingSubtaskTodoIds.has(todo.id),
                         editingSubtaskId: editingSubtask && editingSubtask.todoId === todo.id ? editingSubtask.subtaskId : '',
-                        confirmation: compositeConfirmation && compositeConfirmation.todoId === todo.id ? compositeConfirmation : null
+                        confirmation: compositeConfirmation && compositeConfirmation.todoId === todo.id ? compositeConfirmation : null,
+                        titleMaxLength: taskTitleMaxLength
                     })
                     : null,
-                expanded: expandedTodoIds.has(todo.id),
+                expanded: isExpanded,
                 actionsOpen: actionMenuTodoId === todo.id
             });
 
             item.append(displayContent.content, displayContent.details);
-            dom.todoList.appendChild(item);
         }
 
-        function renderTodoList() {
-            if (!dom.todoList) {
-                return;
-            }
-
-            ui.clear(dom.todoList);
-            updateFilterButtons();
-
+        function getListPresentation() {
             const visibleTodos = getVisibleTodos();
             const focusTodo = getTopPriorityTodo();
             const shouldUseTaskFocus = Boolean(focusTodo && (activeFilter === 'pending' || activeFilter === 'all'));
+
             dom.todoList.classList.toggle('has-focused-task', shouldUseTaskFocus);
 
-            if (visibleTodos.length === 0) {
-                dom.todoList.appendChild(components.createEmptyState({
-                    documentRef,
-                    message: getEmptyStateMessage()
-                }));
-                updateTaskCount();
-                updateTaskSummary();
-                updateTaskMaintenanceControls();
-                renderExpiredTasksPanel();
-                scheduleRefresh();
-                return;
-            }
+            return {
+                visibleTodos,
+                focusTodo,
+                shouldUseTaskFocus
+            };
+        }
 
-            visibleTodos.forEach(todo => {
-                const urgencyState = getTodoUrgencyState(todo);
-                const isFocusTask = shouldUseTaskFocus && todo.id === focusTodo.id;
-                const isSecondaryTask = shouldUseTaskFocus && !isFocusTask && isTodoAvailableToday(todo);
-                const item = components.createTaskListItem({
-                    documentRef,
-                    todo,
-                    urgencyLevel: urgencyState ? urgencyState.level : '',
-                    focused: isFocusTask,
-                    secondary: isSecondaryTask,
-                    expanded: expandedTodoIds.has(todo.id),
-                    actionsOpen: actionMenuTodoId === todo.id,
-                    editing: editingTodoId === todo.id
-                });
-
-                if (editingTodoId === todo.id) {
-                    renderEditItem(item, todo);
-                    return;
-                }
-
-                renderDisplayItem(item, todo, urgencyState);
+        function createRenderedTodoItem(todo, presentation) {
+            const urgencyState = getTodoUrgencyState(todo);
+            const isFocusTask = presentation.shouldUseTaskFocus && todo.id === presentation.focusTodo.id;
+            const isSecondaryTask = presentation.shouldUseTaskFocus && !isFocusTask && isTodoAvailableToday(todo);
+            const item = components.createTaskListItem({
+                documentRef,
+                todo,
+                urgencyLevel: urgencyState ? urgencyState.level : '',
+                focused: isFocusTask,
+                secondary: isSecondaryTask,
+                expanded: expandedTodoIds.has(todo.id),
+                actionsOpen: actionMenuTodoId === todo.id,
+                editing: editingTodoId === todo.id
             });
 
+            if (editingTodoId === todo.id) {
+                return {
+                    item,
+                    editInput: renderEditItem(item, todo)
+                };
+            }
+
+            renderDisplayItem(item, todo, urgencyState);
+            return { item, editInput: null };
+        }
+
+        function updateTaskListSupportingUi() {
             updateTaskCount();
             updateTaskSummary();
             updateTaskMaintenanceControls();
             renderExpiredTasksPanel();
             scheduleRefresh();
+        }
+
+        function focusEditInput(input) {
+            if (!input || typeof input.focus !== 'function') {
+                return;
+            }
+
+            input.focus();
+            if (typeof input.select === 'function') {
+                input.select();
+            }
+        }
+
+        function getDocumentScrollPosition() {
+            const documentNode = documentRef;
+            const root = documentNode && documentNode.documentElement;
+            const body = documentNode && documentNode.body;
+
+            return {
+                left: Number(global.scrollX) || (root && root.scrollLeft) || (body && body.scrollLeft) || 0,
+                top: Number(global.scrollY) || (root && root.scrollTop) || (body && body.scrollTop) || 0
+            };
+        }
+
+        function restoreDocumentScrollPosition(position) {
+            if (!position) {
+                return;
+            }
+
+            const restore = () => {
+                if (typeof global.scrollTo === 'function') {
+                    global.scrollTo(position.left, position.top);
+                    return;
+                }
+
+                if (documentRef && documentRef.documentElement) {
+                    documentRef.documentElement.scrollLeft = position.left;
+                    documentRef.documentElement.scrollTop = position.top;
+                }
+
+                if (documentRef && documentRef.body) {
+                    documentRef.body.scrollLeft = position.left;
+                    documentRef.body.scrollTop = position.top;
+                }
+            };
+
+            restore();
+            if (typeof global.requestAnimationFrame === 'function') {
+                global.requestAnimationFrame(() => {
+                    restore();
+                    if (typeof global.setTimeout === 'function') {
+                        global.setTimeout(restore, 0);
+                    }
+                });
+            }
+        }
+
+        function captureViewportAnchor(excludedTodoId) {
+            if (!dom.todoList || typeof dom.todoList.querySelectorAll !== 'function') {
+                return null;
+            }
+
+            const candidates = Array.from(dom.todoList.querySelectorAll('.todo-item'));
+            const anchor = candidates.find(item => {
+                if (item.dataset.id === excludedTodoId || typeof item.getBoundingClientRect !== 'function') {
+                    return false;
+                }
+
+                const bounds = item.getBoundingClientRect();
+                return bounds.bottom > 0 && bounds.top < (global.innerHeight || Number.MAX_SAFE_INTEGER);
+            });
+
+            if (!anchor || typeof anchor.getBoundingClientRect !== 'function') {
+                return null;
+            }
+
+            return {
+                id: anchor.dataset.id,
+                top: anchor.getBoundingClientRect().top
+            };
+        }
+
+        function restoreViewportAnchor(anchor) {
+            if (!anchor || !anchor.id || !dom.todoList || typeof dom.todoList.querySelectorAll !== 'function') {
+                return;
+            }
+
+            const restore = () => {
+                const item = Array.from(dom.todoList.querySelectorAll('.todo-item')).find(candidate => candidate.dataset.id === anchor.id);
+                if (!item || typeof item.getBoundingClientRect !== 'function') {
+                    return;
+                }
+
+                const delta = item.getBoundingClientRect().top - anchor.top;
+                if (Math.abs(delta) < 1) {
+                    return;
+                }
+
+                if (typeof global.scrollBy === 'function') {
+                    global.scrollBy(0, delta);
+                    return;
+                }
+
+                if (typeof global.scrollTo === 'function') {
+                    const position = getDocumentScrollPosition();
+                    global.scrollTo(position.left, position.top + delta);
+                }
+            };
+
+            restore();
+            if (typeof global.requestAnimationFrame === 'function') {
+                global.requestAnimationFrame(restore);
+            }
+        }
+
+        function canPatchTaskStateChange(presentation, changedTodoId) {
+            if (!changedTodoId || editingTodoId || !dom.todoList || typeof dom.todoList.querySelectorAll !== 'function') {
+                return false;
+            }
+
+            const existingIds = Array.from(dom.todoList.querySelectorAll('.todo-item'))
+                .map(item => item.dataset.id)
+                .filter(Boolean);
+            const expectedIds = presentation.visibleTodos.map(todo => todo.id);
+            const currentWithoutChanged = existingIds.filter(id => id !== changedTodoId);
+            const expectedWithoutChanged = expectedIds.filter(id => id !== changedTodoId);
+
+            return currentWithoutChanged.length === expectedWithoutChanged.length
+                && currentWithoutChanged.every((id, index) => id === expectedWithoutChanged[index]);
+        }
+
+        function patchTaskStateChange(presentation, changedTodoId, scrollPosition) {
+            if (!canPatchTaskStateChange(presentation, changedTodoId)) {
+                return false;
+            }
+
+            const viewportAnchor = captureViewportAnchor(changedTodoId);
+            const currentItem = Array.from(dom.todoList.querySelectorAll('.todo-item'))
+                .find(item => item.dataset.id === changedTodoId);
+            const changedTodo = presentation.visibleTodos.find(todo => todo.id === changedTodoId);
+
+            if (changedTodo) {
+                const rendered = createRenderedTodoItem(changedTodo, presentation);
+
+                if (currentItem && typeof currentItem.replaceWith === 'function') {
+                    currentItem.replaceWith(rendered.item);
+                } else {
+                    dom.todoList.appendChild(rendered.item);
+                }
+            } else if (currentItem && typeof currentItem.remove === 'function') {
+                currentItem.remove();
+            }
+
+            if (presentation.visibleTodos.length === 0) {
+                ui.clear(dom.todoList);
+                dom.todoList.appendChild(components.createEmptyState({
+                    documentRef,
+                    message: getEmptyStateMessage()
+                }));
+            }
+
+            updateTaskListSupportingUi();
+            restoreDocumentScrollPosition(scrollPosition);
+            restoreViewportAnchor(viewportAnchor);
+            return true;
+        }
+
+        function syncTaskFocusPresentation(presentation) {
+            if (!dom.todoList || typeof dom.todoList.querySelectorAll !== 'function') {
+                return;
+            }
+
+            const visibleTodoIds = new Set(presentation.visibleTodos.map(todo => todo.id));
+            const focusedTodoId = presentation.focusTodo && presentation.focusTodo.id;
+
+            Array.from(dom.todoList.querySelectorAll('.todo-item')).forEach(item => {
+                const todoId = item.dataset.id;
+                if (!visibleTodoIds.has(todoId)) {
+                    return;
+                }
+
+                const todo = presentation.visibleTodos.find(candidate => candidate.id === todoId);
+                const focused = presentation.shouldUseTaskFocus && todoId === focusedTodoId;
+                const secondary = presentation.shouldUseTaskFocus && !focused && isTodoAvailableToday(todo);
+
+                item.classList.toggle('focus-task', focused);
+                item.classList.toggle('secondary-task', secondary);
+
+                if (focused) {
+                    item.setAttribute('aria-current', 'true');
+                } else {
+                    item.removeAttribute('aria-current');
+                }
+            });
+        }
+
+        function updateCompositeHeader(todoItem, todo) {
+            const checkButton = todoItem.querySelector('.task-check-button.composite-indicator');
+            const progress = getCompositeProgressVisual(todo);
+            const status = compositeTasks.getCompositeTaskStatus(todo);
+
+            todoItem.classList.toggle('completed', Boolean(todo.completed));
+
+            if (checkButton) {
+                checkButton.classList.toggle('checked', Boolean(todo.completed));
+                checkButton.dataset.compositeStatus = status || 'in-progress';
+                checkButton.textContent = todo.completed ? '\u2713' : '';
+                checkButton.setAttribute('aria-pressed', Boolean(todo.completed).toString());
+                checkButton.setAttribute('aria-label', todo.completed
+                    ? (status === 'fully-completed' ? 'Tarea completada totalmente' : 'Tarea completada con subtareas opcionales pendientes')
+                    : 'Completa las subtareas obligatorias para terminar esta tarea');
+            }
+
+            const progressElement = todoItem.querySelector('.task-composite-progress');
+            if (!progress || !progressElement) {
+                return;
+            }
+
+            const total = Math.max(Number(progress.total) || 0, 1);
+            const completed = Math.min(Math.max(Number(progress.completed) || 0, 0), total);
+            const label = progressElement.querySelector('span');
+            const fill = progressElement.querySelector('.task-composite-progress-fill');
+
+            progressElement.setAttribute('aria-label', progress.ariaLabel || progress.label);
+            progressElement.setAttribute('aria-valuemax', String(total));
+            progressElement.setAttribute('aria-valuenow', String(completed));
+
+            if (label) {
+                label.textContent = progress.label;
+            }
+
+            if (fill) {
+                fill.style.width = Math.round((completed / total) * 100) + '%';
+            }
+        }
+
+        function syncSubtaskRowState(row, subtask) {
+            const checkButton = row.querySelector('.subtask-check');
+
+            row.classList.toggle('completed', Boolean(subtask.completed));
+
+            if (!checkButton) {
+                return;
+            }
+
+            checkButton.classList.toggle('checked', Boolean(subtask.completed));
+            checkButton.textContent = subtask.completed ? '\u2713' : '';
+            checkButton.setAttribute('aria-pressed', Boolean(subtask.completed).toString());
+            checkButton.setAttribute('aria-label', (subtask.completed ? 'Reactivar subtarea: ' : 'Completar subtarea: ') + subtask.title);
+        }
+
+        function syncSubtaskOrder(list, orderedSubtasks, changedSubtaskId) {
+            const rowsById = new Map(Array.from(list.querySelectorAll('.subtask-item')).map(row => [row.dataset.subtaskId, row]));
+
+            if (rowsById.size !== orderedSubtasks.length || orderedSubtasks.some(subtask => !rowsById.has(subtask.id))) {
+                return false;
+            }
+
+            const changedIndex = orderedSubtasks.findIndex(subtask => subtask.id === changedSubtaskId);
+            const changedRow = rowsById.get(changedSubtaskId);
+
+            if (changedIndex < 0 || !changedRow) {
+                return false;
+            }
+
+            // Solo movemos el paso modificado. Reanexar toda la lista reinicia su layout y desplaza el scroll.
+            const nextSubtask = orderedSubtasks[changedIndex + 1];
+            const nextRow = nextSubtask ? rowsById.get(nextSubtask.id) : null;
+
+            if (nextRow) {
+                list.insertBefore(changedRow, nextRow);
+            } else if (list.lastElementChild !== changedRow) {
+                list.appendChild(changedRow);
+            }
+
+            orderedSubtasks.forEach((subtask, index) => {
+                const row = rowsById.get(subtask.id);
+                const previous = orderedSubtasks[index - 1];
+                const next = orderedSubtasks[index + 1];
+                const moveUp = row.querySelector('.subtask-action.move-up');
+                const moveDown = row.querySelector('.subtask-action.move-down');
+
+                if (moveUp) {
+                    moveUp.disabled = !(previous && Boolean(previous.completed) === Boolean(subtask.completed));
+                }
+
+                if (moveDown) {
+                    moveDown.disabled = !(next && Boolean(next.completed) === Boolean(subtask.completed));
+                }
+            });
+
+            return true;
+        }
+
+        function restoreSubtaskListScroll(list, position) {
+            if (!list || !Number.isFinite(position)) {
+                return;
+            }
+
+            const restore = () => {
+                list.scrollTop = position;
+            };
+
+            restore();
+            if (typeof global.requestAnimationFrame === 'function') {
+                global.requestAnimationFrame(restore);
+            }
+        }
+
+        function refreshSubtaskState(todoId, subtaskId) {
+            if (!todoId || !subtaskId || !compositeTasks || !dom.todoList) {
+                return false;
+            }
+
+            const presentation = getListPresentation();
+            const todo = presentation.visibleTodos.find(item => item.id === todoId);
+            const subtask = todo && Array.isArray(todo.subtasks) ? todo.subtasks.find(item => item.id === subtaskId) : null;
+            const todoItem = Array.from(dom.todoList.querySelectorAll('.todo-item')).find(item => item.dataset.id === todoId);
+            const subtaskList = todoItem && todoItem.querySelector('.subtask-list');
+            const subtaskRow = subtaskList && Array.from(subtaskList.querySelectorAll('.subtask-item')).find(item => item.dataset.subtaskId === subtaskId);
+
+            if (!todo || !subtask || !todoItem || !subtaskList || !subtaskRow) {
+                return false;
+            }
+
+            const documentScroll = getDocumentScrollPosition();
+            const subtaskScrollTop = Number(subtaskList.scrollTop) || 0;
+            const orderedSubtasks = typeof compositeTasks.getDisplaySubtasks === 'function'
+                ? compositeTasks.getDisplaySubtasks(todo.subtasks)
+                : todo.subtasks.slice();
+
+            syncSubtaskRowState(subtaskRow, subtask);
+
+            if (!syncSubtaskOrder(subtaskList, orderedSubtasks, subtaskId)) {
+                return false;
+            }
+
+            updateCompositeHeader(todoItem, todo);
+            syncTaskFocusPresentation(presentation);
+            updateTaskListSupportingUi();
+            restoreSubtaskListScroll(subtaskList, subtaskScrollTop);
+            restoreDocumentScrollPosition(documentScroll);
+            return true;
+        }
+
+        function renderTodoList(options) {
+            if (!dom.todoList) {
+                return;
+            }
+
+            const config = options || {};
+            const scrollPosition = config.preserveScroll ? getDocumentScrollPosition() : null;
+            updateFilterButtons();
+            const presentation = getListPresentation();
+
+            if (config.changedTodoId && patchTaskStateChange(presentation, config.changedTodoId, scrollPosition)) {
+                return;
+            }
+
+            ui.clear(dom.todoList);
+
+            if (presentation.visibleTodos.length === 0) {
+                dom.todoList.appendChild(components.createEmptyState({
+                    documentRef,
+                    message: getEmptyStateMessage()
+                }));
+                updateTaskListSupportingUi();
+                restoreDocumentScrollPosition(scrollPosition);
+                return;
+            }
+
+            let editInput = null;
+
+            presentation.visibleTodos.forEach(todo => {
+                const rendered = createRenderedTodoItem(todo, presentation);
+                dom.todoList.appendChild(rendered.item);
+                editInput = editInput || rendered.editInput;
+            });
+
+            updateTaskListSupportingUi();
+            restoreDocumentScrollPosition(scrollPosition);
+            focusEditInput(editInput);
         }
 
         function renderTaskSurface() {
@@ -584,7 +975,6 @@
             try {
                 onToggleTodo(todoId);
             } catch (error) {
-                todoItem.classList.remove('local-complete-feedback', 'local-reactivate-feedback');
                 todoItem.querySelectorAll('[data-action="toggle"]').forEach(button => {
                     button.disabled = false;
                 });
@@ -592,17 +982,17 @@
             }
         }
 
-        function toggleTodoWithFeedback(todoItem, todoId, feedbackClass, delay) {
-            todoItem.classList.add(feedbackClass);
+        function toggleTodoFromList(todoItem, todoId) {
+            const activeElement = documentRef && documentRef.activeElement;
+            if (activeElement && typeof todoItem.contains === 'function' && todoItem.contains(activeElement) && typeof activeElement.blur === 'function') {
+                activeElement.blur();
+            }
+
             todoItem.querySelectorAll('[data-action="toggle"]').forEach(button => {
                 button.disabled = true;
             });
 
-            if (typeof global.setTimeout === 'function') {
-                global.setTimeout(() => runTodoToggle(todoItem, todoId), delay);
-            } else {
-                runTodoToggle(todoItem, todoId);
-            }
+            runTodoToggle(todoItem, todoId);
         }
 
         function findEditItem(id) {
@@ -725,11 +1115,11 @@
                 actionMenuTodoId = null;
 
                 if (!todoItem.classList.contains('completed')) {
-                    toggleTodoWithFeedback(todoItem, todoId, 'local-complete-feedback', 140);
+                    toggleTodoFromList(todoItem, todoId);
                     return;
                 }
 
-                toggleTodoWithFeedback(todoItem, todoId, 'local-reactivate-feedback', 120);
+                toggleTodoFromList(todoItem, todoId);
                 return;
             }
 
@@ -777,6 +1167,9 @@
             }
 
             if (action === 'toggle-subtask') {
+                if (typeof actionButton.blur === 'function') {
+                    actionButton.blur();
+                }
                 onToggleSubtask(todoId, actionButton.dataset.subtaskId);
                 return;
             }
@@ -929,6 +1322,7 @@
             renderExpiredTasksPanel,
             renderNextAction,
             renderTodoList,
+            refreshSubtaskState,
             renderTaskSurface,
             handleFilterClick,
             handleNextActionComplete,

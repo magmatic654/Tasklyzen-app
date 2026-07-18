@@ -90,6 +90,8 @@ loadBrowserModule(context, 'tasklyzen-storage.js');
 loadBrowserModule(context, 'tasklyzen-utils.js');
 loadBrowserModule(context, 'tasklyzen-composite-tasks.js');
 loadBrowserModule(context, 'tasklyzen-tasks.js');
+loadBrowserModule(context, 'tasklyzen-task-lifecycle.js');
+loadBrowserModule(context, 'tasklyzen-task-effects.js');
 loadBrowserModule(context, 'components/tasklyzen-ui-components.js');
 loadBrowserModule(context, 'tasklyzen-overdue-review.js');
 loadBrowserModule(context, 'components/tasklyzen-task-creation-ui.js');
@@ -108,6 +110,8 @@ loadBrowserModule(context, 'tasklyzen-oop.js');
 
 const utils = context.TasklyzenUtils;
 const tasks = context.TasklyzenTasks;
+const taskLifecycle = context.TasklyzenTaskLifecycle;
+const taskEffects = context.TasklyzenTaskEffects;
 const compositeTasks = context.TasklyzenCompositeTasks;
 const components = context.TasklyzenUiComponents;
 const overdueReview = context.TasklyzenOverdueReview;
@@ -378,7 +382,8 @@ const cloudDocument = {
                 usedShields: 3,
                 achievementStates: { legacy: true }
             }),
-            [migrationKeys.todos]: JSON.stringify([{ id: 'task-cloud', text: 'Conservar' }])
+            [migrationKeys.todos]: JSON.stringify([{ id: 'task-cloud', text: 'Conservar' }]),
+            'foreign-cloud-key': 'No pertenece a Tasklyzen'
         })
     }),
     set: (updates, options) => {
@@ -396,12 +401,17 @@ const cloudDb = {
     collection: () => ({ doc: () => cloudDocument })
 };
 
-context.localStorage.setItem(migrationKeys.todos, JSON.stringify([
-    { id: 'task-cloud', text: 'Conservar' }
-]));
-storage.onAuthChange({ uid: 'cloud-migration-test' }, cloudDb);
-await Promise.resolve();
-await Promise.resolve();
+context.localStorage.removeItem(migrationKeys.todos);
+context.localStorage.removeItem('foreign-cloud-key');
+context.dispatchEvent = () => {};
+context.StorageEvent = class StorageEvent {
+    constructor(type, options) {
+        this.type = type;
+        this.key = options && options.key;
+        this.newValue = options && options.newValue;
+    }
+};
+await storage.onAuthChange({ uid: 'cloud-migration-test' }, cloudDb);
 const cloudMigrationWrite = cloudWrites.find(write => write.options && write.options.merge);
 assert.deepStrictEqual(cloudMigrationWrite.updates['todo-achievements'], cloudDeleteToken);
 assert.strictEqual(
@@ -409,6 +419,8 @@ assert.strictEqual(
     JSON.stringify({ usedShields: 3 })
 );
 assert.strictEqual(cloudMigrationWrite.updates[migrationKeys.todos], undefined);
+assert.strictEqual(context.localStorage.getItem(migrationKeys.todos), JSON.stringify([{ id: 'task-cloud', text: 'Conservar' }]));
+assert.strictEqual(context.localStorage.getItem('foreign-cloud-key'), null);
 storage.onAuthChange(null, null);
 
 assert.strictEqual(utils.isDateKey('2026-07-02'), true);
@@ -461,6 +473,31 @@ assert.strictEqual(compositeTransition.reactivatedNow, true);
 assert.strictEqual(compositeTodo.completed, false);
 assert.strictEqual(compositeTasks.validateCompositeDraft('Proyecto', [compositeTasks.createSubtask('Solo opcional', { optional: true })]).valid, false);
 
+const orderedSubtasks = [
+    compositeTasks.createSubtask('Primera', { id: 'subtask-first', order: 0 }),
+    compositeTasks.createSubtask('Completada', { id: 'subtask-complete', order: 1, completed: true }),
+    compositeTasks.createSubtask('Tercera', { id: 'subtask-third', order: 2 })
+];
+assert.deepStrictEqual(
+    compositeTasks.getDisplaySubtasks(orderedSubtasks).map(subtask => subtask.id),
+    ['subtask-first', 'subtask-third', 'subtask-complete']
+);
+assert.strictEqual(compositeTasks.moveSubtask(orderedSubtasks, 'subtask-third', 1), null);
+const reorderedSubtasks = compositeTasks.moveSubtask(orderedSubtasks, 'subtask-third', -1, {
+    updatedAt: '2026-07-10T12:30:00.000'
+});
+assert.deepStrictEqual(
+    compositeTasks.getDisplaySubtasks(reorderedSubtasks).map(subtask => subtask.id),
+    ['subtask-third', 'subtask-first', 'subtask-complete']
+);
+const reactivatedSubtasks = reorderedSubtasks.map(subtask => subtask.id === 'subtask-complete'
+    ? { ...subtask, completed: false }
+    : subtask);
+assert.deepStrictEqual(
+    compositeTasks.getDisplaySubtasks(reactivatedSubtasks).map(subtask => subtask.id),
+    ['subtask-third', 'subtask-complete', 'subtask-first']
+);
+
 const clampedTodo = tasks.createTodo('Limite maximo', 'normal', { timeLimitDays: 99 });
 assert.strictEqual(clampedTodo.timeLimitDays, 3);
 assert.strictEqual(utils.isDateKey(clampedTodo.dueDate), true);
@@ -474,6 +511,126 @@ assert.strictEqual(tasks.isTodoDeadlineLate(oldTodo), true);
 assert.strictEqual(tasks.isTodoAvailableToday(oldTodo), false);
 assert.strictEqual(tasks.getTodoDeadlineState(oldTodo).label, 'Vencida');
 assert.strictEqual(tasks.getTodoUrgencyState(oldTodo).label, 'Vencida');
+
+const activeTodoForRemoval = tasks.createTodo('Tarea descartada', 'normal', {
+    dueDate: '2030-07-20'
+});
+const discardedAnalytics = taskLifecycle.getRemovalAnalyticsState(activeTodoForRemoval, 'task_deleted', {
+    taskApi: tasks
+});
+assert.strictEqual(discardedAnalytics.analyticsRetained, false);
+assert.strictEqual(discardedAnalytics.retentionReason, 'discarded-before-expiration');
+
+const expiredAnalytics = taskLifecycle.getRemovalAnalyticsState(oldTodo, 'task_deleted', {
+    taskApi: tasks
+});
+assert.strictEqual(expiredAnalytics.analyticsRetained, true);
+assert.strictEqual(expiredAnalytics.expiredAtRemoval, true);
+assert.strictEqual(expiredAnalytics.retentionReason, 'expired-at-removal');
+
+const autoDeletedAnalytics = taskLifecycle.getRemovalAnalyticsState(activeTodoForRemoval, 'task_auto_deleted', {
+    taskApi: tasks
+});
+assert.strictEqual(autoDeletedAnalytics.analyticsRetained, true);
+assert.strictEqual(autoDeletedAnalytics.retentionReason, 'retention-flow');
+
+const recordedCredits = [];
+const revokedCredits = [];
+const recordedEvents = [];
+const discardedTodoIds = [];
+const taskEffectsController = taskEffects.createTaskEffectsController({
+    taskApi: tasks,
+    lifecycle: taskLifecycle,
+    sustainableProgress: {
+        recordTaskCompletion(todo, metadata) {
+            recordedCredits.push({ kind: 'task', todoId: todo.id, metadata });
+        },
+        revokeTaskCompletion(todoId, dateKey) {
+            revokedCredits.push({ kind: 'task', todoId, dateKey });
+        },
+        recordSubtaskCompletion(todoId, subtaskId, metadata) {
+            recordedCredits.push({ kind: 'subtask', todoId, subtaskId, metadata });
+        },
+        revokeSubtaskCompletion(todoId, subtaskId, dateKey) {
+            revokedCredits.push({ kind: 'subtask', todoId, subtaskId, dateKey });
+        }
+    },
+    getTodayKey: () => '2026-07-16',
+    getDateKeyFromTimestamp: utils.getDateKeyFromTimestamp,
+    getHoursBetween: utils.getHoursBetween,
+    getTodoAgeDays: () => 2,
+    getDailyGoal: () => 3,
+    getHistoryCount: () => 0,
+    getLongestActiveStreak: () => 4,
+    hasCelebratedStreakDate: () => false,
+    logAnalyticsEvent: (type, payload) => recordedEvents.push({ type, payload }),
+    discardAnalyticsEvents: todoId => discardedTodoIds.push(todoId)
+});
+
+const completedDiscardedTodo = tasks.createTodo('Completada y descartada', 'normal', {
+    dueDate: '2030-07-20',
+    createdOn: '2026-07-16',
+    createdAt: '2026-07-16T08:00:00.000'
+});
+completedDiscardedTodo.completed = true;
+completedDiscardedTodo.completedOn = '2026-07-16';
+completedDiscardedTodo.completedAt = '2026-07-16T09:00:00.000';
+const discardedEffect = taskEffectsController.handleRemoval(completedDiscardedTodo, 'task_deleted');
+assert.strictEqual(discardedEffect.analyticsRetained, false);
+assert.deepStrictEqual(discardedTodoIds, [completedDiscardedTodo.id]);
+assert.deepStrictEqual(revokedCredits[0], {
+    kind: 'task',
+    todoId: completedDiscardedTodo.id,
+    dateKey: '2026-07-16'
+});
+
+const retainedEffect = taskEffectsController.handleRemoval(oldTodo, 'task_deleted');
+assert.strictEqual(retainedEffect.analyticsRetained, true);
+assert.strictEqual(recordedEvents.some(event => event.type === 'task_deleted' && event.payload.todoId === oldTodo.id), true);
+
+const completionEffectTodo = tasks.createTodo('Completar con efectos', 'normal', {
+    createdOn: '2026-07-16',
+    createdAt: '2026-07-16T08:00:00.000'
+});
+completionEffectTodo.completed = true;
+completionEffectTodo.completedOn = '2026-07-16';
+completionEffectTodo.completedAt = '2026-07-16T10:00:00.000';
+const completionEffect = taskEffectsController.handleTaskCompletion(completionEffectTodo, {
+    dateKey: '2026-07-16',
+    completedAt: completionEffectTodo.completedAt,
+    source: 'tests'
+});
+assert.strictEqual(completionEffect.celebrationType, 'regular');
+assert.strictEqual(recordedCredits.some(credit => credit.kind === 'task' && credit.todoId === completionEffectTodo.id), true);
+assert.strictEqual(recordedEvents.some(event => event.type === 'task_completed' && event.payload.todoId === completionEffectTodo.id), true);
+
+completionEffectTodo.completed = false;
+taskEffectsController.handleTaskReactivation(completionEffectTodo, {
+    completedOn: '2026-07-16',
+    reactivatedAt: '2026-07-16T10:05:00.000'
+});
+assert.strictEqual(revokedCredits.some(credit => credit.kind === 'task' && credit.todoId === completionEffectTodo.id), true);
+assert.strictEqual(recordedEvents.some(event => event.type === 'task_reactivated' && event.payload.todoId === completionEffectTodo.id), true);
+
+const subtaskEffectTodo = tasks.createTodo('Hito con efectos', 'normal', {
+    type: 'composite',
+    subtasks: [compositeTasks.createSubtask('Paso con efectos', { id: 'effect-subtask' })]
+});
+const effectSubtask = subtaskEffectTodo.subtasks[0];
+effectSubtask.completed = true;
+effectSubtask.completedAt = '2026-07-16T11:00:00.000';
+taskEffectsController.handleSubtaskTransition(subtaskEffectTodo, effectSubtask, {
+    wasCompleted: false,
+    source: 'tests'
+});
+assert.strictEqual(recordedCredits.some(credit => credit.kind === 'subtask' && credit.subtaskId === effectSubtask.id), true);
+
+effectSubtask.completed = false;
+taskEffectsController.handleSubtaskTransition(subtaskEffectTodo, effectSubtask, {
+    wasCompleted: true,
+    previousCompletedAt: '2026-07-16T11:00:00.000'
+});
+assert.strictEqual(revokedCredits.some(credit => credit.kind === 'subtask' && credit.subtaskId === effectSubtask.id), true);
 
 const overdueNow = new Date('2026-07-31T23:59:59.999');
 const overdueCandidate = tasks.createTodo('Vencida por revisar', 'urgent', {
@@ -982,6 +1139,7 @@ function createFakeElement(tagName = 'div') {
         children: [],
         dataset: {},
         attributes: {},
+        listeners: {},
         textContent: '',
         _innerHTML: '',
         style: {
@@ -999,6 +1157,10 @@ function createFakeElement(tagName = 'div') {
         classList: createClassList(),
         setAttribute(name, value) {
             this.attributes[name] = String(value);
+        },
+        addEventListener(type, listener) {
+            this.listeners[type] = this.listeners[type] || [];
+            this.listeners[type].push(listener);
         },
         append(...nodes) {
             nodes.forEach(node => this.appendChild(node));
@@ -1126,47 +1288,6 @@ const analyticsMetricComponent = components.createAnalyticsMetric({
 });
 assert.strictEqual(analyticsMetricComponent.className, 'summary-metric compact');
 
-const performanceSummaryComponent = components.createPerformanceSummary({
-    documentRef: context.document,
-    focus: {
-        tone: 'steady',
-        title: 'Ritmo estable',
-        message: 'Buen avance.',
-        action: 'Siguiente paso.'
-    },
-    compact: true
-});
-assert.strictEqual(performanceSummaryComponent.className, 'monthly-performance-summary compact tone-steady');
-assert.strictEqual(performanceSummaryComponent.children.length, 3);
-
-const donutComponent = components.createMonthlyCompletionDonut({
-    documentRef: context.document,
-    monthAnalytics: {
-        completedPercent: 60,
-        completedActivities: 3,
-        totalActivities: 5
-    },
-    compact: true
-});
-assert.strictEqual(donutComponent.className, 'monthly-comparison-bars monthly-donut-chart compact');
-assert.strictEqual(donutComponent.children.length, 2);
-
-const monthlyMetricComponent = components.createMonthlyMetricCard({
-    documentRef: context.document,
-    value: '90%',
-    label: 'Actividades completadas',
-    detail: '10% sin completar'
-});
-assert.strictEqual(monthlyMetricComponent.className, 'monthly-metric-card');
-assert.strictEqual(monthlyMetricComponent.children.length, 3);
-
-const recapStatComponent = components.createMonthlyRecapStat({
-    documentRef: context.document,
-    value: 4,
-    label: 'hábitos'
-});
-assert.strictEqual(recapStatComponent.children.length, 2);
-
 const flowChartComponent = components.createWeeklyFlowChart({
     documentRef: context.document,
     flow: { label: 'Semanal', completed: 2, captionSuffix: 'esta semana' },
@@ -1177,6 +1298,44 @@ const flowChartComponent = components.createWeeklyFlowChart({
 });
 assert.strictEqual(flowChartComponent.className, 'weekly-flow-chart weekly-line-chart');
 assert.strictEqual(flowChartComponent.children.length, 2);
+
+const balancedFlowComponent = components.createBalancedFlowChart({
+    documentRef: context.document,
+    entries: [
+        { dateKey: '2026-07-01', label: 'MIE', taskValue: 2, taskGoal: 3, focusValue: 25, focusGoal: 50 },
+        { dateKey: '2026-07-02', label: 'JUE', taskValue: 3, taskGoal: 3, focusValue: 50, focusGoal: 50 }
+    ]
+});
+assert.strictEqual(balancedFlowComponent.classList.contains('performance-bar-chart'), true);
+assert.strictEqual(balancedFlowComponent.classList.contains('balanced-flow-chart'), true);
+assert.strictEqual(balancedFlowComponent.children.length, 3);
+assert.strictEqual(balancedFlowComponent.dataset.columns, '2');
+assert.strictEqual(balancedFlowComponent.children[1].children.length, 2);
+assert.strictEqual(balancedFlowComponent.children[1].children[0].children.length, 3);
+assert.strictEqual(balancedFlowComponent.children[1].children[1].children.length, 2);
+const taskLegendControl = balancedFlowComponent.children[0].children[0];
+const firstTaskSlot = balancedFlowComponent.children[1].children[1].children[0].children[0].children[0];
+taskLegendControl.listeners.click[0]();
+assert.strictEqual(taskLegendControl.attributes['aria-pressed'], 'false');
+assert.strictEqual(firstTaskSlot.classList.contains('is-series-hidden'), true);
+taskLegendControl.listeners.click[0]();
+assert.strictEqual(taskLegendControl.attributes['aria-pressed'], 'true');
+assert.strictEqual(firstTaskSlot.classList.contains('is-series-hidden'), false);
+
+const performanceBarComponent = components.createPerformanceBarChart({
+    documentRef: context.document,
+    entries: [{ label: 'LUN', detailTitle: 'Lunes', value: 3, goal: 2, summary: 'Meta alcanzada.' }],
+    series: [{
+        key: 'tasks',
+        label: 'Tareas',
+        valueKey: 'value',
+        goalKey: 'goal',
+        tone: 'tasks',
+        formatValue: value => value + ' tareas'
+    }]
+});
+assert.strictEqual(performanceBarComponent.classList.contains('performance-bar-chart'), true);
+assert.strictEqual(performanceBarComponent.children[2].children[0].textContent, 'Lunes');
 
 const prestigeStepComponent = components.createPrestigeStep({
     documentRef: context.document,
@@ -1606,6 +1765,8 @@ assert.strictEqual(streakRouteSummary.textContent, 'Nivel 7 de 12 · Mítica');
 
 let developerTodos = [];
 let developerHistory = {};
+let developerAnalyticsEvents = [];
+let developerSustainableProgress = { version: 1, days: {} };
 let developerDailyGoal = 2;
 let developerGamification = gamification.normalizeGamificationState({});
 let developerRenderCount = 0;
@@ -1634,6 +1795,11 @@ const developerController = developer.createDeveloperModeController({
     setCompletionHistory: value => {
         developerHistory = value;
     },
+    getAnalyticsEvents: () => developerAnalyticsEvents,
+    setAnalyticsEvents: value => {
+        developerAnalyticsEvents = value;
+    },
+    saveAnalyticsEvents: () => {},
     getDailyGoal: () => developerDailyGoal,
     setDailyGoal: value => {
         developerDailyGoal = value;
@@ -1661,6 +1827,11 @@ const developerController = developer.createDeveloperModeController({
     getLegendaryStreak: () => 0,
     getHistoryCount: () => 0,
     getPriorityLabel: priority => priority === 'urgent' ? 'Urgente' : 'Normal',
+    getSustainableProgress: () => JSON.parse(JSON.stringify(developerSustainableProgress)),
+    replaceSustainableProgress: value => {
+        developerSustainableProgress = JSON.parse(JSON.stringify(value));
+        return developerSustainableProgress;
+    },
     normalizeTaskTimeLimit: tasks.normalizeTaskTimeLimit,
     normalizeTimestamp: utils.normalizeTimestamp,
     getStartOfDay: utils.getStartOfDay,
@@ -1679,6 +1850,31 @@ assert.strictEqual(developerController.setStreak(2, 'perfect', false).days, 2);
 assert.strictEqual(developerTodos.some(todo => todo.text.startsWith('Racha dev')), true);
 developerController.clearDevStreak();
 assert.strictEqual(developerTodos.some(todo => todo.text.startsWith('Racha dev')), false);
+const simulatedHistory = developerController.simulateRandomHistory({
+    days: 14,
+    records: 12,
+    completionRate: 75,
+    profile: 'deadline',
+    dataType: 'mixed',
+    seed: 'module-test',
+    includeToday: false
+});
+assert.strictEqual(simulatedHistory.generatedEvents >= 12, true);
+assert.strictEqual(developerAnalyticsEvents.some(event => event.source === 'developer-history'), true);
+assert.strictEqual(Object.keys(developerSustainableProgress.days).length > 0, true);
+assert.strictEqual(developerController.clearRandomHistory() > 0, true);
+assert.strictEqual(developerAnalyticsEvents.some(event => event.source === 'developer-history'), false);
+developerController.simulateRandomHistory({
+    days: 7,
+    records: 4,
+    completionRate: 0,
+    profile: 'steady',
+    dataType: 'tasks',
+    seed: 'zero-completion',
+    includeToday: false
+});
+assert.strictEqual(developerAnalyticsEvents.some(event => event.type === 'task_completed'), false);
+developerController.clearRandomHistory();
 developerController.captureSnapshot('Base dev');
 assert.strictEqual(storage.readJson('dev-snapshot-test', null).label, 'Base dev');
 assert.strictEqual(developerRenderCount > 0, true);
@@ -1695,6 +1891,7 @@ const managedTodo = taskManager.create(' Tarea desde clase ', 'important', {
 });
 assert.strictEqual(managedTodo.text, 'Tarea desde clase');
 assert.strictEqual(managedTodo.dueDate, '2026-07-05');
+assert.throws(() => taskManager.create('x'.repeat(97), 'normal'), /hasta 96 caracteres/);
 taskManager.update(managedTodo, { dueDate: '' });
 assert.strictEqual(managedTodo.dueDate, null);
 
@@ -1811,8 +2008,12 @@ const analyticsProgressController = analyticsProgress.createAnalyticsProgressCon
     getDailyFocusGoalMinutes: () => 25
 });
 assert.strictEqual(analyticsProgress.normalizeFlowPeriod('unknown'), 'weekly');
+assert.strictEqual(analyticsProgress.normalizeFlowPeriod('monthly'), 'yearly');
+assert.strictEqual(analyticsProgress.normalizeFlowPeriod('quarterly'), 'yearly');
 assert.strictEqual(analyticsProgressController.getPercent(1, 2), 50);
 assert.strictEqual(analyticsProgressController.getFlowPeriodAnalytics('weekly').completionRate, 100);
+assert.strictEqual(analyticsProgressController.getFlowPeriodAnalytics('weekly').entries.length, 7);
+assert.strictEqual(analyticsProgressController.getFlowPeriodAnalytics('yearly').period, 'yearly');
 assert.strictEqual(analyticsProgressController.getPeriodComparison(
     { eligible: 2, completionRate: 75 },
     { eligible: 2, completionRate: 50 }
@@ -2033,5 +2234,64 @@ assert.strictEqual(browserTaskState.getDueDate(browserTodo), null);
 assert.strictEqual(browserAnalytics.getCompletionRate(1, 2), 50);
 browserUi.setText(fakeElement, 'Global listo');
 assert.strictEqual(fakeElement.textContent, 'Global listo');
+
+const cloudSyncKeys = storage.getCloudSyncKeys();
+assert.deepStrictEqual(
+    cloudSyncKeys.slice().sort(),
+    context.TasklyzenConfig.cloudStorageKeys.slice().sort()
+);
+assert.strictEqual(cloudSyncKeys.includes(context.TasklyzenConfig.storageKeys.todos), true);
+assert.strictEqual(cloudSyncKeys.includes(context.TasklyzenConfig.storageKeys.features), false);
+assert.strictEqual(cloudSyncKeys.includes(context.TasklyzenConfig.storageKeys.settings), false);
+assert.strictEqual(cloudSyncKeys.includes(context.TasklyzenConfig.storageKeys.developerSnapshot), false);
+assert.strictEqual(cloudSyncKeys.includes('tasklyzen-login-strategy'), false);
+
+const cloudDeletionKeys = storage.getCloudDeletionKeys();
+assert.strictEqual(cloudDeletionKeys.includes(context.TasklyzenConfig.storageKeys.features), true);
+assert.strictEqual(cloudDeletionKeys.includes(context.TasklyzenConfig.storageKeys.settings), true);
+assert.strictEqual(cloudDeletionKeys.includes(context.TasklyzenConfig.storageKeys.developerSnapshot), true);
+assert.strictEqual(cloudDeletionKeys.includes('tasklyzen-login-strategy'), false);
+assert.strictEqual(
+    context.TasklyzenConfig.localOnlyStorageKeys.includes(context.TasklyzenConfig.storageKeys.features),
+    true
+);
+
+storage.writeJson(context.TasklyzenConfig.storageKeys.todos, [{ id: 'cloud-scoped-todo', text: 'Solo Tasklyzen' }]);
+context.localStorage.setItem('tasklyzen-login-strategy', 'local');
+context.localStorage.setItem('foreign-local-key', 'no debe viajar');
+const scopedCloudWrites = [];
+const scopedDocument = {
+    get: () => Promise.resolve({ exists: false, data: () => ({}) }),
+    set(data, options) {
+        scopedCloudWrites.push({ data, options });
+        return Promise.resolve();
+    },
+    onSnapshot() {
+        return () => {};
+    }
+};
+const scopedDatabase = {
+    collection() {
+        return {
+            doc() {
+                return scopedDocument;
+            }
+        };
+    }
+};
+await storage.onAuthChange({ uid: 'cloud-scope-test' }, scopedDatabase);
+const scopedUpload = scopedCloudWrites.find(write => Object.prototype.hasOwnProperty.call(
+    write.data,
+    context.TasklyzenConfig.storageKeys.todos
+));
+assert.ok(scopedUpload);
+assert.strictEqual(Object.keys(scopedUpload.data).every(key => cloudSyncKeys.includes(key)), true);
+assert.strictEqual(Object.prototype.hasOwnProperty.call(scopedUpload.data, 'tasklyzen-login-strategy'), false);
+assert.strictEqual(Object.prototype.hasOwnProperty.call(scopedUpload.data, 'foreign-local-key'), false);
+
+await storage.removeMany([context.TasklyzenConfig.storageKeys.features]);
+const legacyFeatureCleanup = scopedCloudWrites.find(write => write.data
+    && write.data[context.TasklyzenConfig.storageKeys.features] === cloudDeleteToken);
+assert.ok(legacyFeatureCleanup);
 
 console.log('Tasklyzen module tests passed');

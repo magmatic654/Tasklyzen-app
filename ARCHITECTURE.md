@@ -15,7 +15,10 @@ diferida. Los modulos de dominio no deben leer variables internas de `main.js`.
 3. `tasklyzen-data-migration.js`.
 4. `firebase-env.js`, `tasklyzen-auth.js`, `tasklyzen-storage.js`.
 5. Utilidades y dominio de tareas: `tasklyzen-utils.js`,
-   `tasklyzen-composite-tasks.js`, `tasklyzen-tasks.js`.
+   `tasklyzen-composite-tasks.js`, `tasklyzen-tasks.js` y
+   `tasklyzen-task-lifecycle.js`, `tasklyzen-domain-events.js`,
+   `tasklyzen-task-effects.js` y
+   `tasklyzen-task-transactions.js`.
 6. UI y controladores: componentes, revision de vencidas, creacion, ajustes,
    experiencia inicial, audio, notificaciones y lista de tareas.
 7. Progreso sostenible, analítica, rachas, features locales, modo
@@ -28,13 +31,23 @@ toda la cadena de carga.
 
 ## Modulos principales
 
-- `tasklyzen-config.js`: claves de almacenamiento, limites y niveles de racha.
+- `tasklyzen-config.js`: claves de almacenamiento, lista blanca de sincronizacion,
+  limites y niveles de racha.
 - `tasklyzen-data-migration.js`: sanea estructuras persistidas retiradas antes
   de que la app las use.
 - `tasklyzen-storage.js`: Local-First y sincronizacion con Firestore.
 - `tasklyzen-utils.js`: fechas, timestamps y formato compartido.
 - `tasklyzen-tasks.js`: fabrica y reglas de tarea.
 - `tasklyzen-composite-tasks.js`: subtareas, hitos y estado derivado.
+- `tasklyzen-task-lifecycle.js`: regla pura para decidir si una eliminacion
+  conserva su huella analitica.
+- `tasklyzen-domain-events.js`: envelope, identidad y deduplicacion de eventos
+  de dominio antes de persistirlos.
+- `tasklyzen-task-effects.js`: coordinador inyectable de eventos analiticos y
+  creditos sostenibles derivados de completar, reactivar o eliminar.
+- `tasklyzen-task-transactions.js`: transacciones inyectables para completar,
+  reactivar y eliminar tareas; tambien sincroniza, reordena y actualiza hitos
+  y subtareas sin mezclar reglas en el runtime.
 - `tasklyzen-overdue-review.js`: revision y retencion de tareas vencidas.
 - `tasklyzen-settings.js`: preferencias, temas, sonido, estrategia de progreso,
   meta de enfoque, respaldo y borrado.
@@ -45,8 +58,9 @@ toda la cadena de carga.
 - `tasklyzen-task-ui.js`: lista, filtros, contadores y acciones de tarea.
 - `tasklyzen-sustainable-progress.js`: ledger diario de avance significativo,
   tiempo confirmado, sesiones intencionales, pausas y ritmo sostenible.
-- `tasklyzen-analytics-progress.js`: calculo y render de analitica/progreso por
-  tareas y tiempo.
+- `tasklyzen-analytics-progress.js`: calculo y render del rendimiento activo
+  por tareas y tiempo. La superficie retirada de tarjetas, donut y recap
+  mensual ya no forma parte del runtime; el panel conserva Semana y 12 meses.
 - `tasklyzen-gamification.js`: rachas, escudos y niveles de prestigio.
 - `tasklyzen-gamification-ui.js`: tarjeta, ruta y cuadricula de racha.
 - `tasklyzen-developer.js`: controles y simulaciones para desarrollo.
@@ -54,9 +68,14 @@ toda la cadena de carga.
 - `tasklyzen-oop.js`: `TaskState`, `TaskManager`, `AnalyticsEngine` y
   `UIController` para compatibilidad con el runtime clasico.
 - `components/tasklyzen-ui-components.js`: componentes vanilla que reciben
-  datos calculados y devuelven DOM sin consultar estado global.
+  datos calculados y devuelven DOM sin consultar estado global. El gráfico
+  reutilizable activo es `createPerformanceBarChart`.
 
 ## Persistencia y nube
+
+El inventario detallado, las fronteras de sincronizacion y las brechas de la
+fase F1 estan en `STORAGE_CONTRACT.md`. Antes de agregar una clave o cambiar
+una politica de nube, actualizar ese contrato.
 
 Las claves se concentran en `TasklyzenConfig.storageKeys`:
 
@@ -73,11 +92,14 @@ campos heredados dentro de gamificacion, eventos, estadisticas diarias,
 snapshots de desarrollo y vista de progreso. Conserva tareas, historial,
 metas, rachas, escudos, ajustes y analitica no relacionada.
 
-En Firestore, `tasklyzen-storage.js` aplica el mismo saneamiento al documento
-`users/{uid}`. Los campos actualizados se escriben con `merge`; las claves
-retiradas se eliminan mediante `FieldValue.delete()` cuando esta disponible.
-Asi la nube deja de rehidratar datos ya retirados sin reemplazar datos validos
-del usuario.
+En Firestore, `tasklyzen-storage.js` solo lee y escribe las claves declaradas
+en `TasklyzenConfig.cloudStorageKeys`. Los campos ajenos del documento no se
+rehidratan, sobrescriben ni eliminan. Los campos actualizados se escriben con
+`merge`; las claves retiradas se eliminan mediante `FieldValue.delete()` cuando
+esta disponible. La lista cloud es explicita: incluye datos canonicos y caches
+transitorias compatibles, pero excluye interfaz, desarrollo, ajustes y una
+sesion activa de Carrera. `cloudDeletionKeys` conserva el alcance historico
+para que el borrado total tambien limpie campos antiguos de Firestore.
 
 Reglas de seguridad:
 
@@ -90,6 +112,42 @@ Reglas de seguridad:
    entrada; el estado local y el sincronizado no deben competir.
 7. El borrado total usa `removeMany` para retirar todas las claves locales y
    remotas juntas. Al desaparecer `experience`, la guia vuelve a comenzar.
+8. `firestore.rules` es la frontera de autorizacion remota: limita el documento
+   `/users/{uid}` al UID autenticado y a la whitelist cloud. `FIREBASE_SECURITY.md`
+   documenta su despliegue y verificacion.
+
+## Contrato de ciclo de vida
+
+El contrato de mutaciones, eventos, caches y efectos de la Fase 2 esta en
+`DOMAIN_TRANSACTIONS.md`. Consultarlo antes de agregar una metrica o un efecto
+desde un handler de interfaz.
+
+`EVENT_CONTRACT.md` define la forma persistida de eventos, los tipos de
+subtarea y la frontera entre evento, cache analitica y ledger sostenible.
+
+Las decisiones siguientes fijan el comportamiento de datos antes de ampliar
+analitica o interfaz:
+
+1. Una tarea eliminada antes de vencer se considera descartada: se eliminan sus
+   eventos y creditos sostenibles del dia para que no infle progreso ni metas.
+2. Una tarea vencida conserva una huella de ciclo de vida al eliminarse. La
+   retencion aplica si ya estaba vencida o si sale por los flujos
+   `task_expired` y `task_auto_deleted`.
+3. Las reglas de retencion viven en `TasklyzenTaskLifecycle`; `TasklyzenTaskEffects`
+   aplica los creditos y eventos derivados. El runtime conserva persistencia y UI,
+   sin duplicar esas reglas.
+4. Un hito normal se completa al cerrar todos sus pasos obligatorios. En Modo
+   Carrera los cambios de subtareas se mantienen como borrador hasta confirmar
+   el cierre de la sesion o avanzar a la siguiente tarea.
+5. La entrada nueva usa `dueDate`; `timeLimitDays` se mantiene solo para leer
+   datos heredados hasta una migracion especifica.
+6. Los avisos externos se consideran disponibles mientras la aplicacion esta
+   cargada, incluso en segundo plano. Avisos con la pagina cerrada requieren
+   una futura decision e infraestructura de service worker.
+7. La sincronizacion cloud usa exclusivamente la whitelist explicita
+   `TasklyzenConfig.cloudStorageKeys`. Una clave nueva requiere decidir
+   explicitamente si debe viajar a la nube o solo puede borrarse de ella por
+   compatibilidad historica.
 
 ## Estilos
 
@@ -160,7 +218,9 @@ reglas de modo oscuro, `body.reduced-animations` y
 - Demos de Carrera: `tasklyzen-developer.js` invoca las APIs públicas
   `previewForDeveloper` y `TasklyzenAudio.playRaceCue`; no replica el render ni
   accede al estado interno del motor de audio.
-- `main.js`: solo orquestacion, persistencia de alto nivel y eventos cruzados.
+- `main.js`: coordina estado en memoria, persistencia de alto nivel y eventos
+  cruzados. La extraccion gradual de reglas puras y efectos de tareas sigue
+  siendo trabajo pendiente; no duplicar reglas nuevas dentro del runtime.
 
 ## Verificacion
 
@@ -168,6 +228,11 @@ reglas de modo oscuro, `body.reduced-animations` y
 npm test
 node --check main.js
 ```
+
+`npm test` ejecuta la suite unitaria de modulos y
+`tests/tasklyzen-integration.test.js`. Esta ultima cubre el contrato entre
+tareas, ciclo de vida, efectos analiticos y progreso sostenible para
+completar, reactivar, eliminar y actualizar pasos obligatorios de un hito.
 
 Checklist manual despues de cambios de arquitectura:
 

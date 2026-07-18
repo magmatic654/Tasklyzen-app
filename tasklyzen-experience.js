@@ -200,13 +200,13 @@
         function renderProgressGuide() {
             return [
                 '<div class="experience-intro">',
-                '<p>La barra superior resume lo esencial. Al tocar un indicador se abre su contexto dentro de Progreso.</p>',
+                '<p>La barra compacta inferior resume lo esencial. Al tocar un indicador se abre su contexto dentro de Progreso.</p>',
                 '<div class="experience-showcase experience-showcase--progress" role="img" aria-label="Ejemplo de la barra compacta y el panel de Progreso">',
                 '<div class="experience-mini-summary">',
                 '<strong>Hoy 2/3</strong><b><i></i></b><span class="experience-mini-flame" aria-hidden="true"></span><strong>4</strong><span>Semana <strong>67%</strong></span>',
                 '</div>',
                 '<div class="experience-mini-panel">',
-                '<nav><span class="is-active">Hoy</span><span>Rendimiento</span><span>Racha</span></nav>',
+                '<nav><span>Hoy</span><span class="is-active">Rendimiento</span><span>Racha</span></nav>',
                 '<div class="experience-mini-chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>',
                 '<p><strong>Tu mejor ritmo: viernes</strong><span>Reserva ahí tu tarea más importante.</span></p>',
                 '</div>',
@@ -241,38 +241,78 @@
             const mode = draftSettings.progressMode || 'tasks';
             const taskGoalVisible = mode !== 'focus';
             const focusGoalVisible = mode !== 'tasks';
-            const modeLabel = mode === 'focus' ? 'Enfoque' : mode === 'balanced' ? 'Equilibrado' : 'Avances';
-            const goalLabel = mode === 'focus'
-                ? draftSettings.dailyFocusGoalMinutes + ' min'
-                : mode === 'balanced'
-                    ? draftDailyGoal + ' tareas + ' + draftSettings.dailyFocusGoalMinutes + ' min'
-                    : draftDailyGoal + ' tareas';
+            const goalCopy = getGoalCopy(mode, draftDailyGoal, draftSettings.dailyFocusGoalMinutes);
 
             return [
-                '<fieldset class="experience-fieldset">',
-                '<legend>¿Qué debe representar un buen día?</legend>',
-                '<div class="experience-mode-list">',
-                renderChoice('experience-progress-mode', 'tasks', 'Avances', 'Tareas y pasos cerrados.', mode === 'tasks'),
-                renderChoice('experience-progress-mode', 'focus', 'Enfoque', 'Tiempo confirmado.', mode === 'focus'),
-                renderChoice('experience-progress-mode', 'balanced', 'Equilibrado', 'Avance y tiempo.', mode === 'balanced'),
+                '<section class="experience-goal-intro" aria-labelledby="experience-goal-title">',
+                '<p class="experience-goal-kicker">Tu ritmo, tus reglas</p>',
+                '<h3 id="experience-goal-title">Elige cómo quieres avanzar cada día</h3>',
+                '<p>Esta elección define qué cuenta en tu progreso. Podrás cambiarla después desde Ajustes.</p>',
+                '</section>',
+                '<fieldset class="experience-fieldset experience-goal-fieldset">',
+                '<legend>Quiero medir...</legend>',
+                '<div class="experience-mode-list experience-goal-mode-list">',
+                renderChoice('experience-progress-mode', 'tasks', 'Avances', 'Tareas y pasos obligatorios cerrados.', mode === 'tasks', 'Tareas + pasos'),
+                renderChoice('experience-progress-mode', 'focus', 'Enfoque', 'Minutos confirmados en Modo Carrera.', mode === 'focus', 'Tiempo útil'),
+                renderChoice('experience-progress-mode', 'balanced', 'Equilibrado', 'Avances y tiempo de enfoque.', mode === 'balanced', 'Ambos'),
                 '</div>',
                 '</fieldset>',
+                '<section class="experience-goal-settings" aria-labelledby="experience-goal-settings-title">',
+                '<div class="experience-goal-settings-heading">',
+                '<h3 id="experience-goal-settings-title">Ajusta tu meta</h3>',
+                '<p>Empieza con algo alcanzable; siempre podrás afinarlo.</p>',
+                '</div>',
                 '<div class="experience-goals">',
-                taskGoalVisible ? renderNumberField('dailyGoal', 'Tareas por día', draftDailyGoal, 1, 20, 1) : '',
+                taskGoalVisible ? renderNumberField('dailyGoal', 'Avances diarios', draftDailyGoal, 1, 20, 1) : '',
                 focusGoalVisible ? renderNumberField('dailyFocusGoalMinutes', 'Minutos de enfoque', draftSettings.dailyFocusGoalMinutes, 15, 240, 5) : '',
                 '</div>',
-                '<div class="experience-summary" aria-label="Resumen de personalización">',
-                '<span><small>Progreso</small><strong>' + modeLabel + '</strong></span>',
-                '<span><small>Meta</small><strong>' + goalLabel + '</strong></span>',
-                '<span><small>Ambiente</small><strong>' + (draftSettings.theme === 'dark' ? 'Oscuro' : 'Claro') + '</strong></span>',
-                '</div>'
+                '</section>',
+                renderGoalPreview(goalCopy)
             ].join('');
         }
 
-        function renderChoice(name, value, title, description, checked) {
+        function getGoalCopy(mode, dailyGoal, focusMinutes) {
+            const normalizedDailyGoal = normalizeDailyGoal(dailyGoal);
+            const normalizedFocusMinutes = Math.min(Math.max(Math.round(Number(focusMinutes) / 5) * 5 || 50, 15), 240);
+
+            if (mode === 'focus') {
+                return {
+                    label: 'Enfoque',
+                    headline: normalizedFocusMinutes + ' min de enfoque al día',
+                    detail: 'Sumarás tiempo confirmado al cerrar una sesión de Modo Carrera.'
+                };
+            }
+
+            if (mode === 'balanced') {
+                return {
+                    label: 'Equilibrado',
+                    headline: normalizedDailyGoal + ' avances y ' + normalizedFocusMinutes + ' min',
+                    detail: 'Combinarás tareas cerradas con tiempo confirmado de Modo Carrera.'
+                };
+            }
+
+            return {
+                label: 'Avances',
+                headline: normalizedDailyGoal + ' avances al día',
+                detail: 'Cada tarea cerrada o subtarea obligatoria completada suma un avance.'
+            };
+        }
+
+        function renderGoalPreview(goalCopy) {
+            return '<aside class="experience-goal-preview" data-experience-goal-preview aria-live="polite">'
+                + '<i class="experience-goal-preview-mark" aria-hidden="true"></i>'
+                + '<div><small>Así se contará tu día</small>'
+                + '<strong data-experience-goal-headline>' + goalCopy.headline + '</strong>'
+                + '<span data-experience-goal-detail>' + goalCopy.detail + '</span></div>'
+                + '<b data-experience-goal-label>' + goalCopy.label + '</b>'
+                + '</aside>';
+        }
+
+        function renderChoice(name, value, title, description, checked, example) {
             return '<label class="experience-choice' + (checked ? ' is-selected' : '') + '">'
                 + '<input type="radio" name="' + name + '" value="' + value + '"' + (checked ? ' checked' : '') + '>'
-                + '<span><strong>' + title + '</strong><small>' + description + '</small></span>'
+                + '<span><strong>' + title + '</strong><small>' + description + '</small>'
+                + (example ? '<b class="experience-choice-example">' + example + '</b>' : '') + '</span>'
                 + '</label>';
         }
 
@@ -455,6 +495,36 @@
             }
         }
 
+        function updateGoalPreview() {
+            if (!dom.body || typeof dom.body.querySelector !== 'function') {
+                return;
+            }
+
+            const preview = dom.body.querySelector('[data-experience-goal-preview]');
+            if (!preview) {
+                return;
+            }
+
+            const goalCopy = getGoalCopy(
+                draftSettings.progressMode || 'tasks',
+                draftDailyGoal,
+                draftSettings.dailyFocusGoalMinutes
+            );
+            const headline = preview.querySelector('[data-experience-goal-headline]');
+            const detail = preview.querySelector('[data-experience-goal-detail]');
+            const label = preview.querySelector('[data-experience-goal-label]');
+
+            if (headline) {
+                headline.textContent = goalCopy.headline;
+            }
+            if (detail) {
+                detail.textContent = goalCopy.detail;
+            }
+            if (label) {
+                label.textContent = goalCopy.label;
+            }
+        }
+
         function handleChange(event) {
             const target = event && event.target;
             if (!target) {
@@ -482,6 +552,7 @@
 
             if (setting === 'dailyGoal') {
                 draftDailyGoal = normalizeDailyGoal(target.value);
+                updateGoalPreview();
                 return;
             }
 
@@ -512,6 +583,7 @@
                 }
             } else if (setting === 'dailyFocusGoalMinutes') {
                 draftSettings[setting] = Math.min(Math.max(Math.round(Number(target.value) / 5) * 5, 15), 240);
+                updateGoalPreview();
             }
         }
 

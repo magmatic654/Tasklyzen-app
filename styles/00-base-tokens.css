@@ -150,6 +150,7 @@
 
     /* Tasks. */
     --task-normal: var(--brand-primary);
+    --task-milestone: var(--state-info);
     --task-important: var(--state-warning);
     --task-urgent: var(--state-danger);
     --task-on-time: var(--state-success);

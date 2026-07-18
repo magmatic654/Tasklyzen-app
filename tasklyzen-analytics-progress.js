@@ -10,7 +10,7 @@
  * - TasklyzenUiComponents por inyeccion o global; el resto llega por callbacks.
  */
 (function exposeTasklyzenAnalyticsProgress(global) {
-    const FLOW_PERIODS = ['weekly', 'monthly', 'quarterly'];
+    const FLOW_PERIODS = ['weekly', 'yearly'];
     const PROGRESS_VIEWS = ['today', 'analytics', 'streak'];
     const PROGRESS_VIEW_HEADINGS = {
         today: { kicker: 'Enfoque diario', title: 'Progreso de hoy' },
@@ -19,6 +19,10 @@
     };
 
     function normalizeFlowPeriod(value) {
+        if (value === 'monthly' || value === 'quarterly') {
+            return 'yearly';
+        }
+
         return FLOW_PERIODS.includes(value) ? value : 'weekly';
     }
 
@@ -243,8 +247,7 @@
 
         function getCurrentWeekToDateRange() {
             const today = getStartOfDay(new Date());
-            const mondayOffset = (today.getDay() + 6) % 7;
-            const start = addDays(today, -mondayOffset);
+            const start = addDays(today, -6);
 
             return {
                 start,
@@ -267,32 +270,35 @@
             };
         }
 
+        function getLatestTwelveMonthsRange() {
+            const today = getStartOfDay(new Date());
+            const start = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+
+            return {
+                start,
+                end: today,
+                startKey: formatDateKey(start),
+                endKey: formatDateKey(today)
+            };
+        }
+
         function getAnalyticsPeriodRange(period) {
             const normalizedPeriod = normalizeFlowPeriod(period);
 
-            if (normalizedPeriod === 'monthly') {
+            if (normalizedPeriod === 'yearly') {
                 return {
-                    ...getMonthRange(0),
+                    ...getLatestTwelveMonthsRange(),
                     period: normalizedPeriod,
-                    label: 'Mensual',
-                    captionSuffix: 'este mes'
-                };
-            }
-
-            if (normalizedPeriod === 'quarterly') {
-                return {
-                    ...getCurrentQuarterRange(),
-                    period: normalizedPeriod,
-                    label: 'Trimestral',
-                    captionSuffix: 'este trimestre'
+                    label: 'Últimos 12 meses',
+                    captionSuffix: 'en los últimos 12 meses'
                 };
             }
 
             return {
                 ...getCurrentWeekToDateRange(),
                 period: 'weekly',
-                label: 'Semanal',
-                captionSuffix: 'esta semana'
+                label: 'Últimos 7 días',
+                captionSuffix: 'en los últimos 7 días'
             };
         }
 
@@ -383,12 +389,10 @@
             });
             const buckets = [];
 
-            dailyEntries.forEach((entry, index) => {
-                const key = range.period === 'quarterly'
+            dailyEntries.forEach(entry => {
+                const key = range.period === 'yearly'
                     ? entry.dateKey.slice(0, 7)
-                    : range.period === 'monthly'
-                        ? 'week-' + Math.floor(index / 7)
-                        : entry.dateKey;
+                    : entry.dateKey;
                 let bucket = buckets.find(item => item.key === key);
 
                 if (!bucket) {
@@ -406,16 +410,16 @@
                 const first = bucket.entries[0];
                 const minutes = Math.round(bucket.focusMs / 60000);
                 const rewardedMinutes = Math.round(bucket.rewardedFocusMs / 60000);
-                const label = range.period === 'quarterly'
+                const label = range.period === 'yearly'
                     ? first.date.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '').toUpperCase()
-                    : range.period === 'monthly'
-                        ? 'S' + (index + 1)
-                        : first.date.toLocaleDateString('es-MX', { weekday: 'short' }).replace('.', '').toUpperCase();
+                    : first.date.toLocaleDateString('es-MX', { weekday: 'short' }).replace('.', '').toUpperCase();
 
                 return {
+                    date: first.date,
                     dateKey: first.dateKey,
                     label,
                     minutes,
+                    goal: bucket.goalMinutes,
                     goalHit: rewardedMinutes >= bucket.goalMinutes
                 };
             });
@@ -448,12 +452,9 @@
             let start;
             let maximumEnd;
 
-            if (normalizedPeriod === 'monthly') {
-                start = new Date(current.start.getFullYear(), current.start.getMonth() - 1, 1);
-                maximumEnd = new Date(start.getFullYear(), start.getMonth() + 1, 0);
-            } else if (normalizedPeriod === 'quarterly') {
-                start = new Date(current.start.getFullYear(), current.start.getMonth() - 3, 1);
-                maximumEnd = new Date(start.getFullYear(), start.getMonth() + 3, 0);
+            if (normalizedPeriod === 'yearly') {
+                start = new Date(current.start.getFullYear(), current.start.getMonth() - 12, 1);
+                maximumEnd = addDays(current.start, -1);
             } else {
                 start = addDays(current.start, -7);
                 maximumEnd = addDays(current.end, -7);
@@ -1541,8 +1542,7 @@
                 enfoque: {
                     modo: getProgressMode(),
                     semanal: getFocusPeriodAnalytics('weekly'),
-                    mensual: getFocusPeriodAnalytics('monthly'),
-                    trimestral: getFocusPeriodAnalytics('quarterly')
+                    anual: getFocusPeriodAnalytics('yearly')
                 },
                 metaSugerida: getProgressGoalRecommendation(),
                 riesgoRacha: getStreakRiskInsight(),
@@ -1653,296 +1653,163 @@
             element.appendChild(createInfoTooltip(text));
         }
 
-        function getMonthlyPerformanceFocus(monthAnalytics) {
-            if (monthAnalytics.totalActivities === 0) {
-                return {
-                    tone: 'empty',
-                    title: 'Aún no hay lectura suficiente',
-                    message: 'Completa algunas tareas para que la app detecte tu ritmo real y pueda comparar avances.',
-                    action: 'Primer objetivo: cierra una actividad pequeña hoy.'
-                };
-            }
-
-            if (monthAnalytics.completedPercent >= 80) {
-                return {
-                    tone: 'strong',
-                    title: 'Rendimiento fuerte',
-                    message: 'La mayoría de tus actividades ya está cerrada. Mantén este ritmo y evita agregar más carga innecesaria.',
-                    action: 'Siguiente paso: protege tu racha con una tarea clave.'
-                };
-            }
-
-            if (monthAnalytics.notCompletedPercent >= 45) {
-                return {
-                    tone: 'alert',
-                    title: 'Demasiado pendiente',
-                    message: 'El porcentaje pendiente está alto. Conviene reagendar, eliminar lo que no aporta o atacar primero lo urgente.',
-                    action: 'Siguiente paso: reduce la lista a 1 prioridad real.'
-                };
-            }
-
-            if (monthAnalytics.habitCount > 0 && monthAnalytics.habitsPercent < 50) {
-                return {
-                    tone: 'habit',
-                    title: 'Hábitos débiles',
-                    message: 'Tus hábitos necesitan más consistencia. Baja el tamaño del hábito o ponlo al inicio del día.',
-                    action: 'Siguiente paso: completa un hábito antes de crear tareas nuevas.'
-                };
-            }
-
-            return {
-                tone: 'steady',
-                title: 'Ritmo estable',
-                message: 'Tu mes tiene avance, pero todavía hay margen para cerrar pendientes sin subir la carga.',
-                action: 'Siguiente paso: termina una actividad pendiente antes de iniciar otra.'
-            };
-        }
-
-        function renderPerformanceSummary(element, monthAnalytics, compact) {
-            if (!element) {
-                return;
-            }
-
-            components.renderPerformanceSummary(element, {
-                documentRef,
-                focus: getMonthlyPerformanceFocus(monthAnalytics),
-                compact
-            });
-        }
-
-        function renderMonthlyCompletionDonut(container, monthAnalytics, compact) {
-            if (!container) {
-                return;
-            }
-
-            components.renderMonthlyCompletionDonut(container, {
-                documentRef,
-                monthAnalytics,
-                compact
-            });
-        }
-        function renderAnalyticsTooltips() {
-            return;
-        }
-
-        function renderMonthlyMetricCards(monthAnalytics) {
-            if (!dom.monthlyMetrics) {
-                return;
-            }
-
-            const analytics = monthAnalytics || getMonthlyAnalytics(0);
-            const cards = [
-                {
-                    value: analytics.tasksCreated,
-                    label: 'Tareas creadas',
-                    detail: analytics.habitsCreated + ' ' + getPluralLabel(analytics.habitsCreated, 'hábito creado', 'hábitos creados')
-                },
-                {
-                    value: analytics.totalActivities,
-                    label: 'Actividades registradas',
-                    detail: analytics.completedActivities + ' completada' + (analytics.completedActivities === 1 ? '' : 's')
-                },
-                {
-                    value: analytics.habitsPercent + '%',
-                    label: 'Hábitos día a día',
-                    detail: analytics.habitsCompletedTotal + ' completado' + (analytics.habitsCompletedTotal === 1 ? '' : 's') + ' en ' + analytics.habitCompletedDays + ' día' + (analytics.habitCompletedDays === 1 ? '' : 's')
-                },
-                {
-                    value: analytics.completedPercent + '%',
-                    label: 'Actividades completadas',
-                    detail: analytics.notCompletedPercent + '% sin completar'
-                }
-            ];
-
-            dom.monthlyMetrics.innerHTML = '';
-            cards.forEach(card => {
-                dom.monthlyMetrics.appendChild(components.createMonthlyMetricCard({
-                    documentRef,
-                    value: card.value,
-                    label: card.label,
-                    detail: card.detail
-                }));
-            });
-        }
-
-        function renderMonthlyRecap(monthAnalytics) {
-            if (!dom.monthlyRecapTitle || !dom.monthlyRecapSummary || !dom.monthlyRecapStats) {
-                return;
-            }
-
-            const analytics = monthAnalytics || getMonthlyAnalytics(0);
-            const hasData = analytics.totalActivities > 0;
-            const stats = hasData
-                ? [
-                    { value: analytics.completedPercent + '%', label: 'completado' },
-                    { value: analytics.habitsPercent + '%', label: 'hábitos' },
-                    { value: analytics.notCompletedPercent + '%', label: 'pendiente' }
-                ]
-                : [
-                    { value: 0, label: 'actividades' },
-                    { value: 0, label: 'hábitos' },
-                    { value: 0, label: 'pendiente' }
-                ];
-
-            dom.monthlyRecapTitle.textContent = hasData ? 'Resumen de ' + analytics.label : 'Crea tu primera tarea';
-            dom.monthlyRecapSummary.textContent = hasData
-                ? analytics.label + ': ' + analytics.tasksCreated + ' ' + getPluralLabel(analytics.tasksCreated, 'tarea creada', 'tareas creadas') + ', ' + analytics.totalActivities + ' ' + getPluralLabel(analytics.totalActivities, 'actividad registrada', 'actividades registradas') + '. ' + analytics.actionMessage + ' Cada tarea completada te acerca a ser mejor cada día.'
-                : 'Crea tu primera tarea para ver un análisis mensual claro y útil.';
-            dom.monthlyRecapStats.innerHTML = '';
-            stats.forEach(stat => {
-                dom.monthlyRecapStats.appendChild(components.createMonthlyRecapStat({
-                    documentRef,
-                    value: stat.value,
-                    label: stat.label
-                }));
-            });
-        }
-
-        function renderMonthlyAnalytics() {
-            const monthAnalytics = getMonthlyAnalytics(0);
-
-            renderMonthlyMetricCards(monthAnalytics);
-
-            if (dom.monthlyComparison) {
-                renderMonthlyCompletionDonut(dom.monthlyComparison, monthAnalytics, false);
-            }
-
-            if (dom.monthlyPerformanceSummary) {
-                renderPerformanceSummary(dom.monthlyPerformanceSummary, monthAnalytics, false);
-            }
-
-            renderMonthlyRecap(monthAnalytics);
-
-            if (dom.monthlyHistoryList) {
-                dom.monthlyHistoryList.innerHTML = '';
-            }
-        }
-
         function shouldShowFlowAxisLabel(entry, index, total, period) {
-            const date = new Date(entry.dateKey + 'T00:00:00');
-
-            if (total <= 10 || index === 0 || index === total - 1) {
-                return true;
-            }
-
-            if (period === 'monthly') {
-                return date.getDate() % 5 === 0;
-            }
-
-            if (period === 'quarterly') {
-                return date.getDate() === 1;
-            }
-
-            return index % 2 === 0;
+            return total <= 12 || index === 0 || index === total - 1;
         }
 
         function getFlowAxisLabel(entry, period) {
             const date = new Date(entry.dateKey + 'T00:00:00');
 
-            if (period === 'monthly') {
-                return String(date.getDate());
-            }
-
-            if (period === 'quarterly') {
+            if (period === 'yearly') {
                 return getDateLabel(entry.dateKey, { month: 'short' }).toLocaleUpperCase('es-MX');
             }
 
-            return getDateLabel(entry.dateKey, { weekday: 'short' }).toLocaleUpperCase('es-MX');
+            return getDateLabel(entry.dateKey, { weekday: 'short', day: 'numeric' })
+                .replace('.', '')
+                .toLocaleUpperCase('es-MX');
         }
 
-        function renderWeeklyFlowChart(flowData, targetElement) {
-            const chartElement = targetElement || dom.weeklyFlowChart;
-            const flow = flowData || getFlowPeriodAnalytics('weekly');
+        function getFlowChartEntries(flow) {
+            const entries = Array.isArray(flow && flow.entries) ? flow.entries : [];
 
-            if (!chartElement) {
-                return;
-            }
+            if (flow && flow.period === 'yearly') {
+                const monthly = new Map();
 
-            const entries = flow.entries && flow.entries.length > 0 ? flow.entries : [];
-            const maxValue = Math.max(...entries.map(entry => entry.completed), getDailyGoal(), 1);
-            const width = 360;
-            const height = 120;
-            const leftPadding = 20;
-            const rightPadding = 20;
-            const topPadding = 16;
-            const bottomPadding = 26;
-            const usableWidth = width - leftPadding - rightPadding;
-            const usableHeight = height - topPadding - bottomPadding;
-            const compactDots = entries.length > 45;
-            const points = entries.map((entry, index) => {
-                const x = leftPadding + (usableWidth / Math.max(entries.length - 1, 1)) * index;
-                const y = topPadding + usableHeight - (entry.completed / maxValue) * usableHeight;
+                entries.forEach(entry => {
+                    const key = entry.dateKey.slice(0, 7);
+                    const current = monthly.get(key) || {
+                        date: new Date(entry.date.getFullYear(), entry.date.getMonth(), 1),
+                        dateKey: key + '-01',
+                        completed: 0,
+                        goal: 0
+                    };
 
-                return {
-                    x,
-                    y,
-                    entry,
-                    goalHit: entry.completed >= getDailyGoal(),
-                    radius: compactDots ? (entry.completed > 0 ? 2.8 : 2.1) : (entry.completed > 0 ? 4.6 : 3.4)
-                };
-            });
-            const axisLabels = points
-                .map((point, index) => shouldShowFlowAxisLabel(point.entry, index, entries.length, flow.period)
-                    ? { x: point.x, y: height - 7, label: getFlowAxisLabel(point.entry, flow.period) }
-                    : null)
-                .filter(Boolean);
-            const goalY = topPadding + usableHeight - (Math.min(getDailyGoal(), maxValue) / maxValue) * usableHeight;
-            const chart = components.createWeeklyFlowChart({
-                documentRef,
-                flow,
-                entries,
-                points,
-                axisLabels,
-                width,
-                height,
-                leftPadding,
-                rightPadding,
-                goalY,
-                ariaLabel: 'Línea de tareas completadas en periodo ' + flow.label.toLowerCase()
-            });
-
-            chartElement.innerHTML = '';
-            chartElement.className = chart.className;
-            Array.from(chart.children || []).forEach(child => chartElement.appendChild(child));
-        }
-        function renderDataAnalyticsSurfaces(clarity, monthAnalytics, flowAnalytics) {
-            renderWeeklyFlowChart(flowAnalytics || getFlowPeriodAnalytics('weekly'));
-        }
-
-        function renderFocusAnalytics(focusAnalytics) {
-            if (!focusAnalytics) {
-                return;
-            }
-
-            if (dom.analyticsFocusTotal) {
-                dom.analyticsFocusTotal.textContent = formatFocusDuration(focusAnalytics.focusMs);
-            }
-
-            if (dom.analyticsFocusSessions) {
-                dom.analyticsFocusSessions.textContent = String(focusAnalytics.sustainableSessions);
-            }
-
-            if (dom.analyticsFocusAverage) {
-                dom.analyticsFocusAverage.textContent = formatFocusDuration(focusAnalytics.averageFocusMs);
-            }
-
-            if (dom.focusFlowChart && components && typeof components.createFocusFlowChart === 'function') {
-                const chart = components.createFocusFlowChart({
-                    documentRef,
-                    entries: focusAnalytics.chartEntries,
-                    goalMinutes: Math.max(Number(getDailyFocusGoalMinutes()) || 50, 15),
-                    ariaLabel: 'Tiempo de enfoque confirmado en el periodo'
+                    current.completed += Number(entry.completed) || 0;
+                    current.goal += getDailyGoal();
+                    monthly.set(key, current);
                 });
 
-                dom.focusFlowChart.innerHTML = '';
-                dom.focusFlowChart.className = chart.className;
-                Array.from(chart.children || []).forEach(child => dom.focusFlowChart.appendChild(child));
-                if (chart.dataset && chart.dataset.empty) {
-                    dom.focusFlowChart.dataset.empty = chart.dataset.empty;
-                } else {
-                    delete dom.focusFlowChart.dataset.empty;
-                }
+                return Array.from(monthly.values());
             }
+
+            return entries.map(entry => ({
+                ...entry,
+                goal: getDailyGoal()
+            }));
+        }
+
+        function getPerformanceChartEntries(flowAnalytics, focusAnalytics, progressMode) {
+            const focusByDate = new Map((focusAnalytics && Array.isArray(focusAnalytics.chartEntries) ? focusAnalytics.chartEntries : [])
+                .map(entry => [entry.dateKey, entry]));
+            const periodIsMonthly = flowAnalytics.period === 'yearly';
+            const periodUnit = periodIsMonthly ? 'mes' : 'día';
+
+            return getFlowChartEntries(flowAnalytics).map(entry => {
+                const focus = focusByDate.get(entry.dateKey) || {};
+                const taskValue = Math.max(Number(entry.completed) || 0, 0);
+                const taskGoal = Math.max(Number(entry.goal) || 0, 0);
+                const focusValue = Math.max(Number(focus.minutes) || 0, 0);
+                const focusGoal = Math.max(Number(focus.goal) || Number(getDailyFocusGoalMinutes()) || 50, 15);
+                const detailTitle = getDateLabel(entry.dateKey, periodIsMonthly
+                    ? { month: 'long', year: 'numeric' }
+                    : { weekday: 'long', day: 'numeric', month: 'short' });
+                let summary;
+
+                if (progressMode === 'focus') {
+                    summary = focusValue === 0
+                        ? 'Sin enfoque confirmado en este ' + periodUnit + '.'
+                        : focusValue >= focusGoal
+                            ? 'Meta de enfoque alcanzada en este ' + periodUnit + '.'
+                            : formatFocusDuration(focusValue * 60000) + ' de ' + formatFocusDuration(focusGoal * 60000) + ' de enfoque planeado.';
+                } else if (progressMode === 'balanced') {
+                    summary = taskValue === 0 && focusValue === 0
+                        ? 'Sin avance registrado en este ' + periodUnit + '.'
+                        : taskValue >= taskGoal && focusValue >= focusGoal
+                            ? 'Tareas y enfoque cumplieron su meta en este ' + periodUnit + '.'
+                            : taskValue > 0 && focusValue > 0
+                                ? taskValue + ' tarea' + (taskValue === 1 ? '' : 's') + ' y ' + focusValue + ' min: un avance combinado.'
+                                : taskValue > 0
+                                    ? taskValue + ' tarea' + (taskValue === 1 ? '' : 's') + ' cerrada' + (taskValue === 1 ? '' : 's') + '. Falta registrar un bloque de enfoque.'
+                                    : focusValue + ' min de enfoque. Elige una tarea concreta para cerrar.';
+                } else {
+                    summary = taskValue === 0
+                        ? 'Sin tareas cerradas en este ' + periodUnit + '.'
+                        : taskValue >= taskGoal
+                            ? 'Meta de tareas alcanzada en este ' + periodUnit + '.'
+                            : taskValue + ' de ' + taskGoal + ' tareas de tu meta.';
+                }
+
+                return {
+                    dateKey: entry.dateKey,
+                    label: getFlowAxisLabel(entry, flowAnalytics.period),
+                    detailTitle,
+                    summary,
+                    taskValue,
+                    taskGoal,
+                    focusValue,
+                    focusGoal
+                };
+            });
+        }
+
+        function getPerformanceChartSeries(progressMode) {
+            const taskSeries = {
+                key: 'tasks',
+                label: 'Tareas',
+                valueKey: 'taskValue',
+                goalKey: 'taskGoal',
+                tone: 'tasks',
+                formatValue: value => value + ' tarea' + (value === 1 ? '' : 's')
+            };
+            const focusSeries = {
+                key: 'focus',
+                label: 'Enfoque',
+                valueKey: 'focusValue',
+                goalKey: 'focusGoal',
+                tone: 'focus',
+                formatValue: value => value + ' min'
+            };
+
+            if (progressMode === 'focus') {
+                return [focusSeries];
+            }
+
+            return progressMode === 'balanced' ? [taskSeries, focusSeries] : [taskSeries];
+        }
+
+        function replaceChart(targetElement, chart) {
+            if (!targetElement || !chart) {
+                return;
+            }
+
+            targetElement.innerHTML = '';
+            targetElement.className = chart.className;
+            Array.from(chart.children || []).forEach(child => targetElement.appendChild(child));
+
+            if (chart.dataset && chart.dataset.empty) {
+                targetElement.dataset.empty = chart.dataset.empty;
+            } else {
+                delete targetElement.dataset.empty;
+            }
+        }
+
+        function renderPerformanceStoryChart(flowAnalytics, focusAnalytics, progressMode) {
+            if (!dom.weeklyFlowChart || !components || typeof components.createPerformanceBarChart !== 'function') {
+                return;
+            }
+            const chart = components.createPerformanceBarChart({
+                documentRef,
+                entries: getPerformanceChartEntries(flowAnalytics, focusAnalytics, progressMode),
+                series: getPerformanceChartSeries(progressMode),
+                className: progressMode === 'balanced' ? 'is-balanced' : 'is-single-series',
+                ariaLabel: progressMode === 'balanced'
+                    ? 'Tareas y enfoque en ' + flowAnalytics.label.toLowerCase()
+                    : progressMode === 'focus'
+                        ? 'Enfoque confirmado en ' + flowAnalytics.label.toLowerCase()
+                        : 'Tareas cerradas en ' + flowAnalytics.label.toLowerCase()
+            });
+
+            replaceChart(dom.weeklyFlowChart, chart);
         }
 
         function renderAnalyticsPanel() {
@@ -1963,14 +1830,14 @@
                 : progressMode === 'balanced'
                     ? Math.round((taskPercent + focusAnalytics.goalPercent) / 2)
                     : taskPercent;
-            const pendingPercent = flowAnalytics.eligible > 0 ? 100 - completedPercent : 0;
+            const periodLabel = flowAnalytics.period === 'yearly' ? 'Tus últimos 12 meses' : 'Tu semana en una mirada';
 
             if (progressMode === 'focus') {
                 const bestFocusEntry = focusAnalytics.chartEntries.reduce((best, entry) => (
                     !best || entry.minutes > best.minutes ? entry : best
                 ), null);
 
-                action = focusAnalytics.focusMs === 0
+                action = focusAnalytics.rewardedFocusMs < 60000
                     ? {
                         title: 'Empieza con 15 minutos reales',
                         message: 'Abre Modo Carrera, trabaja a tu ritmo y confirma el resultado al terminar.'
@@ -2024,38 +1891,40 @@
                         : flowAnalytics.completed + ' de ' + flowAnalytics.eligible + ' tarea' + (flowAnalytics.eligible === 1 ? '' : 's') + ' del periodo';
             }
 
+            if (dom.analyticsPanelTitle) {
+                dom.analyticsPanelTitle.textContent = periodLabel;
+            }
+
+            if (dom.analyticsTrendTitle) {
+                dom.analyticsTrendTitle.textContent = progressMode === 'focus'
+                    ? 'Enfoque frente a la meta por ' + (flowAnalytics.period === 'yearly' ? 'mes' : 'día')
+                    : progressMode === 'balanced'
+                        ? 'Tareas y enfoque frente a sus metas'
+                        : 'Tareas frente a la meta por ' + (flowAnalytics.period === 'yearly' ? 'mes' : 'día');
+            }
+
+            if (dom.analyticsChartKey) {
+                dom.analyticsChartKey.textContent = progressMode === 'balanced'
+                    ? 'Altura: avance hacia la meta. Toca una fecha para compararlos'
+                    : progressMode === 'focus'
+                        ? 'Altura: avance hacia la meta. Toca una barra para leer el enfoque'
+                        : 'Altura: avance hacia la meta. Toca una barra para leer el avance';
+                dom.analyticsChartKey.classList.add('is-balance-key');
+            }
+
+            if (dom.analyticsSummaryContext) {
+                dom.analyticsSummaryContext.textContent = progressMode === 'focus'
+                    ? (focusAnalytics.rewardedFocusMs >= 60000
+                        ? focusAnalytics.sustainableSessions + ' sesión' + (focusAnalytics.sustainableSessions === 1 ? '' : 'es') + ' con avance confirmado'
+                        : 'Inicia una Carrera para registrar enfoque')
+                    : progressMode === 'balanced'
+                        ? flowAnalytics.completed + ' cierres · ' + formatFocusDuration(focusAnalytics.rewardedFocusMs) + ' de enfoque'
+                        : flowAnalytics.created + ' creadas · ' + flowAnalytics.completed + ' cerradas';
+            }
+
             if (dom.analyticsPeriodComparison) {
                 dom.analyticsPeriodComparison.textContent = comparison.label;
                 dom.analyticsPeriodComparison.className = 'comparison-' + comparison.tone;
-            }
-
-            if (dom.analyticsCompletionBar) {
-                dom.analyticsCompletionBar.style.width = completedPercent + '%';
-            }
-
-            if (dom.analyticsProgressBar) {
-                dom.analyticsProgressBar.setAttribute('aria-valuenow', String(completedPercent));
-                dom.analyticsProgressBar.setAttribute('aria-valuetext', completedPercent + '% completado');
-            }
-
-            if (dom.analyticsBalanceCompleted) {
-                dom.analyticsBalanceCompleted.style.width = completedPercent + '%';
-            }
-
-            if (dom.analyticsBalancePending) {
-                dom.analyticsBalancePending.style.width = pendingPercent + '%';
-            }
-
-            if (dom.analyticsBalanceLabel) {
-                dom.analyticsBalanceLabel.textContent = flowAnalytics.eligible > 0
-                    ? flowAnalytics.completed + ' completadas · ' + flowAnalytics.notCompleted + ' sin completar'
-                    : 'Sin actividad';
-            }
-
-            if (dom.analyticsBalanceTrack) {
-                dom.analyticsBalanceTrack.setAttribute('aria-label', flowAnalytics.eligible > 0
-                    ? flowAnalytics.completed + ' tareas completadas y ' + flowAnalytics.notCompleted + ' sin completar'
-                    : 'Sin tareas registradas en el periodo');
             }
 
             if (dom.analyticsActionTitle) {
@@ -2090,8 +1959,7 @@
                 dom.analyticsHabitCount.textContent = flowAnalytics.habitCompleted + ' de ' + flowAnalytics.habitEligible + ' hábito' + (flowAnalytics.habitEligible === 1 ? '' : 's');
             }
 
-            renderDataAnalyticsSurfaces(null, null, flowAnalytics);
-            renderFocusAnalytics(focusAnalytics);
+            renderPerformanceStoryChart(flowAnalytics, focusAnalytics, progressMode);
         }
 
         function getDayOfYear() {
@@ -2494,12 +2362,6 @@
             updateDailyGoal,
             updateFocusGoal,
             renderRecommendedGoal,
-            renderPerformanceSummary,
-            renderMonthlyCompletionDonut,
-            renderAnalyticsTooltips,
-            renderMonthlyAnalytics,
-            renderWeeklyFlowChart,
-            renderDataAnalyticsSurfaces,
             renderAnalyticsPanel,
             getDailyMission,
             getDailyMissionSnapshot,

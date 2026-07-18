@@ -172,6 +172,9 @@
         const content = createElement('div', { documentRef, className: 'todo-content task-compact-row' });
         const details = createElement('div', { documentRef, className: 'todo-details' });
         const metaBadges = createElement('div', { documentRef, className: 'todo-meta' });
+        const taskCopy = createElement('div', { documentRef, className: 'task-copy' });
+        const compactMeta = createElement('div', { documentRef, className: 'task-compact-meta' });
+        const controls = createElement('div', { documentRef, className: 'task-card-controls' });
         const text = createButton({
             documentRef,
             className: 'todo-text todo-title-button',
@@ -241,6 +244,18 @@
             }));
         });
 
+        (Array.isArray(config.compactMeta) ? config.compactMeta : []).forEach(meta => {
+            if (!meta || !meta.text) {
+                return;
+            }
+
+            compactMeta.appendChild(createElement('span', {
+                documentRef,
+                className: meta.className || '',
+                text: meta.text
+            }));
+        });
+
         actionMenu.append(
             createButton({
                 documentRef,
@@ -265,28 +280,41 @@
         );
         quickActions.append(menuButton, actionMenu);
 
-        content.appendChild(checkButton);
-        content.appendChild(text);
+        taskCopy.appendChild(text);
 
-        if (config.progressLabel) {
-            content.appendChild(createBadge({
-                documentRef,
-                className: 'composite-progress-badge',
-                text: config.progressLabel
-            }));
+        if (compactMeta.childElementCount > 0) {
+            taskCopy.appendChild(compactMeta);
         }
 
-        if (config.essentialBadge) {
-            content.appendChild(createBadge({
+        if (config.compositeProgress && config.compositeProgress.label) {
+            const progress = config.compositeProgress;
+            const total = Math.max(Number(progress.total) || 0, 1);
+            const completed = Math.min(Math.max(Number(progress.completed) || 0, 0), total);
+            const indicator = createElement('div', {
                 documentRef,
-                className: classNames(['task-essential-badge', config.essentialBadge.className]),
-                text: config.essentialBadge.text,
-                title: config.essentialBadge.title
-            }));
+                className: 'task-composite-progress',
+                attributes: {
+                    role: 'progressbar',
+                    'aria-label': progress.ariaLabel || progress.label,
+                    'aria-valuemin': '0',
+                    'aria-valuemax': String(total),
+                    'aria-valuenow': String(completed)
+                }
+            });
+            const track = createElement('i', { documentRef, className: 'task-composite-progress-track' });
+            const fill = createElement('b', { documentRef, className: 'task-composite-progress-fill' });
+
+            fill.style.width = Math.round((completed / total) * 100) + '%';
+            track.appendChild(fill);
+            indicator.append(
+                createElement('span', { documentRef, text: progress.label }),
+                track
+            );
+            taskCopy.appendChild(indicator);
         }
 
-        content.appendChild(quickActions);
-        content.appendChild(expandButton);
+        controls.append(quickActions, expandButton);
+        content.append(checkButton, taskCopy, controls);
         details.append(metaBadges);
 
         if (config.compositeDetails) {
@@ -299,26 +327,41 @@
     function createSubtaskList(options) {
         const config = options || {};
         const documentRef = getDocumentRef(config.documentRef);
-        const section = createElement('section', { documentRef, className: 'composite-details' });
+        const section = createElement('section', {
+            documentRef,
+            className: config.composite ? 'composite-details' : 'composite-details simple-task-subtask-action'
+        });
         const heading = createElement('div', { documentRef, className: 'composite-details-heading' });
         const title = createElement('strong', { documentRef, text: config.progressLabel || 'Subtareas' });
         const list = createElement('ol', { documentRef, className: 'subtask-list' });
         const editingSubtaskId = config.editingSubtaskId || '';
         const confirmation = config.confirmation || null;
 
-        heading.append(
-            title,
-            createButton({
-                documentRef,
-                className: 'subtask-add-trigger',
-                text: 'Añadir subtarea',
-                dataset: { action: 'add-subtask-form' },
-                attributes: { 'aria-expanded': Boolean(config.adding).toString() }
-            })
-        );
+        const addSubtaskButton = createButton({
+            documentRef,
+            className: 'subtask-add-trigger',
+            text: 'Añadir subtarea',
+            dataset: { action: 'add-subtask-form' },
+            attributes: {
+                'aria-expanded': Boolean(config.adding).toString(),
+                'aria-label': config.composite ? 'Añadir subtarea' : 'Añadir subtarea y convertir en hito'
+            }
+        });
+
+        if (config.composite) {
+            heading.appendChild(title);
+        }
+
+        if (!config.adding) {
+            heading.appendChild(addSubtaskButton);
+        }
 
         (Array.isArray(config.subtasks) ? config.subtasks : []).forEach((subtask, index, source) => {
             const isEditing = editingSubtaskId === subtask.id;
+            const previousSubtask = source[index - 1];
+            const nextSubtask = source[index + 1];
+            const canMoveUp = Boolean(previousSubtask) && Boolean(previousSubtask.completed) === Boolean(subtask.completed);
+            const canMoveDown = Boolean(nextSubtask) && Boolean(nextSubtask.completed) === Boolean(subtask.completed);
             const item = createElement('li', {
                 documentRef,
                 className: ['subtask-item', subtask.completed ? 'completed' : '', subtask.optional ? 'optional' : '', isEditing ? 'is-editing' : ''],
@@ -344,7 +387,8 @@
                     className: 'subtask-edit-input',
                     attributes: {
                         value: subtask.title,
-                        'aria-label': 'Editar título de subtarea'
+                        maxlength: config.titleMaxLength || 96,
+                        'aria-label': 'Editar título de subtarea, máximo ' + (config.titleMaxLength || 96) + ' caracteres'
                     }
                 })
                 : createElement('span', { documentRef, className: 'subtask-title', text: subtask.title });
@@ -366,8 +410,8 @@
                 if (subtask.optional) meta.appendChild(createBadge({ documentRef, className: 'subtask-optional-badge', text: 'Opcional' }));
                 actions.append(
                     createButton({ documentRef, className: 'subtask-action edit', text: '', title: 'Editar', dataset: { action: 'edit-subtask', subtaskId: subtask.id }, attributes: { 'aria-label': 'Editar subtarea: ' + subtask.title } }),
-                    createButton({ documentRef, className: 'subtask-action move-up', text: '', title: 'Subir', disabled: index === 0, dataset: { action: 'move-subtask-up', subtaskId: subtask.id }, attributes: { 'aria-label': 'Subir subtarea: ' + subtask.title } }),
-                    createButton({ documentRef, className: 'subtask-action move-down', text: '', title: 'Bajar', disabled: index === source.length - 1, dataset: { action: 'move-subtask-down', subtaskId: subtask.id }, attributes: { 'aria-label': 'Bajar subtarea: ' + subtask.title } }),
+                    createButton({ documentRef, className: 'subtask-action move-up', text: '', title: 'Subir', disabled: !canMoveUp, dataset: { action: 'move-subtask-up', subtaskId: subtask.id }, attributes: { 'aria-label': 'Subir subtarea: ' + subtask.title } }),
+                    createButton({ documentRef, className: 'subtask-action move-down', text: '', title: 'Bajar', disabled: !canMoveDown, dataset: { action: 'move-subtask-down', subtaskId: subtask.id }, attributes: { 'aria-label': 'Bajar subtarea: ' + subtask.title } }),
                     createButton({ documentRef, className: 'subtask-action danger delete', text: '', title: 'Eliminar', dataset: { action: 'delete-subtask', subtaskId: subtask.id }, attributes: { 'aria-label': 'Eliminar subtarea: ' + subtask.title } })
                 );
             }
@@ -377,7 +421,15 @@
 
         const form = createElement('div', { documentRef, className: 'inline-subtask-form' });
         form.hidden = !config.adding;
-        const inlineInput = createElement('input', { documentRef, className: 'inline-subtask-input', attributes: { placeholder: 'Nueva subtarea', 'aria-label': 'Título de nueva subtarea' } });
+        const inlineInput = createElement('input', {
+            documentRef,
+            className: 'inline-subtask-input',
+            attributes: {
+                placeholder: 'Nueva subtarea',
+                maxlength: config.titleMaxLength || 96,
+                'aria-label': 'Título de nueva subtarea, máximo ' + (config.titleMaxLength || 96) + ' caracteres'
+            }
+        });
         const optionalLabel = createElement('label', { documentRef, className: 'subtask-optional-toggle' });
         form.append(inlineInput, optionalLabel);
         const optionalInput = createElement('input', { documentRef, className: 'inline-subtask-optional', attributes: { type: 'checkbox' } });
@@ -387,7 +439,13 @@
             createButton({ documentRef, className: 'subtask-inline-save', text: 'Añadir', dataset: { action: 'save-subtask' } }),
             createButton({ documentRef, className: 'subtask-inline-cancel', text: 'Cancelar', dataset: { action: 'cancel-subtask-form' } })
         );
-        section.append(heading, list, form);
+        if (config.composite || !config.adding) {
+            section.appendChild(heading);
+        }
+
+        if (config.composite || config.adding) {
+            section.append(list, form);
+        }
 
         if (confirmation) {
             const confirmationCard = createElement('aside', {
@@ -478,7 +536,10 @@
             documentRef,
             className: 'edit-input',
             dataset: { editInput: todo.id },
-            attributes: { 'aria-label': 'Editar texto de la tarea' }
+            attributes: {
+                maxlength: config.titleMaxLength || 96,
+                'aria-label': 'Editar texto de la tarea, máximo ' + (config.titleMaxLength || 96) + ' caracteres'
+            }
         });
         const editPriority = createElement('select', {
             documentRef,
@@ -622,123 +683,6 @@
         });
     }
 
-    function createMonthlyMetricCard(options) {
-        const config = options || {};
-        const item = createElement('article', {
-            documentRef: config.documentRef,
-            className: ['monthly-metric-card', config.className]
-        });
-
-        item.append(
-            createElement('strong', { documentRef: config.documentRef, text: config.value }),
-            createElement('span', { documentRef: config.documentRef, text: config.label }),
-            createElement('p', { documentRef: config.documentRef, text: config.detail })
-        );
-
-        return item;
-    }
-
-    function createMonthlyRecapStat(options) {
-        const config = options || {};
-        const item = createElement('span', {
-            documentRef: config.documentRef,
-            className: config.className
-        });
-
-        item.append(
-            createElement('strong', { documentRef: config.documentRef, text: config.value }),
-            createElement('em', { documentRef: config.documentRef, text: config.label })
-        );
-
-        return item;
-    }
-
-    function createPerformanceSummary(options) {
-        const config = options || {};
-        const focus = config.focus || {};
-        const item = createElement(config.tagName || 'p', {
-            documentRef: config.documentRef,
-            className: [
-                'monthly-performance-summary',
-                config.compact ? 'compact' : '',
-                focus.tone ? 'tone-' + focus.tone : ''
-            ]
-        });
-
-        item.append(
-            createElement('strong', { documentRef: config.documentRef, text: focus.title || '' }),
-            createElement('span', { documentRef: config.documentRef, text: focus.message || '' }),
-            createElement('em', { documentRef: config.documentRef, text: focus.action || '' })
-        );
-
-        return item;
-    }
-
-    function renderPerformanceSummary(element, options) {
-        if (!element) {
-            return;
-        }
-
-        const summary = createPerformanceSummary({
-            ...(options || {}),
-            documentRef: options && options.documentRef,
-            tagName: element.tagName ? element.tagName.toLowerCase() : 'p'
-        });
-
-        element.innerHTML = '';
-        element.className = summary.className;
-        Array.from(summary.children || []).forEach(child => element.appendChild(child));
-    }
-
-    function createMonthlyCompletionDonut(options) {
-        const config = options || {};
-        const analytics = config.monthAnalytics || {};
-        const container = createElement('div', {
-            documentRef: config.documentRef,
-            className: [
-                'monthly-comparison-bars',
-                'monthly-donut-chart',
-                config.compact ? 'compact' : ''
-            ],
-            attributes: { 'aria-label': 'Grafico circular de finalizacion mensual' }
-        });
-        const donut = createElement('div', {
-            documentRef: config.documentRef,
-            className: 'monthly-donut'
-        });
-        const completedPercent = Math.max(Math.round(Number(analytics.completedPercent) || 0), 0);
-        const completedActivities = Math.max(Math.round(Number(analytics.completedActivities) || 0), 0);
-        const totalActivities = Math.max(Math.round(Number(analytics.totalActivities) || 0), 0);
-
-        donut.style.setProperty('--percent', completedPercent + '%');
-        donut.append(
-            createElement('strong', { documentRef: config.documentRef, text: completedPercent + '%' }),
-            createElement('span', { documentRef: config.documentRef, text: 'Completado' })
-        );
-        container.append(
-            donut,
-            createElement('p', {
-                documentRef: config.documentRef,
-                text: completedActivities + ' de ' + totalActivities + ' actividades'
-            })
-        );
-
-        return container;
-    }
-
-    function renderMonthlyCompletionDonut(container, options) {
-        if (!container) {
-            return;
-        }
-
-        const donut = createMonthlyCompletionDonut(options || {});
-
-        container.innerHTML = '';
-        container.className = donut.className;
-        container.setAttribute('aria-label', 'Grafico circular de finalizacion mensual');
-        Array.from(donut.children || []).forEach(child => container.appendChild(child));
-    }
-
     function createWeeklyFlowChart(options) {
         const config = options || {};
         const documentRef = getDocumentRef(config.documentRef);
@@ -747,6 +691,9 @@
         const entries = Array.isArray(config.entries) ? config.entries : [];
         const points = Array.isArray(config.points) ? config.points : [];
         const axisLabels = Array.isArray(config.axisLabels) ? config.axisLabels : [];
+        const formatValue = typeof config.formatValue === 'function'
+            ? config.formatValue
+            : value => value + ' completada' + (value === 1 ? '' : 's');
         const width = Number(config.width) || 360;
         const height = Number(config.height) || 120;
         const chart = createElement('div', {
@@ -755,8 +702,8 @@
         });
         const svg = documentRef.createElementNS(svgNamespace, 'svg');
         const goalLine = documentRef.createElementNS(svgNamespace, 'line');
-        const line = documentRef.createElementNS(svgNamespace, 'polyline');
-        const polylinePoints = points.map(point => point.x + ',' + point.y).join(' ');
+        const baseline = height - (config.bottomPadding || 20);
+        const barWidth = Number(config.barWidth) || 22;
 
         svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
         svg.setAttribute('role', 'img');
@@ -766,23 +713,25 @@
         goalLine.setAttribute('y1', String(config.goalY || 0));
         goalLine.setAttribute('y2', String(config.goalY || 0));
         goalLine.setAttribute('class', 'goal-line');
-        line.setAttribute('points', polylinePoints);
-        line.setAttribute('class', 'weekly-line');
-        line.setAttribute('fill', 'none');
-        svg.append(goalLine, line);
+        if (config.showGoalLine !== false) {
+            svg.appendChild(goalLine);
+        }
 
         points.forEach(point => {
-            const circle = documentRef.createElementNS(svgNamespace, 'circle');
+            const bar = documentRef.createElementNS(svgNamespace, 'rect');
             const title = documentRef.createElementNS(svgNamespace, 'title');
             const completed = Number(point.entry && point.entry.completed) || 0;
+            const barHeight = Math.max(Number(point.barHeight) || 0, completed > 0 ? 5 : 3);
 
-            circle.setAttribute('cx', String(point.x));
-            circle.setAttribute('cy', String(point.y));
-            circle.setAttribute('r', String(point.radius || 3.4));
-            circle.setAttribute('class', point.goalHit ? 'day-dot goal-hit' : 'day-dot');
-            title.textContent = (point.entry && point.entry.dateKey ? point.entry.dateKey : '') + ': ' + completed + ' completada' + (completed === 1 ? '' : 's');
-            circle.appendChild(title);
-            svg.appendChild(circle);
+            bar.setAttribute('x', String(point.x - (barWidth / 2)));
+            bar.setAttribute('y', String(baseline - barHeight));
+            bar.setAttribute('width', String(barWidth));
+            bar.setAttribute('height', String(barHeight));
+            bar.setAttribute('rx', String(Math.min(barWidth / 2, 7)));
+            bar.setAttribute('class', point.goalHit ? 'weekly-bar goal-hit' : 'weekly-bar');
+            title.textContent = (point.entry && point.entry.dateKey ? point.entry.dateKey : '') + ': ' + formatValue(completed);
+            bar.appendChild(title);
+            svg.appendChild(bar);
         });
 
         axisLabels.forEach(axis => {
@@ -795,14 +744,26 @@
             svg.appendChild(label);
         });
 
-        chart.append(
-            svg,
-            createElement('p', {
+        chart.appendChild(svg);
+
+        if (config.insight && config.insight.title) {
+            const insight = createElement('aside', {
                 documentRef,
-                className: 'weekly-line-caption',
-                text: flow.completed + ' completada' + (flow.completed === 1 ? '' : 's') + ' ' + (flow.captionSuffix || '')
-            })
-        );
+                className: 'weekly-chart-insight'
+            });
+
+            insight.append(
+                createElement('strong', { documentRef, text: config.insight.title }),
+                createElement('span', { documentRef, text: config.insight.message || '' })
+            );
+            chart.appendChild(insight);
+        }
+
+        chart.appendChild(createElement('p', {
+            documentRef,
+            className: 'weekly-line-caption',
+            text: config.caption || (flow.completed + ' completada' + (flow.completed === 1 ? '' : 's') + ' ' + (flow.captionSuffix || ''))
+        }));
 
         if (entries.length === 0) {
             chart.dataset.empty = 'true';
@@ -856,6 +817,267 @@
         }
 
         return chart;
+    }
+
+    /*
+     * Proposito: comparar una o dos señales por fecha sin duplicar gráficos.
+     * Entradas: entries ya calculadas y series con valueKey, goalKey y formatValue.
+     * Salida: gráfico de barras agrupadas, navegable con clic, foco y teclado.
+     */
+    function createPerformanceBarChart(options) {
+        const config = options || {};
+        const documentRef = getDocumentRef(config.documentRef);
+        const entries = Array.isArray(config.entries) ? config.entries : [];
+        const series = (Array.isArray(config.series) ? config.series : []).filter(item => item && item.valueKey);
+        const chart = createElement('section', {
+            documentRef,
+            className: classNames(['performance-bar-chart', config.className]),
+            attributes: {
+                role: 'region',
+                'aria-label': config.ariaLabel || 'Rendimiento del periodo'
+            }
+        });
+        const groups = [];
+        const clusters = [];
+        const legendButtons = new Map();
+        const seriesSlots = new Map();
+        const visibleSeriesKeys = new Set(series.map(item => item.key || item.valueKey));
+        let selectedEntryIndex = Math.max(entries.length - 1, 0);
+        const maxima = new Map(series.map(item => [
+            item.key || item.valueKey,
+            Math.max(1, ...entries.map(entry => Math.max(Number(entry[item.valueKey]) || 0, Number(entry[item.goalKey]) || 0)))
+        ]));
+        const legend = createElement('div', {
+            documentRef,
+            className: 'performance-bar-legend',
+            attributes: { role: 'group', 'aria-label': 'Indicadores del gráfico' }
+        });
+        const stage = createElement('div', { documentRef, className: 'performance-bar-stage' });
+        const axis = createElement('div', {
+            documentRef,
+            className: 'performance-bar-axis',
+            attributes: { 'aria-hidden': 'true' }
+        });
+        const plot = createElement('div', { documentRef, className: 'performance-bar-plot' });
+        const selection = createElement('div', {
+            documentRef,
+            className: 'performance-bar-selection',
+            attributes: { 'aria-live': 'polite' }
+        });
+        const selectionTitle = createElement('strong', { documentRef });
+        const selectionValue = createElement('span', { documentRef, className: 'performance-bar-selection-values' });
+        const selectionMessage = createElement('small', { documentRef });
+
+        chart.style.setProperty('--performance-bar-columns', String(Math.max(entries.length, 1)));
+        chart.dataset.columns = String(entries.length);
+        chart.dataset.scale = 'goal';
+        plot.style.gridTemplateColumns = 'repeat(' + Math.max(entries.length, 1) + ', minmax(0, 1fr))';
+
+        ['100%', '50%', '0'].forEach(label => {
+            axis.appendChild(createElement('span', { documentRef, text: label }));
+        });
+
+        series.forEach(item => {
+            const key = item.key || item.valueKey;
+            const legendItem = createButton({
+                documentRef,
+                className: classNames(['performance-bar-legend-item', 'tone-' + (item.tone || 'tasks'), 'is-active']),
+                attributes: {
+                    'aria-pressed': 'true',
+                    'data-performance-series': key
+                },
+                title: 'Mostrar u ocultar ' + (item.label || 'indicador')
+            });
+
+            legendItem.append(
+                createElement('i', { documentRef, attributes: { 'aria-hidden': 'true' } }),
+                createElement('b', { documentRef, text: item.label || '' })
+            );
+            if (typeof legendItem.addEventListener === 'function') {
+                legendItem.addEventListener('click', () => {
+                    if (visibleSeriesKeys.has(key)) {
+                        visibleSeriesKeys.delete(key);
+                    } else {
+                        visibleSeriesKeys.add(key);
+                    }
+
+                    updateSeriesVisibility();
+                });
+            }
+            legendButtons.set(key, legendItem);
+            seriesSlots.set(key, []);
+            legend.appendChild(legendItem);
+        });
+
+        function formatSeriesValue(item, value) {
+            return typeof item.formatValue === 'function'
+                ? item.formatValue(value)
+                : String(value);
+        }
+
+        function getEntryLabel(entry) {
+            return entry.detailTitle || entry.label || entry.dateKey || 'Periodo seleccionado';
+        }
+
+        function getEntryValues(entry) {
+            return series
+                .filter(item => visibleSeriesKeys.has(item.key || item.valueKey))
+                .map(item => formatSeriesValue(item, Math.max(Number(entry[item.valueKey]) || 0, 0)));
+        }
+
+        function selectEntry(index) {
+            const entry = entries[index];
+
+            if (!entry) {
+                return;
+            }
+
+            selectedEntryIndex = index;
+            groups.forEach((group, groupIndex) => {
+                const isSelected = groupIndex === index;
+
+                group.classList.toggle('is-selected', isSelected);
+                group.setAttribute('aria-pressed', isSelected.toString());
+            });
+            selectionTitle.textContent = getEntryLabel(entry);
+            const values = getEntryValues(entry);
+            selectionValue.textContent = values.length ? values.join(' · ') : 'Sin indicadores activos';
+            selectionMessage.textContent = values.length
+                ? entry.summary || config.emptySelectionMessage || 'Sin actividad registrada en este punto del periodo.'
+                : 'Activa Tareas o Enfoque para volver a comparar esta fecha.';
+        }
+
+        function updateSeriesVisibility() {
+            const visibleCount = visibleSeriesKeys.size;
+
+            chart.dataset.visibleSeries = String(visibleCount);
+            chart.dataset.seriesEmpty = visibleCount === 0 ? 'true' : 'false';
+            legendButtons.forEach((button, key) => {
+                const isActive = visibleSeriesKeys.has(key);
+
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-pressed', isActive.toString());
+            });
+            seriesSlots.forEach((slots, key) => {
+                const isHidden = !visibleSeriesKeys.has(key);
+
+                slots.forEach(slot => slot.classList.toggle('is-series-hidden', isHidden));
+            });
+            clusters.forEach(cluster => {
+                cluster.dataset.visibleSeries = String(visibleCount);
+            });
+            groups.forEach((group, index) => {
+                const entry = entries[index];
+                const values = entry ? getEntryValues(entry) : [];
+
+                group.setAttribute('aria-label', getEntryLabel(entry || {}) + ': ' + (values.length ? values.join(', ') : 'sin indicadores activos'));
+            });
+            if (entries.length) {
+                selectEntry(selectedEntryIndex);
+            }
+        }
+
+        entries.forEach((entry, index) => {
+            const group = createButton({
+                documentRef,
+                className: 'performance-bar-group',
+                attributes: {
+                    'aria-pressed': 'false',
+                    'aria-label': getEntryLabel(entry) + ': ' + getEntryValues(entry).join(', ')
+                },
+                title: 'Ver detalle de ' + getEntryLabel(entry)
+            });
+            const cluster = createElement('span', { documentRef, className: 'performance-bar-cluster', attributes: { 'aria-hidden': 'true' } });
+
+            series.forEach(item => {
+                const value = Math.max(Number(entry[item.valueKey]) || 0, 0);
+                const goal = Math.max(Number(entry[item.goalKey]) || 0, 0);
+                const maximum = maxima.get(item.key || item.valueKey) || 1;
+                const goalProgress = goal > 0 ? (value / goal) * 100 : (value / maximum) * 100;
+                const barHeight = value > 0 ? Math.max(Math.min(goalProgress, 100), 3) : 0;
+                const goalHit = value >= goal && goal > 0;
+                const slot = createElement('span', {
+                    documentRef,
+                    className: classNames([
+                        'performance-bar-slot',
+                        'tone-' + (item.tone || 'tasks'),
+                        goalHit ? 'goal-hit' : '',
+                        value === 0 ? 'is-empty' : ''
+                    ])
+                });
+                const bar = createElement('i', { documentRef, className: 'performance-bar' });
+
+                bar.style.setProperty('--performance-bar-height', barHeight + '%');
+                slot.appendChild(bar);
+                seriesSlots.get(item.key || item.valueKey).push(slot);
+                cluster.appendChild(slot);
+            });
+
+            group.append(
+                cluster,
+                createElement('small', { documentRef, className: 'performance-bar-label', text: entry.label || '' })
+            );
+            if (typeof group.addEventListener === 'function') {
+                group.addEventListener('click', () => selectEntry(index));
+                group.addEventListener('focus', () => selectEntry(index));
+            }
+            groups.push(group);
+            clusters.push(cluster);
+            plot.appendChild(group);
+        });
+
+        selection.append(selectionTitle, selectionValue, selectionMessage);
+        stage.append(axis, plot);
+        chart.append(legend, stage, selection);
+
+        const initialIndex = entries.reduce((bestIndex, entry, index) => {
+            const score = series.reduce((total, item) => total + Math.max(Number(entry[item.valueKey]) || 0, 0), 0);
+            const bestEntry = entries[bestIndex] || {};
+            const bestScore = series.reduce((total, item) => total + Math.max(Number(bestEntry[item.valueKey]) || 0, 0), 0);
+
+            return score >= bestScore ? index : bestIndex;
+        }, Math.max(entries.length - 1, 0));
+
+        if (entries.length) {
+            selectEntry(initialIndex);
+        } else {
+            chart.dataset.empty = 'true';
+        }
+
+        if (!entries.some(entry => series.some(item => (Number(entry[item.valueKey]) || 0) > 0))) {
+            chart.dataset.empty = 'true';
+        }
+
+        updateSeriesVisibility();
+
+        return chart;
+    }
+
+    function createBalancedFlowChart(options) {
+        const config = options || {};
+
+        return createPerformanceBarChart({
+            ...config,
+            className: classNames(['balanced-flow-chart', config.className]),
+            series: [
+                {
+                    key: 'tasks',
+                    label: 'Tareas',
+                    valueKey: 'taskValue',
+                    goalKey: 'taskGoal',
+                    tone: 'tasks',
+                    formatValue: value => value + ' tarea' + (value === 1 ? '' : 's')
+                },
+                {
+                    key: 'focus',
+                    label: 'Enfoque',
+                    valueKey: 'focusValue',
+                    goalKey: 'focusGoal',
+                    tone: 'focus',
+                    formatValue: value => value + ' min'
+                }
+            ]
+        });
     }
 
     function createPrestigeStep(options) {
@@ -1026,14 +1248,10 @@
         createOverdueReviewItem,
         createSummaryMetric,
         createAnalyticsMetric,
-        createMonthlyMetricCard,
-        createMonthlyRecapStat,
-        createPerformanceSummary,
-        renderPerformanceSummary,
-        createMonthlyCompletionDonut,
-        renderMonthlyCompletionDonut,
         createWeeklyFlowChart,
         createFocusFlowChart,
+        createPerformanceBarChart,
+        createBalancedFlowChart,
         createPrestigeStep,
         createPrestigeChapter,
         createContributionDay,

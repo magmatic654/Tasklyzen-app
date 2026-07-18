@@ -44,6 +44,68 @@
             .map((subtask, index) => ({ ...subtask, order: index }));
     }
 
+    function getStableSubtasks(subtasks) {
+        return (Array.isArray(subtasks) ? subtasks : [])
+            .filter(subtask => subtask && subtask.id)
+            .map((subtask, index) => ({
+                ...subtask,
+                order: Number.isFinite(Number(subtask.order)) ? Number(subtask.order) : index
+            }));
+    }
+
+    function getDisplaySubtasks(subtasks, options) {
+        const config = options || {};
+        const orderIds = Array.isArray(config.orderIds) ? config.orderIds : [];
+        const completedFor = typeof config.isCompleted === 'function'
+            ? config.isCompleted
+            : subtask => Boolean(subtask.completed);
+
+        return getStableSubtasks(subtasks)
+            .map((subtask, index) => {
+                const customOrder = orderIds.indexOf(subtask.id);
+
+                return {
+                    ...subtask,
+                    displayOrder: customOrder >= 0 ? customOrder : subtask.order,
+                    displayIndex: index,
+                    displayCompleted: Boolean(completedFor(subtask))
+                };
+            })
+            .sort((first, second) => Number(first.displayCompleted) - Number(second.displayCompleted)
+                || first.displayOrder - second.displayOrder
+                || first.displayIndex - second.displayIndex)
+            .map(({ displayOrder, displayIndex, displayCompleted, ...subtask }) => subtask);
+    }
+
+    function moveSubtask(subtasks, subtaskId, direction, options) {
+        const config = options || {};
+        const offset = Number(direction);
+        const canonical = getStableSubtasks(subtasks).sort((first, second) => first.order - second.order);
+        const visible = getDisplaySubtasks(canonical);
+        const visibleIndex = visible.findIndex(subtask => subtask.id === subtaskId);
+        const target = visible[visibleIndex + offset];
+
+        if (!Number.isInteger(offset) || Math.abs(offset) !== 1 || visibleIndex < 0 || !target) {
+            return null;
+        }
+
+        const current = visible[visibleIndex];
+        if (Boolean(current.completed) !== Boolean(target.completed)) {
+            return null;
+        }
+
+        const currentIndex = canonical.findIndex(subtask => subtask.id === current.id);
+        const targetIndex = canonical.findIndex(subtask => subtask.id === target.id);
+        if (currentIndex < 0 || targetIndex < 0) {
+            return null;
+        }
+
+        [canonical[currentIndex], canonical[targetIndex]] = [canonical[targetIndex], canonical[currentIndex]];
+        const updatedAt = config.updatedAt || utils.getNowTimestamp();
+
+        return canonical.map((subtask, order) => ({ ...subtask, order, updatedAt }));
+    }
+
     function isCompositeTask(task) {
         return Boolean(task && task.type === 'composite' && Array.isArray(task.subtasks));
     }
@@ -167,6 +229,8 @@
     global.TasklyzenCompositeTasks = {
         createSubtask,
         normalizeSubtasks,
+        getDisplaySubtasks,
+        moveSubtask,
         normalizeTask,
         isCompositeTask,
         getCompositeTaskProgress,
