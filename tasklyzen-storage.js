@@ -34,6 +34,19 @@
         return getCloudStorageKeys().includes(String(key || ''));
     }
 
+    function getCloudDeletionKeys() {
+        const config = global.TasklyzenConfig || {};
+        const configuredKeys = Array.isArray(config.cloudDeletionKeys)
+            ? config.cloudDeletionKeys
+            : getCloudStorageKeys();
+
+        return Array.from(new Set(configuredKeys.filter(key => typeof key === 'string' && key)));
+    }
+
+    function isCloudDeletionKey(key) {
+        return getCloudDeletionKeys().includes(String(key || ''));
+    }
+
     function resetDataReady() {
         dataReady = false;
         dataReadyDetail = null;
@@ -170,7 +183,7 @@
     }
 
     function canDeleteCloudKey(key) {
-        return isCloudStorageKey(key) || sanitizeStorageEntry(key, null).remove;
+        return isCloudDeletionKey(key) || sanitizeStorageEntry(key, null).remove;
     }
 
     // Se invoca desde tasklyzen-auth.js cuando el estado cambia
@@ -594,6 +607,7 @@
             detail: dataReadyDetail
         }),
         getCloudSyncKeys: getCloudStorageKeys,
+        getCloudDeletionKeys,
         migrateLegacyData
     };
 

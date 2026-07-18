@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function ownsUser(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function allowedSyncFields() {
+      return [
+        'todos',
+        'todo-completion-history',
+        'todo-daily-goal',
+        'todo-gamification',
+        'tasklyzen-analytics-events',
+        'tasklyzen-daily-stats',
+        'tasklyzen-sustainable-progress',
+        'tasklyzen-experience-state'
+      ];
+    }
+
+    function hasSerializedValues() {
+      return (!('todos' in request.resource.data) || request.resource.data.todos is string)
+        && (!('todo-completion-history' in request.resource.data)
+          || request.resource.data['todo-completion-history'] is string)
+        && (!('todo-daily-goal' in request.resource.data)
+          || request.resource.data['todo-daily-goal'] is string)
+        && (!('todo-gamification' in request.resource.data)
+          || request.resource.data['todo-gamification'] is string)
+        && (!('tasklyzen-analytics-events' in request.resource.data)
+          || request.resource.data['tasklyzen-analytics-events'] is string)
+        && (!('tasklyzen-daily-stats' in request.resource.data)
+          || request.resource.data['tasklyzen-daily-stats'] is string)
+        && (!('tasklyzen-sustainable-progress' in request.resource.data)
+          || request.resource.data['tasklyzen-sustainable-progress'] is string)
+        && (!('tasklyzen-experience-state' in request.resource.data)
+          || request.resource.data['tasklyzen-experience-state'] is string);
+    }
+
+    match /users/{userId} {
+      allow read: if ownsUser(userId);
+      allow create: if ownsUser(userId)
+        && request.resource.data.keys().hasOnly(allowedSyncFields())
+        && hasSerializedValues();
+      allow update: if ownsUser(userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedSyncFields())
+        && hasSerializedValues();
+      allow delete: if ownsUser(userId);
+    }
+  }
+}

@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "test": "node --test tests/tasklyzen-modules.test.js tests/tasklyzen-integration.test.js",
+    "test": "node --test tests/tasklyzen-modules.test.js tests/tasklyzen-integration.test.js tests/tasklyzen-storage.test.js tests/tasklyzen-firestore-rules.test.js tests/tasklyzen-task-transactions.test.js tests/tasklyzen-domain-events.test.js",
     "build": "node build.js"
   }
 }

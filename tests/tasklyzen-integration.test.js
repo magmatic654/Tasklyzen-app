@@ -65,6 +65,7 @@ function createDomainContext() {
         'tasklyzen-composite-tasks.js',
         'tasklyzen-tasks.js',
         'tasklyzen-task-lifecycle.js',
+        'tasklyzen-domain-events.js',
         'tasklyzen-task-effects.js',
         'tasklyzen-sustainable-progress.js'
     ].forEach(fileName => loadModule(context, fileName));
@@ -228,4 +229,93 @@ test('retiene solo la huella analitica de tareas vencidas y revoca los pasos de 
     day = progress.getDaySnapshot(dateKey);
     assert.strictEqual(day.taskIds.includes(milestone.id), false);
     assert.strictEqual(day.requiredSubtaskKeys.includes(milestone.id + ':' + step.id), false);
+});
+
+test('registra pasos obligatorios y opcionales sin inflar tareas completadas', () => {
+    const context = createDomainContext();
+    const dateKey = '2026-07-16';
+    const storage = createMemoryStorage();
+    const progress = context.TasklyzenSustainableProgress.createSustainableProgressController({
+        storage,
+        storageKey: 'subtask-event-progress',
+        getTodayKey: () => dateKey,
+        getNowTimestamp: () => dateKey + 'T12:00:00.000Z',
+        getDateKeyFromTimestamp: value => String(value || '').slice(0, 10),
+        getDailyGoal: () => 3
+    });
+    let events = [];
+    const logAnalyticsEvent = (type, payload) => {
+        const result = context.TasklyzenDomainEvents.append(events, type, payload, {
+            getNowTimestamp: () => dateKey + 'T12:00:00.000Z',
+            getDateKeyFromTimestamp: value => String(value || '').slice(0, 10)
+        });
+
+        events = result.events;
+        return result.event;
+    };
+    const effects = context.TasklyzenTaskEffects.createTaskEffectsController({
+        taskApi: context.TasklyzenTasks,
+        lifecycle: context.TasklyzenTaskLifecycle,
+        sustainableProgress: progress,
+        getTodayKey: () => dateKey,
+        getDateKeyFromTimestamp: value => String(value || '').slice(0, 10),
+        getHoursBetween: () => 1,
+        getDailyGoal: () => 3,
+        getHistoryCount: () => 0,
+        getLongestActiveStreak: () => 0,
+        createMutationId: context.TasklyzenDomainEvents.createMutationId,
+        logAnalyticsEvent,
+        discardAnalyticsEvents() {}
+    });
+    const milestone = context.TasklyzenTasks.createTodo('Preparar examen', 'normal', {
+        type: 'composite',
+        subtasks: [
+            context.TasklyzenCompositeTasks.createSubtask('Resolver ejercicios', { id: 'required-step' }),
+            context.TasklyzenCompositeTasks.createSubtask('Leer material extra', { id: 'optional-step', optional: true })
+        ]
+    });
+    const required = milestone.subtasks[0];
+    const optional = milestone.subtasks[1];
+
+    required.completed = true;
+    required.completedAt = dateKey + 'T09:00:00.000Z';
+    effects.handleSubtaskTransition(milestone, required, {
+        dateKey,
+        wasCompleted: false,
+        mutationId: 'required-completion'
+    });
+    effects.handleSubtaskTransition(milestone, required, {
+        dateKey,
+        wasCompleted: false,
+        mutationId: 'required-completion'
+    });
+
+    optional.completed = true;
+    optional.completedAt = dateKey + 'T09:10:00.000Z';
+    effects.handleSubtaskTransition(milestone, optional, {
+        dateKey,
+        wasCompleted: false,
+        mutationId: 'optional-completion'
+    });
+
+    let day = progress.getDaySnapshot(dateKey);
+    assert.deepStrictEqual([...day.requiredSubtaskKeys], [milestone.id + ':' + required.id]);
+    assert.deepStrictEqual([...day.taskIds], []);
+    assert.deepStrictEqual(events.map(event => event.type), ['subtask_completed', 'subtask_completed']);
+    assert.equal(events[0].subtaskId, required.id);
+    assert.equal(events[1].subtaskOptional, true);
+
+    required.completed = false;
+    required.completedAt = null;
+    effects.handleSubtaskTransition(milestone, required, {
+        dateKey,
+        wasCompleted: true,
+        previousCompletedAt: dateKey + 'T09:00:00.000Z',
+        mutationId: 'required-reactivation'
+    });
+
+    day = progress.getDaySnapshot(dateKey);
+    assert.deepStrictEqual([...day.requiredSubtaskKeys], []);
+    assert.equal(events.at(-1).type, 'subtask_reactivated');
+    assert.equal(events.at(-1).outcome, 'applied');
 });

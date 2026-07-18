@@ -27,6 +27,9 @@
         const hasCelebratedStreakDate = typeof config.hasCelebratedStreakDate === 'function'
             ? config.hasCelebratedStreakDate
             : () => false;
+        const createMutationId = typeof config.createMutationId === 'function'
+            ? config.createMutationId
+            : () => 'mutation-' + Date.now() + '-' + Math.random().toString(16).slice(2);
         const logAnalyticsEvent = typeof config.logAnalyticsEvent === 'function' ? config.logAnalyticsEvent : noop;
         const discardAnalyticsEvents = typeof config.discardAnalyticsEvents === 'function'
             ? config.discardAnalyticsEvents
@@ -51,6 +54,26 @@
                 deadlineStartedAt: source.deadlineStartedAt,
                 ...(details || {})
             };
+        }
+
+        function createSubtaskPayload(todo, subtask, details) {
+            const step = subtask || {};
+
+            return createTaskPayload(todo, {
+                subtaskId: step.id || null,
+                subtaskTitle: step.title || '',
+                subtaskOptional: Boolean(step.optional),
+                subtaskRequired: !step.optional,
+                ...(details || {})
+            });
+        }
+
+        function resolveMutationId(metadata) {
+            const meta = metadata || {};
+
+            return typeof meta.mutationId === 'string' && meta.mutationId
+                ? meta.mutationId
+                : createMutationId();
         }
 
         function getCompletedCreditTargets(todo, dateKey) {
@@ -100,8 +123,9 @@
             return lifecycle.getRemovalAnalyticsState(todo, type, { taskApi });
         }
 
-        function handleRemoval(todo, type) {
+        function handleRemoval(todo, type, metadata) {
             const eventType = type || 'task_deleted';
+            const meta = metadata || {};
             const analyticsState = getRemovalAnalyticsState(todo, eventType);
 
             if (!analyticsState.analyticsRetained) {
@@ -111,6 +135,9 @@
             }
 
             logAnalyticsEvent(eventType, createTaskPayload(todo, {
+                mutationId: resolveMutationId(meta),
+                source: meta.source || 'tasks',
+                outcome: 'applied',
                 completedOn: todo.completedOn,
                 completedAt: todo.completedAt,
                 wasCompleted: Boolean(todo.completed),
@@ -124,6 +151,7 @@
 
         function handleTaskCompletion(todo, metadata) {
             const meta = metadata || {};
+            const mutationId = resolveMutationId(meta);
             const todayKey = meta.dateKey || getTodayKey();
             const completedAt = meta.completedAt || todo.completedAt;
             const previousTodayCount = getHistoryCount(todayKey);
@@ -140,6 +168,9 @@
             }
 
             const eventDetails = {
+                mutationId,
+                source: meta.source || 'tasks',
+                outcome: 'applied',
                 habit: Object.prototype.hasOwnProperty.call(meta, 'habit') ? Boolean(meta.habit) : Boolean(todo.habit),
                 completedOn: todo.completedOn,
                 completedAt: todo.completedAt,
@@ -155,6 +186,7 @@
 
             return {
                 todayKey,
+                mutationId,
                 previousRecord,
                 shouldCelebrateStreak: previousTodayCount === 0 && !hasCelebratedStreakDate(todayKey),
                 celebrationType: nextTodayCount > getDailyGoal()
@@ -167,6 +199,7 @@
 
         function handleTaskReactivation(todo, metadata) {
             const meta = metadata || {};
+            const mutationId = resolveMutationId(meta);
             const todayKey = meta.dateKey || getTodayKey();
             const completedOn = meta.completedOn || null;
 
@@ -175,6 +208,9 @@
             }
 
             const eventDetails = {
+                mutationId,
+                source: meta.source || 'tasks',
+                outcome: 'applied',
                 habit: Object.prototype.hasOwnProperty.call(meta, 'habit') ? Boolean(meta.habit) : Boolean(todo.habit),
                 reactivatedOn: todayKey,
                 reactivatedAt: meta.reactivatedAt || todo.updatedAt
@@ -185,6 +221,8 @@
             }
 
             logAnalyticsEvent('task_reactivated', createTaskPayload(todo, eventDetails));
+
+            return { mutationId, todayKey };
         }
 
         function handleCompositeTransition(todo, transition, metadata) {
@@ -215,7 +253,7 @@
                 handleTaskReactivation(todo, {
                     ...meta,
                     dateKey: todayKey,
-                    completedOn: todayKey,
+                    completedOn: meta.previousCompletedOn || todayKey,
                     reactivatedAt: todo.updatedAt,
                     habit: false,
                     composite: true
@@ -229,51 +267,118 @@
         function handleSubtaskTransition(todo, subtask, metadata) {
             const meta = metadata || {};
             const todayKey = meta.dateKey || getTodayKey();
+            const mutationId = resolveMutationId(meta);
 
-            if (!todo || !subtask || subtask.optional) {
-                return;
+            if (!todo || !subtask) {
+                return null;
             }
 
-            if (!meta.wasCompleted && subtask.completed && typeof sustainableProgress.recordSubtaskCompletion === 'function') {
-                sustainableProgress.recordSubtaskCompletion(todo.id, subtask.id, {
-                    dateKey: todayKey,
-                    completedAt: subtask.completedAt,
+            if (!meta.wasCompleted && subtask.completed) {
+                const shouldCredit = !subtask.optional && !meta.skipProgressCredit;
+
+                if (shouldCredit && typeof sustainableProgress.recordSubtaskCompletion === 'function') {
+                    sustainableProgress.recordSubtaskCompletion(todo.id, subtask.id, {
+                        dateKey: todayKey,
+                        completedAt: subtask.completedAt,
+                        source: meta.source || 'tasks',
+                        sessionId: meta.sessionId || null
+                    });
+                }
+
+                logAnalyticsEvent('subtask_completed', createSubtaskPayload(todo, subtask, {
+                    mutationId,
                     source: meta.source || 'tasks',
-                    sessionId: meta.sessionId || null
-                });
-            } else if (meta.wasCompleted && !subtask.completed && getDateKeyFromTimestamp(meta.previousCompletedAt) === todayKey
-                && typeof sustainableProgress.revokeSubtaskCompletion === 'function') {
-                sustainableProgress.revokeSubtaskCompletion(todo.id, subtask.id, todayKey);
+                    outcome: 'applied',
+                    completedAt: subtask.completedAt,
+                    completedOn: getDateKeyFromTimestamp(subtask.completedAt),
+                    progressCredit: shouldCredit
+                }));
+
+                return { mutationId, action: 'subtask_completed', credited: shouldCredit };
             }
+
+            if (meta.wasCompleted && !subtask.completed) {
+                const completedOn = getDateKeyFromTimestamp(meta.previousCompletedAt);
+
+                if (!subtask.optional && completedOn === todayKey
+                    && typeof sustainableProgress.revokeSubtaskCompletion === 'function') {
+                    sustainableProgress.revokeSubtaskCompletion(todo.id, subtask.id, todayKey);
+                }
+
+                logAnalyticsEvent('subtask_reactivated', createSubtaskPayload(todo, subtask, {
+                    mutationId,
+                    source: meta.source || 'tasks',
+                    outcome: 'applied',
+                    previousCompletedAt: meta.previousCompletedAt || null,
+                    previousCompletedOn: completedOn || null
+                }));
+
+                return { mutationId, action: 'subtask_reactivated', revoked: !subtask.optional && completedOn === todayKey };
+            }
+
+            return null;
         }
 
-        function handleSubtaskRemoval(todo, subtask, dateKey) {
-            if (!todo || !subtask || subtask.optional || !subtask.completed) {
-                return;
+        function handleSubtaskRemoval(todo, subtask, metadata) {
+            const meta = typeof metadata === 'string' ? { dateKey: metadata } : (metadata || {});
+            const dateKey = meta.dateKey || getTodayKey();
+            const mutationId = resolveMutationId(meta);
+
+            if (!todo || !subtask) {
+                return null;
             }
 
             const completedOn = getDateKeyFromTimestamp(subtask.completedAt);
 
-            if (completedOn === dateKey && typeof sustainableProgress.revokeSubtaskCompletion === 'function') {
+            if (!subtask.optional && subtask.completed && completedOn === dateKey
+                && typeof sustainableProgress.revokeSubtaskCompletion === 'function') {
                 sustainableProgress.revokeSubtaskCompletion(todo.id, subtask.id, dateKey);
             }
+
+            logAnalyticsEvent('subtask_deleted', createSubtaskPayload(todo, subtask, {
+                mutationId,
+                source: meta.source || 'tasks',
+                outcome: 'applied',
+                wasCompleted: Boolean(subtask.completed),
+                completedOn: completedOn || null
+            }));
+
+            return { mutationId, action: 'subtask_deleted', revoked: !subtask.optional && completedOn === dateKey };
         }
 
-        function handleSubtaskPromotion(todo, subtask, dateKey) {
-            if (!todo || !subtask || !subtask.completed || getDateKeyFromTimestamp(subtask.completedAt) !== dateKey
-                || typeof sustainableProgress.recordSubtaskCompletion !== 'function') {
-                return;
+        function handleSubtaskPromotion(todo, subtask, metadata) {
+            const meta = typeof metadata === 'string' ? { dateKey: metadata } : (metadata || {});
+            const dateKey = meta.dateKey || getTodayKey();
+            const mutationId = resolveMutationId(meta);
+            const completedOn = subtask && getDateKeyFromTimestamp(subtask.completedAt);
+            const shouldCredit = Boolean(todo && subtask && subtask.completed && completedOn === dateKey
+                && typeof sustainableProgress.recordSubtaskCompletion === 'function');
+
+            if (!todo || !subtask) {
+                return null;
             }
 
-            sustainableProgress.recordSubtaskCompletion(todo.id, subtask.id, {
-                dateKey,
-                completedAt: subtask.completedAt,
-                source: 'tasks'
-            });
+            if (shouldCredit) {
+                sustainableProgress.recordSubtaskCompletion(todo.id, subtask.id, {
+                    dateKey,
+                    completedAt: subtask.completedAt,
+                    source: meta.source || 'tasks'
+                });
+            }
+
+            logAnalyticsEvent('subtask_promoted', createSubtaskPayload(todo, subtask, {
+                mutationId,
+                source: meta.source || 'tasks',
+                outcome: 'applied',
+                completedOn: completedOn || null
+            }));
+
+            return { mutationId, action: 'subtask_promoted', credited: shouldCredit };
         }
 
         return {
             createTaskPayload,
+            createSubtaskPayload,
             getCompletedCreditTargets,
             getRemovalAnalyticsState,
             handleRemoval,

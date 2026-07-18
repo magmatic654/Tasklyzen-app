@@ -33,7 +33,9 @@ const OVERDUE_AUTO_DELETE_DAYS = TASKLYZEN_CONFIG.defaults.overdueAutoDeleteDays
 const STREAK_PRESTIGE_LEVELS = TASKLYZEN_CONFIG.streakPrestigeLevels;
 const TASKLYZEN_STORAGE = window.TasklyzenStorage;
 const TASKLYZEN_TASK_LIFECYCLE = window.TasklyzenTaskLifecycle;
+const TASKLYZEN_DOMAIN_EVENTS = window.TasklyzenDomainEvents;
 const TASKLYZEN_TASK_EFFECTS = window.TasklyzenTaskEffects;
+const TASKLYZEN_TASK_TRANSACTIONS = window.TasklyzenTaskTransactions;
 const TASKLYZEN_UI_COMPONENTS = window.TasklyzenUiComponents;
 const TASKLYZEN_TASK_CREATION_UI = window.TasklyzenTaskCreationUi;
 const TASKLYZEN_SETTINGS = window.TasklyzenSettings;
@@ -488,10 +490,29 @@ const taskEffectsController = TASKLYZEN_TASK_EFFECTS.createTaskEffectsController
     getHistoryCount,
     getLongestActiveStreak,
     hasCelebratedStreakDate: dateKey => gamificationController.hasCelebratedStreakDate(dateKey),
+    createMutationId: TASKLYZEN_DOMAIN_EVENTS.createMutationId,
     logAnalyticsEvent,
     discardAnalyticsEvents: discardTodoAnalyticsEvents
 });
 window.TasklyzenRuntime.taskEffectsController = taskEffectsController;
+const taskTransactionController = TASKLYZEN_TASK_TRANSACTIONS.createTaskTransactionController({
+    taskManager,
+    taskEffects: taskEffectsController,
+    getTodos: () => todos,
+    setTodos: value => {
+        todos = Array.isArray(value) ? value : [];
+    },
+    getTodayKey,
+    getNowTimestamp,
+    getDateKeyFromTimestamp,
+    isCompositeTask: TASKLYZEN_COMPOSITE_TASKS.isCompositeTask,
+    compositeTasks: TASKLYZEN_COMPOSITE_TASKS,
+    createNextHabitOccurrence,
+    removeNextHabitOccurrenceFromList,
+    persist: saveTodoList,
+    syncDerivedState: syncCompletionHistory
+});
+window.TasklyzenRuntime.taskTransactionController = taskTransactionController;
 const gamificationUiController = TASKLYZEN_GAMIFICATION_UI.createGamificationUiController({
     dom: TASKLYZEN_DOM,
     documentRef: document,
@@ -1103,21 +1124,21 @@ function handleExternalStorageChange() {
 }
 
 function logAnalyticsEvent(type, payload) {
-    const timestamp = getNowTimestamp();
-    const event = {
-        id: crypto.randomUUID ? crypto.randomUUID() : 'event-' + Date.now().toString(),
-        type,
-        timestamp,
-        dateKey: getDateKeyFromTimestamp(timestamp),
-        ...(payload || {})
-    };
+    const result = TASKLYZEN_DOMAIN_EVENTS.append(analyticsEvents, type, payload, {
+        getNowTimestamp,
+        getDateKeyFromTimestamp,
+        limit: 1500
+    });
 
-    analyticsEvents.push(event);
-    analyticsEvents = analyticsEvents.slice(-1500);
+    if (!result.appended) {
+        return result.event;
+    }
+
+    analyticsEvents = result.events;
     saveAnalyticsEvents();
     syncAnalyticsData();
 
-    return event;
+    return result.event;
 }
 
 function loadTodoList() {
@@ -1575,10 +1596,14 @@ function createNextHabitOccurrence(todo) {
     }));
 }
 
-function removeNextHabitOccurrence(todo) {
-    todos = todos.filter(item => {
+function removeNextHabitOccurrenceFromList(todo, todoItems) {
+    return (Array.isArray(todoItems) ? todoItems : todos).filter(item => {
         return !(item.sourceHabitId === todo.id && !item.completed && item.snoozedUntil === getTomorrowKey());
     });
+}
+
+function removeNextHabitOccurrence(todo) {
+    todos = removeNextHabitOccurrenceFromList(todo, todos);
 }
 
 function getTopPriorityTodo() {
@@ -3266,8 +3291,12 @@ function getCompletionDateKey(item) {
     return item && (item.completedOn || getDateKeyFromTimestamp(item.completedAt));
 }
 
-function revokeTodaySustainableCredits(todo) {
-    taskEffectsController.revokeTodayCredits(todo);
+function getTodoCompletionState(todo) {
+    return {
+        completed: Boolean(todo && todo.completed),
+        completedOn: getCompletionDateKey(todo) || null,
+        completedAt: todo && todo.completedAt ? todo.completedAt : null
+    };
 }
 
 function toggleTodoItem(id, options) {
@@ -3289,23 +3318,22 @@ function toggleTodoItem(id, options) {
         audioController.unlock();
     }
 
-    if (todo.completed) {
-        const reactivation = reactivateTodoForToday(todo);
-
-        removeNextHabitOccurrence(todo);
-        taskEffectsController.handleTaskReactivation(todo, reactivation);
-    } else {
-        const todayKey = getTodayKey();
-        const completedAt = getNowTimestamp();
-
-        taskManager.complete(todo, { completedOn: todayKey, completedAt });
-        createNextHabitOccurrence(todo);
-        const completionEffect = taskEffectsController.handleTaskCompletion(todo, {
-            dateKey: todayKey,
-            completedAt,
+    const transaction = wasCompleted
+        ? taskTransactionController.reactivate(todo.id, {
+            source: actionContext.source || 'tasks',
+            sessionId: actionContext.sessionId || null
+        })
+        : taskTransactionController.complete(todo.id, {
             source: actionContext.source || 'tasks',
             sessionId: actionContext.sessionId || null
         });
+
+    if (!transaction.changed) {
+        return;
+    }
+
+    if (!wasCompleted) {
+        const completionEffect = transaction.completionEffect;
 
         if (completionEffect.shouldCelebrateStreak) {
             streakCelebrationContext = {
@@ -3319,11 +3347,7 @@ function toggleTodoItem(id, options) {
         } else {
             showCompletionAnimation(completionEffect.celebrationType);
         }
-
     }
-
-    saveTodoList();
-    syncCompletionHistory();
 
     if (streakCelebrationContext) {
         const updatedStreak = getCurrentStreak();
@@ -3338,41 +3362,23 @@ function toggleTodoItem(id, options) {
 }
 
 function removeTodoItem(id) {
-    const removalResult = taskManager.removeById(todos, id);
-    const removedTodo = removalResult.removedTodo;
+    const transaction = taskTransactionController.remove(id, 'task_deleted', { source: 'tasks' });
 
-    if (removedTodo) {
-        removeNextHabitOccurrence(removedTodo);
-        logTodoRemoval(removedTodo, 'task_deleted');
+    if (transaction.changed) {
+        renderCurrentPage();
     }
-
-    todos = removalResult.todos;
-    saveTodoList();
-    syncCompletionHistory();
-
-    renderCurrentPage();
 }
 
-function commitCompositeChange(todo, previousCompleted, options) {
-    if (!todo) return false;
-    const actionContext = options || {};
-    const todayKey = getTodayKey();
-    todo.completed = Boolean(previousCompleted);
-    const transition = TASKLYZEN_COMPOSITE_TASKS.synchronizeCompositeTask(todo, { dateKey: todayKey });
-    const transitionEffect = taskEffectsController.handleCompositeTransition(todo, transition, {
-        dateKey: todayKey,
-        source: actionContext.source || 'tasks',
-        sessionId: actionContext.sessionId || null
-    });
+function applyCompositeTransactionFeedback(transaction) {
+    const transitionEffect = transaction && transaction.transitionEffect;
 
-    if (transitionEffect && transitionEffect.completedNow) {
-        showCompletionAnimation(transitionEffect.feedbackType);
+    if (!transitionEffect || !transitionEffect.completedNow) {
+        return;
     }
 
-    saveTodoList();
-    syncCompletionHistory();
+    showCompletionAnimation(transitionEffect.feedbackType);
 
-    if (transitionEffect && transitionEffect.completedNow && transitionEffect.shouldCelebrateStreak) {
+    if (transitionEffect.shouldCelebrateStreak) {
         const updatedStreak = getCurrentStreak();
 
         gamificationController.markStreakDateCelebrated(transitionEffect.todayKey);
@@ -3380,11 +3386,29 @@ function commitCompositeChange(todo, previousCompleted, options) {
             isRecord: updatedStreak > transitionEffect.previousRecord
         });
     }
+}
+
+function commitCompositeChange(todo, previousState, options) {
+    if (!todo) return false;
+    const actionContext = options || {};
+    const previous = typeof previousState === 'object' && previousState
+        ? previousState
+        : { completed: Boolean(previousState), completedOn: null, completedAt: null };
+    const transaction = taskTransactionController.syncComposite(todo.id, previous, {
+        dateKey: getTodayKey(),
+        source: actionContext.source || 'tasks',
+        sessionId: actionContext.sessionId || null,
+        mutationId: actionContext.mutationId || TASKLYZEN_DOMAIN_EVENTS.createMutationId()
+    });
+
+    if (!transaction.changed) return false;
+
+    applyCompositeTransactionFeedback(transaction);
 
     if (!actionContext.deferUiRefresh) {
         refreshAfterTaskStateChange(todo.id);
     }
-    return true;
+    return transaction;
 }
 
 function addSubtaskToTodo(todoId, title, optional, options) {
@@ -3419,7 +3443,7 @@ function addSubtaskToTodo(todoId, title, optional, options) {
         }
     }
 
-    const previousCompleted = Boolean(todo.completed);
+    const previousState = getTodoCompletionState(todo);
     todo.type = 'composite';
     todo.subtasks = currentSubtasks;
     todo.subtasks.push(TASKLYZEN_COMPOSITE_TASKS.createSubtask(cleanTitle, {
@@ -3427,7 +3451,7 @@ function addSubtaskToTodo(todoId, title, optional, options) {
         order: todo.subtasks.length
     }));
 
-    return commitCompositeChange(todo, previousCompleted);
+    return commitCompositeChange(todo, previousState);
 }
 
 function toggleTodoSubtask(todoId, subtaskId, options) {
@@ -3435,34 +3459,21 @@ function toggleTodoSubtask(todoId, subtaskId, options) {
     const todo = todos.find(item => item.id === todoId);
     const subtask = todo && Array.isArray(todo.subtasks) ? todo.subtasks.find(item => item.id === subtaskId) : null;
     if (!subtask) return false;
-    const wasCompleted = Boolean(subtask.completed);
-    const previousCompletedAt = subtask.completedAt;
     if (!subtask.completed) {
         audioController.unlock();
     }
-    const previousCompleted = Boolean(todo.completed);
-    subtask.completed = !subtask.completed;
-    subtask.completedAt = subtask.completed ? getNowTimestamp() : null;
-    subtask.updatedAt = getNowTimestamp();
-    const committed = commitCompositeChange(todo, previousCompleted, {
-        ...actionContext,
-        deferUiRefresh: true
+    const transaction = taskTransactionController.setSubtaskCompletion(todoId, subtaskId, !subtask.completed, {
+        source: actionContext.source || 'tasks',
+        sessionId: actionContext.sessionId || null,
+        mutationId: actionContext.mutationId || TASKLYZEN_DOMAIN_EVENTS.createMutationId()
     });
 
-    if (committed) {
-        taskEffectsController.handleSubtaskTransition(todo, subtask, {
-            wasCompleted,
-            previousCompletedAt,
-            source: actionContext.source || 'tasks',
-            sessionId: actionContext.sessionId || null
-        });
-    }
-
-    if (committed) {
+    if (transaction.changed) {
+        applyCompositeTransactionFeedback(transaction);
         refreshAfterSubtaskStateChange(todo.id, subtask.id);
     }
 
-    return committed;
+    return transaction.changed;
 }
 
 function completeTodoFromFeature(todoId, context) {
@@ -3510,7 +3521,7 @@ function saveTodoSubtaskEdit(todoId, subtaskId, title, optional) {
         showToast('Esa subtarea ya existe.', 'error');
         return false;
     }
-    const previousCompleted = Boolean(todo.completed);
+    const previousState = getTodoCompletionState(todo);
     subtask.title = cleanTitle;
     subtask.optional = Boolean(optional);
     if (subtask.optional && !todo.subtasks.some(item => item.id !== subtask.id && !item.optional)) {
@@ -3518,7 +3529,7 @@ function saveTodoSubtaskEdit(todoId, subtaskId, title, optional) {
         showToast('Debe quedar al menos una subtarea obligatoria.', 'error');
     }
     subtask.updatedAt = getNowTimestamp();
-    return commitCompositeChange(todo, previousCompleted);
+    return commitCompositeChange(todo, previousState);
 }
 
 function getSubtaskDeleteRequest(todoId, subtaskId) {
@@ -3547,66 +3558,42 @@ function getSubtaskDeleteRequest(todoId, subtaskId) {
 
 function deleteTodoSubtask(todoId, subtaskId, strategy) {
     const todo = todos.find(item => item.id === todoId);
-    const subtask = todo && Array.isArray(todo.subtasks) ? todo.subtasks.find(item => item.id === subtaskId) : null;
-    if (!subtask) return false;
-    const todayKey = getTodayKey();
+    if (!todo || !Array.isArray(todo.subtasks)) return false;
+    const transaction = taskTransactionController.removeSubtask(todoId, subtaskId, strategy, {
+        dateKey: getTodayKey(),
+        source: 'tasks',
+        mutationId: TASKLYZEN_DOMAIN_EVENTS.createMutationId()
+    });
 
-    taskEffectsController.handleSubtaskRemoval(todo, subtask, todayKey);
+    if (!transaction.changed) return false;
 
-    if (strategy === 'promote-optional') {
-        const optionalReplacement = todo.subtasks.find(item => item.id !== subtaskId && item.optional);
-        if (!optionalReplacement) return false;
-        optionalReplacement.optional = false;
-        taskEffectsController.handleSubtaskPromotion(todo, optionalReplacement, todayKey);
-    }
-
-    if (strategy === 'convert-normal') {
-        revokeTodaySustainableCredits(todo);
-        todo.type = 'normal';
-        delete todo.subtasks;
-        delete todo.compositeStatus;
-        todo.completed = false;
-        todo.completedOn = null;
-        todo.completedAt = null;
-        todo.deadlineStartedAt = getNowTimestamp();
-        todo.updatedAt = todo.deadlineStartedAt;
-        saveTodoList();
-        syncCompletionHistory();
+    applyCompositeTransactionFeedback(transaction);
+    if (transaction.conversion) {
         renderCurrentPage();
         return true;
     }
 
-    const previousCompleted = Boolean(todo.completed);
-    todo.subtasks = todo.subtasks.filter(item => item.id !== subtaskId).map((item, index) => ({ ...item, order: index }));
-    return commitCompositeChange(todo, previousCompleted);
+    refreshAfterTaskStateChange(todoId);
+    return true;
 }
 
 function moveTodoSubtask(todoId, subtaskId, direction) {
     const todo = todos.find(item => item.id === todoId);
     if (!todo || !Array.isArray(todo.subtasks)) return;
+    const previousState = getTodoCompletionState(todo);
     const reordered = TASKLYZEN_COMPOSITE_TASKS.moveSubtask(todo.subtasks, subtaskId, direction, {
         updatedAt: getNowTimestamp()
     });
     if (!reordered) return;
     todo.subtasks = reordered;
-    saveTodoList();
-    refreshAfterTaskStateChange(todoId);
+    commitCompositeChange(todo, previousState);
 }
 
 function convertCompositeTodoToNormal(todoId) {
-    const todo = todos.find(item => item.id === todoId);
-    if (!TASKLYZEN_COMPOSITE_TASKS.isCompositeTask(todo)) return;
-    revokeTodaySustainableCredits(todo);
-    todo.type = 'normal';
-    delete todo.subtasks;
-    delete todo.compositeStatus;
-    todo.completed = false;
-    todo.completedOn = null;
-    todo.completedAt = null;
-    todo.deadlineStartedAt = getNowTimestamp();
-    todo.updatedAt = todo.deadlineStartedAt;
-    saveTodoList();
-    syncCompletionHistory();
+    const transaction = taskTransactionController.convertCompositeToNormal(todoId, { source: 'tasks' });
+
+    if (!transaction.changed) return false;
+
     refreshAfterTaskStateChange(todoId);
     return true;
 }

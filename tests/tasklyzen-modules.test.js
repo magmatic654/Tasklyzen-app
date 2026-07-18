@@ -2241,7 +2241,20 @@ assert.deepStrictEqual(
     context.TasklyzenConfig.cloudStorageKeys.slice().sort()
 );
 assert.strictEqual(cloudSyncKeys.includes(context.TasklyzenConfig.storageKeys.todos), true);
+assert.strictEqual(cloudSyncKeys.includes(context.TasklyzenConfig.storageKeys.features), false);
+assert.strictEqual(cloudSyncKeys.includes(context.TasklyzenConfig.storageKeys.settings), false);
+assert.strictEqual(cloudSyncKeys.includes(context.TasklyzenConfig.storageKeys.developerSnapshot), false);
 assert.strictEqual(cloudSyncKeys.includes('tasklyzen-login-strategy'), false);
+
+const cloudDeletionKeys = storage.getCloudDeletionKeys();
+assert.strictEqual(cloudDeletionKeys.includes(context.TasklyzenConfig.storageKeys.features), true);
+assert.strictEqual(cloudDeletionKeys.includes(context.TasklyzenConfig.storageKeys.settings), true);
+assert.strictEqual(cloudDeletionKeys.includes(context.TasklyzenConfig.storageKeys.developerSnapshot), true);
+assert.strictEqual(cloudDeletionKeys.includes('tasklyzen-login-strategy'), false);
+assert.strictEqual(
+    context.TasklyzenConfig.localOnlyStorageKeys.includes(context.TasklyzenConfig.storageKeys.features),
+    true
+);
 
 storage.writeJson(context.TasklyzenConfig.storageKeys.todos, [{ id: 'cloud-scoped-todo', text: 'Solo Tasklyzen' }]);
 context.localStorage.setItem('tasklyzen-login-strategy', 'local');
@@ -2275,5 +2288,10 @@ assert.ok(scopedUpload);
 assert.strictEqual(Object.keys(scopedUpload.data).every(key => cloudSyncKeys.includes(key)), true);
 assert.strictEqual(Object.prototype.hasOwnProperty.call(scopedUpload.data, 'tasklyzen-login-strategy'), false);
 assert.strictEqual(Object.prototype.hasOwnProperty.call(scopedUpload.data, 'foreign-local-key'), false);
+
+await storage.removeMany([context.TasklyzenConfig.storageKeys.features]);
+const legacyFeatureCleanup = scopedCloudWrites.find(write => write.data
+    && write.data[context.TasklyzenConfig.storageKeys.features] === cloudDeleteToken);
+assert.ok(legacyFeatureCleanup);
 
 console.log('Tasklyzen module tests passed');

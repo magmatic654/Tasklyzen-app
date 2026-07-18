@@ -25,8 +25,50 @@
         overdueReview: 'tasklyzen-overdue-review'
     };
 
-    // Solo estas claves pertenecen al documento sincronizado del usuario.
-    const cloudStorageKeys = Object.freeze(Object.values(storageKeys));
+    // Datos duraderos que pueden sincronizarse sin trasladar estado de interfaz
+    // ni una sesion activa de Carrera a otro dispositivo.
+    const cloudStorageKeys = Object.freeze([
+        storageKeys.todos,
+        storageKeys.history,
+        storageKeys.dailyGoal,
+        storageKeys.gamification,
+        storageKeys.analyticsEvents,
+        storageKeys.dailyStats,
+        storageKeys.sustainableProgress,
+        storageKeys.experience
+    ]);
+
+    // Estas claves no se suben. Algunas guardan interfaz, otras una sesion que
+    // solo tiene sentido en el dispositivo que la inicio.
+    const localOnlyStorageKeys = Object.freeze([
+        storageKeys.developerSnapshot,
+        storageKeys.progressView,
+        storageKeys.analyticsFlowPeriod,
+        storageKeys.features,
+        storageKeys.settings,
+        storageKeys.overdueReview,
+        'tasklyzen-login-strategy'
+    ]);
+
+    // Todas estas claves se sincronizaron en versiones anteriores. No se usan
+    // para nuevas escrituras, pero se pueden borrar de Firestore al eliminar
+    // los datos del usuario.
+    const cloudDeletionKeys = Object.freeze([
+        storageKeys.todos,
+        storageKeys.history,
+        storageKeys.dailyGoal,
+        storageKeys.gamification,
+        storageKeys.developerSnapshot,
+        storageKeys.progressView,
+        storageKeys.analyticsEvents,
+        storageKeys.dailyStats,
+        storageKeys.analyticsFlowPeriod,
+        storageKeys.sustainableProgress,
+        storageKeys.features,
+        storageKeys.settings,
+        storageKeys.experience,
+        storageKeys.overdueReview
+    ]);
 
     const defaults = {
         dailyGoal: 3,
@@ -60,6 +102,8 @@
     global.TasklyzenConfig = {
         storageKeys,
         cloudStorageKeys,
+        localOnlyStorageKeys,
+        cloudDeletionKeys,
         defaults,
         streakPrestigeLevels
     };
